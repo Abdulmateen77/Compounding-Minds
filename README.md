@@ -81,7 +81,7 @@ Python 3.11, FastAPI, PostgreSQL, `edgartools`, `fredapi`, `pandas`, MCP Python 
 
 ---
 
-## 4. Data layer (`ingest/`, `store/`) : owner A
+## 4. Data layer (`ingest/` owner B, `store/` owner A)
 
 ### 4.1 Sources
 | Source | Used for |
@@ -293,7 +293,7 @@ Do not change these without telling the other person. Agents must emit exactly t
 
 ---
 
-## 7. Agents (`agents/`, `principles/`) : owner B
+## 7. Agents (`agents/`, `principles/`) : owner A (synthesizer: owner B)
 
 All agents share one runner:
 1. Load `principles/<investor>.md`.
@@ -330,7 +330,7 @@ Takes the other agents' calls (not raw data), weighs them by each agent's traili
 
 ---
 
-## 8. Replay and grading (`grader/`) : owner A, orchestrator shared
+## 8. Replay and grading (`grader/`) : owner B
 
 ### 8.1 Replay orchestrator
 ```
@@ -365,7 +365,7 @@ For every incorrect call, plus every correct call with confidence > 0.8 that was
 
 ---
 
-## 9. Held-out evaluation (`eval/`) : owner B
+## 9. Held-out evaluation (`eval/`) : owner A
 
 Prevents the demo from just showing overfitting.
 - **Split by time and by company.** Train window: 2018-2022. Held-out window: 2023-2024. Hold out ~10 companies across all years.
@@ -396,7 +396,7 @@ class ModelUpdater:
 
 ---
 
-## 11. Dashboard (`dashboard/`) : owner A
+## 11. Dashboard (`dashboard/`) : owner B
 
 Streamlit by default (fast to build). Reads only from Postgres, never calls live APIs.
 
@@ -432,7 +432,7 @@ Turns the call-grade-correct engine into something that fits an investment team'
 - Anonymized by default. Name/ticker mapping happens only at render time in the dashboard, and only for the demo's chosen company, never in the prompt.
 - Footer on every memo: "Research tool, not financial advice."
 
-### 11b.3 Calibration and track-record tracker (`grader/calibration.py`, owner A)
+### 11b.3 Calibration and track-record tracker (`grader/calibration.py`, owner B)
 - Maintains a persistent track record per agent (and per principle ID used): accuracy, Brier, calibration curve, overconfidence gap (mean confidence minus accuracy), per-regime breakdown.
 - Computed only from `grades`, as-of aware: at replay date `t` it includes only grades resolved by `t`.
 - Feeds the synthesizer's weights (7.3) and a "stale principle" flag when a principle's rolling Brier degrades.
@@ -464,17 +464,18 @@ Integration checkpoints: Hour 10 (real metrics for one company flow into one age
 ## 13. Repo layout
 
 ```
-agents/       runner, adapters/, one module per agent, synthesizer          (B)
-principles/   buffett.md, graham.md, munger.md, dalio.md                    (B)
-eval/         held-out split, baselines, report generation                  (B)
-ingest/       SEC/FRED/price fetchers, universe.json, raw cache             (A)
+agents/       runner, adapters/, one module per agent (A). synthesizer.py,
+              correction_loop.py, cache.py, mubit_batch.py, offline.py     (B)
+principles/   buffett.md, graham.md, munger.md, dalio.md                    (A)
+eval/         held-out split, frozen twins, baselines, report generation    (A)
+ingest/       SEC/FRED/price fetchers, raw cache, parsers (B). universe.json (A)
 store/        schema.sql, queries.py (point-in-time gate), stubs/, tests/   (A)
 metrics/      one module per agent's metric set                             (A)
 tools/        MCP servers                                                   (A)
-grader/       rules.py, grade.py, corrections.py, replay.py, calibration.py (A)
+grader/       rules.py, grade.py, corrections.py, replay.py, calibration.py (B)
 screener/     watchlist flags and ranking (stretch)                         (A)
 memos/        memo assembly, placeholder renderer, number check (stretch)   (B)
-dashboard/    Streamlit app                                                 (A)
+dashboard/    Streamlit app                                                 (B)
 schemas/      shared Pydantic models                                        (shared)
 .env.example  keys listed, no values
 ```
