@@ -5,7 +5,8 @@ For each of the 50 companies and each quarter-end from 2018Q1 to 2023Q4, build t
 fits, and look up what happened over the next twelve months in later filings:
 
   Buffett fit  vs  revenue growth over the next year, and the free-cash-flow margin a year on
-  Munger fit   vs  an auditor change or a dividend cut within the next year (the grader's own checks)
+  Munger fit   vs  an auditor change or a dividend cut within the next year. A cut here must last two quarters (see
+                   research/dividends.py): the grader's single-quarter rule mistakes payment timing for cuts
 
 No model is involved, so it costs nothing and is exactly repeatable. Graham's price check and the valuation need a
 share price, which the database does not hold for the past, so they are not tested here.
@@ -21,11 +22,12 @@ import sys
 from datetime import date, timedelta
 from pathlib import Path
 
-from grader.risk import check_auditor_change, check_dividend_cut, window_end
+from grader.risk import check_auditor_change, window_end
 from ingest.universe import load_universe
 from metrics.context import Context
 from store import queries
 
+from . import dividends
 from .report import Base, build_report
 
 OUT = Path(__file__).resolve().parent.parent / "data" / "backtest" / "lens_backtest.jsonl"
@@ -63,8 +65,10 @@ def outcomes(cid: str, as_of: date, q0: date) -> dict:
     end = window_end(as_of)
     events = [e for e in queries.get_events(cid, end) if as_of < e.filed_date <= end]
     aud, _ = check_auditor_change(events)
-    div, _ = check_dividend_cut(cid, as_of, end)
-    out["distress"] = None if div == "unresolvable" and aud != "yes" else (1 if "yes" in (aud, div) else 0)
+    div = dividends.cut_in_window(later, as_of, end)          # persistence rule, same definition as the report's check
+    out["auditor_change"] = 1 if aud == "yes" else 0
+    out["dividend_cut"] = div
+    out["distress"] = 1 if (aud == "yes" or div == 1) else (None if div is None else 0)
     return out
 
 

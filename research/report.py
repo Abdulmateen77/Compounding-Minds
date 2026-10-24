@@ -15,6 +15,7 @@ from typing import Callable
 from metrics import fundamentals, risk, scenarios
 from metrics.context import Context, Result, combine
 
+from . import dividends
 from .analysis import analyse
 
 STALE_DAYS = 500            # a last revenue quarter older than this means we cannot read the company's revenue
@@ -233,6 +234,7 @@ def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, sha
         notes.append("This company does not report a gross profit line, so gross margin is not shown.")
 
     risk_res = risk.compute(ctx)
+    risk_res["dividend_cut_history_5y"] = dividends.count_cuts(ctx)     # the single-quarter rule mistakes payment timing for cuts
     flags = _flags(risk_res, plans)
     economy = _economy(scenarios.compute(ctx))
     market = _market(quote, shares, cur)
