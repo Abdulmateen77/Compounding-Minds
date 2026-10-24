@@ -50,17 +50,22 @@ def correction_row(c: Correction, mubit_ref: str | None = None, applied: bool = 
             "applied_at": _now() if applied else None}
 
 
-def snapshot_row(run_id: str, agent: str, arm: str, as_of: date, n: int, accuracy: float | None,
-                 brier: float | None, model: str | None) -> dict:
-    return {"run_id": run_id, "agent": agent, "arm": arm, "as_of": as_of.isoformat(), "n": n,
-            "accuracy": accuracy, "brier": brier, "model": model}
+VARIANTS = ("learned", "frozen", "baseline")
+
+
+def snapshot_row(run_id: str, agent: str, variant: str, as_of: date, n_calls: int, n_correct: int,
+                 accuracy: float | None, brier: float | None, model: str | None) -> dict:
+    if variant not in VARIANTS:
+        raise ValueError(f"snapshot variant must be one of {VARIANTS}")
+    return {"run_id": run_id, "agent": agent, "variant": variant, "as_of": as_of.isoformat(),
+            "n_calls": n_calls, "n_correct": n_correct, "accuracy": accuracy, "brier": brier, "model": model}
 
 
 class RunStore:
     """Write API. Subclasses implement `_put(table, key, row)`."""
 
     KEYS = {"runs": ("run_id",), "calls": ("call_id",), "grades": ("call_id",),
-            "corrections": ("correction_id",), "snapshots": ("run_id", "agent", "arm", "as_of"),
+            "corrections": ("correction_id",), "snapshots": ("run_id", "agent", "variant", "as_of"),
             "eval_results": ("run_id",)}
 
     def _put(self, table: str, row: dict) -> None:
@@ -78,9 +83,9 @@ class RunStore:
     def write_correction(self, c: Correction, mubit_ref: str | None = None, applied: bool = False) -> None:
         self._put("corrections", correction_row(c, mubit_ref, applied))
 
-    def write_snapshot(self, run_id: str, agent: str, arm: str, as_of: date, n: int,
+    def write_snapshot(self, run_id: str, agent: str, variant: str, as_of: date, n_calls: int, n_correct: int,
                        accuracy: float | None, brier: float | None, model: str | None) -> None:
-        self._put("snapshots", snapshot_row(run_id, agent, arm, as_of, n, accuracy, brier, model))
+        self._put("snapshots", snapshot_row(run_id, agent, variant, as_of, n_calls, n_correct, accuracy, brier, model))
 
     def write_eval_result(self, run_id: str, report: dict) -> None:
         self._put("eval_results", {"run_id": run_id, "generated_at": _now(),

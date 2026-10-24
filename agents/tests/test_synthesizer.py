@@ -8,12 +8,18 @@ from agents.gateway import FakeModelUpdater, ScriptedGateway
 from agents.masking import has_calendar_year
 from agents.synthesizer import (
     THRESHOLD,
+    Calibration,
     build_rationale_messages,
+    confidence_for,
+    fit_calibration,
+    grade_committee,
+    verdict_for,
     committee_outcome,
     committee_score,
     synthesize,
     trailing_weights,
 )
+from agents.synthesizer import Weight
 from schemas import AgentCall, Grade
 
 AS_OF = date(2019, 6, 30)
@@ -121,3 +127,55 @@ def test_offline_committee_end_to_end(tmp_path):
     assert all(calls)
     v = synthesize(calls, [], gw, upd)
     assert v.claim.answer == "unattractive" and v.model == "fallback/synthesizer-v0"
+
+
+def test_weight_is_smoothed_trailing_accuracy_from_grades():
+    h = [graded(call("fundamentals", "yes"), c, date(2019, 1, 1 + i)) for i, c in enumerate([True, True, False, True])]
+    w = trailing_weights(h, AS_OF)["fundamentals"]
+    assert (w.correct, w.graded) == (3, 4) and w.value == pytest.approx(4 / 6)
+
+
+def test_weights_use_only_the_trailing_window_and_skip_unresolvable():
+    h = [graded(call("risk", "no"), False, date(2018, 1, 1 + i)) for i in range(5)]
+    h += [graded(call("risk", "no"), True, date(2019, 3, 1 + i)) for i in range(3)]
+    h.append(graded(call("risk", "no"), None, date(2019, 4, 1)))
+    w = trailing_weights(h, AS_OF, window=3)["risk"]
+    assert (w.correct, w.graded) == (3, 3)
+
+
+def test_score_is_weighted_by_track_record_and_computed_in_python():
+    from agents.synthesizer import committee_score
+    cs = [call("fundamentals", "yes", 0.8), call("risk", "yes", 0.8)]  # risk yes = distress = bad
+    score, w = committee_score(cs, {"fundamentals": Weight(9, 10), "risk": Weight(1, 10)})
+    assert w["fundamentals"] > w["risk"] and score > 0
+    assert score == pytest.approx((w["fundamentals"] * 0.8 - w["risk"] * 0.8) / (w["fundamentals"] + w["risk"]))
+
+
+def test_calibration_uses_empirical_hit_rate_per_band():
+    pairs = [(0.9, True)] * 9 + [(0.9, False)] + [(0.05, True), (0.05, False)] * 5
+    cal = fit_calibration(pairs)
+    assert cal.confidence(0.9) > cal.confidence(0.05)
+    assert cal.confidence(-0.9) == cal.confidence(0.9)  # sign does not matter
+    assert confidence_for(0.9, cal) == cal.confidence(0.9)
+    assert fit_calibration([]).confidence(0.9) == 0.5  # no data stays at the prior
+
+
+def test_synthesize_uses_calibration_when_given(tmp_path):
+    cal = Calibration(edges=(THRESHOLD,), rates=(0.4, 0.7))
+    out = synthesize([call("fundamentals", "yes"), call("risk", "no")], [], ScriptedGateway(ok_rationale),
+                     FakeModelUpdater(tmp_path), calibration=cal)
+    assert out.claim.probability == 0.7 and out.claim.answer == "attractive"
+
+
+def test_committee_graded_as_composite_of_underlying_outcomes(tmp_path):
+    cs = [call("fundamentals", "yes"), call("risk", "no")]
+    com = run(cs, tmp=tmp_path)
+    good = [graded(cs[0], True, date(2019, 9, 30)), graded(cs[1], True, date(2020, 6, 30))]
+    good = [(c, g.model_copy(update={"outcome": o})) for (c, g), o in zip(good, ["yes", "no"])]
+    g = grade_committee(com, good)
+    assert g.outcome == "attractive" and g.correct is True and g.resolution_date == date(2020, 6, 30)
+    assert 0 <= g.brier < 0.5
+    bad = [(c, gr.model_copy(update={"outcome": o})) for (c, gr), o in zip(good, ["no", "yes"])]
+    assert grade_committee(com, bad).correct is False
+    none = [(c, gr.model_copy(update={"correct": None, "outcome": "unresolvable"})) for c, gr in good]
+    assert grade_committee(com, none).correct is None
