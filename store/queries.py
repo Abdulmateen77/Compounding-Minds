@@ -38,12 +38,25 @@ class InMemoryBackend:
         return [r for r in self._macro if r["series_id"] == series_id]
 
 
-_backend: Backend = InMemoryBackend()
+_DEFAULT_BACKEND: Backend = InMemoryBackend()
+_backend: Backend = _DEFAULT_BACKEND
 
 
 def set_backend(backend: Backend) -> None:
     global _backend
     _backend = backend
+
+
+def has_backend() -> bool:
+    """True once someone has chosen a backend (Postgres or a test's in-memory one)."""
+    return _backend is not _DEFAULT_BACKEND
+
+
+def use_postgres(conn=None) -> None:
+    """Read facts, events and macro from Postgres. Pass an open psycopg connection, or nothing to
+    connect with DATABASE_URL. The visibility rule below is unchanged: Postgres only supplies rows."""
+    from . import db, pg
+    set_backend(pg.PostgresBackend(conn if conn is not None else db.connect()))
 
 
 def _latest_per_key(rows: list[dict], key_fields: tuple[str, ...], date_field: str, as_of: date) -> list[dict]:

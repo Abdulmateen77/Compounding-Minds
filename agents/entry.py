@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import os
+from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Callable
@@ -55,6 +56,42 @@ class Attempt:
     leaks: list[str] = field(default_factory=list)   # what blocked the prompt, when status == blocked
 
 
+def attempt_bundle(agent: str, company_id: str, as_of: date, bundle: dict, gateway: LLMGateway,
+                   updater: ModelUpdater, run_id: str | None = None, lessons: list[str] | None = None) -> Attempt:
+    """The shared core: given a metric bundle, skip it, block it, or ask the model."""
+    missing = list(bundle.get("missing", []))
+    if not bundle.get("usable", True):          # stub bundles carry no `usable` flag
+        log.info("skip %s %s %s: missing %s", agent, company_id, as_of, missing)
+        return Attempt(agent, company_id, as_of, "skipped", missing=missing)
+    # Check the exact message the model would see, with the lessons it would be given.
+    if lessons is None:
+        lessons = getattr(updater, "lessons", lambda a: [])(agent)
+    leaks = find_leaks(build_messages(agent, company_id, as_of, bundle, lessons)[1]["content"])
+    if leaks:
+        log.error("BLOCKED %s %s %s: prompt would leak %s", agent, company_id, as_of, leaks)
+        return Attempt(agent, company_id, as_of, "blocked", leaks=leaks)
+    call = run_agent(agent, company_id, as_of, bundle, gateway, updater, run_id=run_id, lessons=lessons)
+    return Attempt(agent, company_id, as_of, "ok" if call else "dropped", call, missing)
+
+
+# How often each outcome has happened through `replay_runner` in this process. The replay can print
+# it at the end: a high "dropped" or any "blocked" is worth looking at before trusting the run.
+OUTCOMES: Counter = Counter()
+
+
+def replay_runner(agent: str, company_id: str, as_of: date, *, metrics: dict, gateway: LLMGateway,
+                  updater: ModelUpdater, run_id: str | None) -> AgentCall | None:
+    """The runner for B's replay (`python -m grader.replay --runner agents.entry:replay_runner`).
+
+    Same keyword signature as grader.replay.stub_backed_runner, plus the two safeguards: a bundle
+    with too much missing is skipped, and a prompt that would leak a name, ticker or year is blocked.
+    Lessons come from the updater, so a learned arm (lessons) and a frozen arm (none) really differ.
+    """
+    a = attempt_bundle(agent, company_id, as_of, metrics, gateway, updater, run_id=run_id)
+    OUTCOMES[a.status] += 1
+    return a.call
+
+
 class Entry:
     def __init__(self, gateway: LLMGateway, updater: ModelUpdater, metrics_fn: MetricsFn | None = None):
         self.gateway, self.updater = gateway, updater
@@ -63,20 +100,7 @@ class Entry:
     def attempt(self, agent: str, company_id: str, as_of: date, run_id: str | None = None,
                 lessons: list[str] | None = None) -> Attempt:
         bundle = self.metrics_fn(company_id, agent, as_of)
-        if not bundle.get("usable", True):      # stub bundles carry no `usable` flag
-            log.info("skip %s %s %s: missing %s", agent, company_id, as_of, bundle.get("missing"))
-            return Attempt(agent, company_id, as_of, "skipped", missing=list(bundle.get("missing", [])))
-        # Check the exact message the model would see, with the lessons it would be given.
-        if lessons is None:
-            lessons = getattr(self.updater, "lessons", lambda a: [])(agent)
-        leaks = find_leaks(build_messages(agent, company_id, as_of, bundle, lessons)[1]["content"])
-        if leaks:
-            log.error("BLOCKED %s %s %s: prompt would leak %s", agent, company_id, as_of, leaks)
-            return Attempt(agent, company_id, as_of, "blocked", leaks=leaks)
-        call = run_agent(agent, company_id, as_of, bundle, self.gateway, self.updater, run_id=run_id, lessons=lessons)
-        if call is None:
-            return Attempt(agent, company_id, as_of, "dropped", missing=list(bundle.get("missing", [])))
-        return Attempt(agent, company_id, as_of, "ok", call, list(bundle.get("missing", [])))
+        return attempt_bundle(agent, company_id, as_of, bundle, self.gateway, self.updater, run_id, lessons)
 
     def run(self, agent: str, company_id: str, as_of: date, run_id: str | None = None,
             lessons: list[str] | None = None) -> AgentCall | None:

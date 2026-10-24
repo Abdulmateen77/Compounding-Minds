@@ -110,3 +110,17 @@ def test_coverage_flags_a_company_missing_required_concepts(pg_conn, loaded):
     rep = {r["company_id"]: r for r in coverage(pg_conn)}["anon_007"]
     assert "capex" in rep["missing_required"] and not rep["ok"]
     assert "anon_007" in drop_candidates(coverage(pg_conn))
+
+
+def test_use_postgres_makes_the_gate_read_from_the_connection(pg_conn, cache):
+    db.upsert_companies(pg_conn, [dict(company_id="anon_007", cik=CIK, ticker="SMPL", name="Sample Corp")])
+    pipeline.load_company(pg_conn, "anon_007", CIK, cache)
+    saved = queries._backend
+    try:
+        queries._backend = queries._DEFAULT_BACKEND
+        assert not queries.has_backend()
+        queries.use_postgres(pg_conn)
+        assert queries.has_backend()
+        assert [f.value for f in queries.get_facts("anon_007", "current_assets", date(2018, 8, 1))] == [500.0]
+    finally:
+        queries._backend = saved

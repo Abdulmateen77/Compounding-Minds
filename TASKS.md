@@ -42,6 +42,15 @@ What the merge found, and what was done. 499 tests pass on the merged branch (4 
 | **8 API tests failed on a fresh checkout** | They need demo data in `data/runs` (gitignored). Generate it with `python -m eval.run --agents fundamentals,risk,scenarios --curves --save data/runs` before running them |
 | **Hermes's test assumed an older grader** | Test helper updated: B's grader now derives the resolution date itself |
 
+**B's four requests (Sat evening), all answered**
+
+| B asked for | Where it is |
+|---|---|
+| Postgres backend, and `_latest_per_key` keyed on `(concept, period_start, period_end)` | `store/pg.py`, wired by `queries.use_postgres(conn)` (no argument connects with `DATABASE_URL`). The gate key is `(concept, period_start, period_end)` |
+| `source_tag`, `fiscal_year` on `Fact`; `going_concern_hits` on `Event` | `schemas/models.py` (optional fields, defaults keep old callers working) |
+| `run_agent` that reads lessons from the updater so learned differs from frozen | `agents.entry:replay_runner`, which has the keyword signature B's replay expects: `python -m grader.replay --runner agents.entry:replay_runner`. It reads lessons from the updater, skips unusable bundles, blocks leaking prompts, and counts outcomes in `agents.entry.OUTCOMES`. Checked in B's real offline replay: the learned arm reached version 4 while the frozen arm stayed at 0 |
+| Real `get_metrics`, and one held-out report path | `metrics.get_metrics`, switched on with `USE_STUBS=0` in `eval/metrics_source.py` (it still needs `--live` to count as real). **The one path is `eval/reports/heldout_report.json`**, written once by `python -m eval.run --live`; the dashboard reads only that and `data/eval_preview/`. A's quality report is separate (`quality/out/`) |
+
 Held-out reporting: B's dashboard reads B's `heldout_report.json` (segments `all_companies`, `seen_companies`, `unseen_companies`). Hermes's `quality/` writes a different format with an extra time slice; it feeds `quality.md` and the README results section, not the dashboard.
 
 ## 1. Where we are now (Sat 24 Oct, ~15:00)
@@ -79,7 +88,7 @@ Neither side should wait on the other. These handoffs have times. Anything late 
 | 6 | B | A | All 50 companies and macro loaded, ingest QA report | Sat 23:00 |
 | 7 | A | B | `run_agent(company_id, as_of) -> AgentCall` (the runner entry point the replay calls) | Sat 20:00 |
 | 8 | B | A | `grade(call) -> Grade` with real rules for all three MVP questions | Sat 23:00 |
-| 9 | A | B | Held-out results as `eval/out/heldout.json` (frozen vs learned vs baselines) | Sun 05:00 |
+| 9 | B | B | The held-out report, written once to `eval/reports/heldout_report.json` by `python -m eval.run --live` (the one agreed path; the dashboard reads it). A's quality report is separate: `quality/out/` | Sun 05:00 |
 | 10 | B | A | Quarterly snapshots in Postgres (for A's quality report) | Sun 03:00 |
 
 Interfaces that do not change without telling the other person: `get_facts`, `get_events`, `get_macro`, `get_metrics`, and the three models in `schemas/`.
@@ -158,7 +167,7 @@ Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as han
 - [ ] Frozen twin of each agent (never updated)
 - [ ] Baselines: always yes, base rate
 - [ ] Held-out harness: split by time (train 2018 to 2022, held out 2023 to 2024) and by company (about 10). Learning from train-window corrections only
-- [ ] Run once, before freeze, no tuning against it. Write `eval/out/heldout.json` **(handoff 9)**
+- [ ] Run once, before freeze, no tuning against it. The held-out report is B's `eval/reports/heldout_report.json` **(handoff 9)**; `quality/` writes the quality report to `quality/out/` and does not feed the dashboard
 - [ ] Quality report per agent: valid-JSON rate, evidence match, accuracy, Brier, calibration, overconfidence gap, and a short written critique of where each agent is weak
 
 ### A stretch (in order)
