@@ -54,12 +54,7 @@ class Service:
         return out
 
     def _held_out(self) -> set[str]:
-        runs = self.bundle.runs
-        for cfg in runs["config"]:
-            held = (cfg or {}).get("split", {}).get("held_out_companies")
-            if held:
-                return set(held)
-        return set()
+        return self.bundle.held_out_companies()  # eval.run's split or grader.replay's top-level list
 
     def companies(self) -> list[M.Company]:
         if self.bundle.empty:

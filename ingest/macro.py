@@ -19,6 +19,7 @@ CACHE = Path(__file__).resolve().parent.parent / "data" / "raw"
 FRED_URL = "https://api.stlouisfed.org/fred/series/observations"
 STOOQ_URL = "https://stooq.com/q/d/l/"
 from .concepts import MACRO_SERIES_IDS, VINTAGED_SERIES  # noqa: E402  (A's store/concepts.py)
+from .sec import raw_root  # noqa: E402  (RAW_CACHE_DIR, shared with the SEC cache)
 
 DEFAULT_SERIES = list(MACRO_SERIES_IDS)  # GDPC1, UNRATE (vintaged) + T10Y2Y, BAA10Y (market)
 
@@ -29,7 +30,7 @@ class MacroSkipped(RuntimeError):
 
 class _Cached:
     def __init__(self, cache_dir, offline, opener, ua):
-        self.dir = Path(cache_dir) if cache_dir else CACHE
+        self.dir = Path(cache_dir) if cache_dir else raw_root()
         self.offline, self._open, self.ua = offline, opener or urllib.request.urlopen, ua
 
     def _fetch(self, sub: str, name: str, url: str, headers=None) -> bytes:

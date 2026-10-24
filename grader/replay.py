@@ -30,6 +30,10 @@ Determinism: the Anthropic API stopped accepting `temperature` (400 on every mod
 CachingGateway keys on prompt hash + gateway model + the agent's model version. Run once with
 live calls, then re-run with --replay-only and get identical output with zero API calls.
 
+Resume: the store and state.json are saved after each arm of a quarter, so a crash in the frozen arm never
+replays the learned arm (whose lessons are already applied). Lessons in the updater with no saved correction
+(a crash before that save, or a replay from before per-arm saves) are set aside on resume, not learned twice.
+
 Run (resumable; re-run the same command after a crash):
     python -m grader.replay --offline --companies 5 --quarters 2019Q1:2019Q4
     python -m grader.replay --offline --companies 50 --quarters 2018Q1:2024Q4 --settle 4
@@ -219,6 +223,7 @@ class Replay:
                      "frozen": Arm("frozen", gateways["frozen"], updaters["frozen"]),
                      "baseline": Arm("baseline", None, None)}
         self.done: set[str] = set()
+        self.partial: dict[str, list[str]] = {}  # quarter -> arms finished in it (a quarter cut short)
         self._run_to_arm: dict[str, str] = {}
         self._resume()
 
@@ -241,10 +246,13 @@ class Replay:
     # resume --------------------------------------------------------------
     def _resume(self) -> None:
         if self.state_path and self.state_path.exists():
-            self.done = set(json.loads(self.state_path.read_text()).get("done_quarters", []))
+            state = json.loads(self.state_path.read_text())
+            self.done = set(state.get("done_quarters", []))
+            self.partial = {q: arms for q, arms in (state.get("partial") or {}).items() if q not in self.done}
         rows = getattr(self.store, "rows", None)
         if rows is None:
             return
+        self._drop_orphan_lessons(rows)
         for kind in ("train", "heldout"):
             for arm in ARMS:
                 self._run_to_arm[self.run_id(arm, kind)] = arm
@@ -259,12 +267,43 @@ class Replay:
                 a = self.arms[arm]
                 a.pending[call.call_id] = Pending(call, self.metrics_fn(call.company_id, call.agent, call.as_of))
 
-    def _checkpoint(self, as_of: date) -> None:
-        self.done.add(as_of.isoformat())
+    def _drop_orphan_lessons(self, rows) -> None:
+        """Lessons the learned updater holds but the store has no correction for came from a quarter that
+        crashed before it was saved. That quarter is replayed, so they would be learned twice and would move
+        the model version (every reply-cache key of the redo). Set them aside in <agent>.jsonl.orphans."""
+        upd = self.arms["learned"].updater
+        if not (hasattr(upd, "_rows") and hasattr(upd, "_mem")):
+            return
+        known = {r["correction_id"] for r in rows("corrections")}
+        for agent in self.agents:
+            lessons = upd._rows(agent)
+            keep = [r for r in lessons if r.get("correction_id") in known]
+            if len(keep) == len(lessons):
+                continue
+            path = upd._mem(agent)
+            with path.with_name(path.name + ".orphans").open("a") as f:
+                f.writelines(json.dumps(r) + "\n" for r in lessons if r.get("correction_id") not in known)
+            path.write_text("".join(json.dumps(r) + "\n" for r in keep))
+            log.warning("resume: set aside %d unsaved lesson(s) for %s", len(lessons) - len(keep), agent)
+
+    def _save_state(self) -> None:
         self.store.flush() if hasattr(self.store, "flush") else None
         if self.state_path:
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
-            self.state_path.write_text(json.dumps({"tag": self.tag, "done_quarters": sorted(self.done)}))
+            state = {"tag": self.tag, "done_quarters": sorted(self.done)}
+            if self.partial:
+                state["partial"] = self.partial
+            self.state_path.write_text(json.dumps(state))
+
+    def _arm_done(self, as_of: date, variant: str) -> None:
+        """Save after each arm, so a crash in a later arm never replays this one (its lessons are applied)."""
+        self.partial.setdefault(as_of.isoformat(), []).append(variant)
+        self._save_state()
+
+    def _checkpoint(self, as_of: date) -> None:
+        self.done.add(as_of.isoformat())
+        self.partial.pop(as_of.isoformat(), None)
+        self._save_state()
 
     # one quarter ---------------------------------------------------------
     def step(self, as_of: date, make_calls: bool = True, res: ReplayResult | None = None) -> None:
@@ -273,13 +312,17 @@ class Replay:
             return
         kind = kind_for(as_of)
         self._start_runs({kind})
+        finished = self.partial.get(as_of.isoformat(), [])
         for arm in self.arms.values():
+            if arm.variant in finished:  # resumed: this arm completed the quarter before the crash
+                continue
             if make_calls:
                 self._make_calls(arm, as_of, kind, res)
             graded = self._grade(arm, as_of, res)
             if arm.variant == "learned":
                 self._learn(arm, graded, res)
             self._snapshot(arm, as_of, kind, graded)
+            self._arm_done(as_of, arm.variant)
         self._checkpoint(as_of)
         res.quarters_done.append(as_of)
 
@@ -347,9 +390,12 @@ class Replay:
                     and c.company_id not in self.held_out):
                 by_agent[c.agent].append(GradedCall(c, g, p.metrics))
         seen = {r["call_id"] for r in getattr(self.store, "rows", lambda t: [])("corrections")}
+        # Write every lesson first (reflection calls can fail), then submit: a failure leaves the updater untouched.
+        made: dict[str, list[Correction]] = {}
         for agent, items in by_agent.items():
             items = [i for i in items if i.call.call_id not in seen]
-            corrs: list[Correction] = self.make_corrections(items, arm.gateway) if items else []
+            made[agent] = self.make_corrections(items, arm.gateway) if items else []
+        for agent, corrs in made.items():
             if not corrs:
                 continue
             ref = arm.updater.submit_corrections(agent, corrs)
