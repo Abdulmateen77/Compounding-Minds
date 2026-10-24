@@ -1,7 +1,8 @@
-pydantic>=2.6
+﻿pydantic>=2.6
 pytest>=8
 python-dotenv>=1.0
 psycopg[binary]>=3.1
+anthropic>=0.40            # Mubit is reached through its Anthropic-compatible endpoint (agents/gateway.py)
 # added when their owners need them:
 # edgartools  fredapi  mcp
 # dev only (a test syntax-checks store/schema.sql with it): pglast
