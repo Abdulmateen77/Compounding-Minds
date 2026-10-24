@@ -225,7 +225,7 @@ export default function LiveScene(props: Props) {
             {sceneVerdict && t >= dir.tl.stamp && (
               <div className="rounded-lg px-3 py-2 text-sm text-right pointer-events-auto" style={{ background: "var(--panel)", border: `2px solid ${LABELS[sceneVerdict.label].color}` }}>
                 <div className="font-bold" style={{ color: LABELS[sceneVerdict.label].color }}>{sceneVerdict.text}</div>
-                <div className="num mute text-xs">confidence {pct(sceneVerdict.confidence)} · evidence assessment</div>
+                <div className="num mute text-xs">confidence {pct(sceneVerdict.confidence ?? 0)} · evidence assessment</div>
               </div>
             )}
           </div>

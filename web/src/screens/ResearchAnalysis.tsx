@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { jumpTo } from "../route";
 import { TONE, money, pctOf, type Analysis, type Check, type Lens, type QuickCheck } from "../research";
 
 /* The verdict, the four investors, the value, the future: everything here is rendered from the numbers the API
@@ -28,7 +29,7 @@ export function Verdict({ a, name }: { a: Analysis; name: string }) {
         {a.lenses.map((l) => {
           const c = fitColor(l.fit);
           return (
-            <a key={l.key} href={`#lens-${l.key}`} className="rounded-xl p-3 grid gap-1 no-underline"
+            <a key={l.key} href={`#lens-${l.key}`} onClick={jumpTo(`lens-${l.key}`)} className="rounded-xl p-3 grid gap-1 no-underline"
               style={{ background: `color-mix(in srgb, ${c} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${c} 35%, var(--line))`, color: "var(--text)" }}>
               <span className="text-xs mute">{l.name}</span>
               <span className="font-semibold">{l.word}</span>

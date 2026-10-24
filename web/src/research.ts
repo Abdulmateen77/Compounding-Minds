@@ -93,3 +93,7 @@ export const POINT_IN_TIME = new Set(["cash", "debt", "net_debt", "equity", "ass
 
 export type QuickItem = { key: string; label: string; rule: string; result: "pass" | "partial" | "fail" | "unknown"; found: string };
 export type QuickCheck = { applies: boolean; note?: string; items: QuickItem[]; score?: number | null; verdict?: string | null; source: string };
+
+/** What the report is doing while it is built (the first lookup takes 20 to 30 seconds). Shown by the loading screen and the investor room. */
+export const RESEARCH_STEPS = ["Finding the company's filings", "Reading the financial statements", "Reading the annual report for plans and R&D", "Reading the latest news and checking the share price"];
+export const STEP_SECONDS = 4.5;

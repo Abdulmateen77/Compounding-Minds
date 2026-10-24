@@ -13,9 +13,12 @@ from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
+from typing import Literal
+
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from api import models as M
 from api.service import NotFound, Service, get_service
@@ -166,6 +169,29 @@ def research_company(cik: int, refresh: bool = False):
         return research_service().report(cik, force=refresh)
     except Exception as e:
         raise HTTPException(502, f"Could not build the report: {e}")
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=1200)
+
+
+class ChatIn(BaseModel):
+    lens: str = Field(min_length=1, max_length=30)
+    question: str = Field(min_length=1, max_length=400)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=12)
+
+
+@app.post("/api/research/company/{cik}/chat")
+def research_chat(cik: int, body: ChatIn):
+    """Ask one investor lens why it reached its reading. Answers come only from that lens's checks in the report."""
+    try:
+        out = research_service().chat(cik, body.lens, body.question, [t.model_dump() for t in body.history])
+    except Exception as e:
+        raise HTTPException(502, f"Could not answer: {e}")
+    if out is None:
+        raise HTTPException(404, "No such investor for this company's report.")
+    return out
 
 
 # Built front end (npm run build in web/). Absent in dev, where Vite serves the UI and proxies /api.
