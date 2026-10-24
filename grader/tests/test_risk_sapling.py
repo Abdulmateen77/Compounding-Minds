@@ -87,8 +87,8 @@ def test_not_enough_info_is_unresolvable(tmp_path, texts, label):
 
 
 def test_unsure_uses_top_label_only_when_confident():
-    confident = Verdict.from_reply(reply("supported", status="unsure", p=0.95))
-    shaky = Verdict.from_reply(reply("supported", status="unsure", p=0.6))
+    confident = Verdict.from_reply(reply("supported", status="unsure", p=0.55))
+    shaky = Verdict.from_reply(reply("supported", status="unsure", p=0.45))
     assert verdict_to_outcome(confident) == "yes"
     assert verdict_to_outcome(shaky) == "unresolvable"
 

@@ -283,7 +283,7 @@ Key points:
 
 ### 8.2 Reality grader
 - Pure Python, no LLM. Resolves each `question_id` using rules in `grader/rules.py` against filings with `filed_date` after `as_of`.
-- One exception: the Risk rule's going-concern check (`grader/risk.py`). Python finds passages with "going concern" / "substantial doubt"; Mubit's **Banyan Sapling** verifier judges them against a written policy (real doubt vs boilerplate). Sapling `supported` = yes, `violation` = no, `insufficient_information` / `inconsistent_context` = `unresolvable`; an `unsure` status uses the top label only at >= 0.90 probability. Verdicts are cached in `data/sapling_cache/`, so the demo replays them with no live calls. Auditor changes (8-K 4.01) stay pure Python; the dividend-cut check is still to add.
+- One exception: the Risk rule's going-concern check (`grader/risk.py`). Python finds passages with "going concern" / "substantial doubt"; Mubit's **Banyan Sapling** verifier judges them against a written policy (real doubt vs boilerplate). Sapling `supported` = yes, `violation` = no, `insufficient_information` / `inconsistent_context` = `unresolvable`; an `unsure` status uses the top label only when it holds a majority (>= 0.50, `grader/config.py`; retune on the training window). Verdicts are cached in `data/sapling_cache/`, so the demo replays them with no live calls. Auditor changes (8-K 4.01) stay pure Python; the dividend-cut check is still to add.
 - Produces `Grade` (6.2). Computes Brier score `(p - outcome)^2` for binary, multiclass Brier for buckets.
 - Logs `unresolvable` cases instead of guessing.
 
