@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import json
 import tempfile
+import uuid
 from dataclasses import dataclass, field
 from datetime import date
 from typing import Callable
@@ -23,6 +24,7 @@ from store.stubs import get_metrics_stub
 
 from .gateway import FakeModelUpdater, LLMGateway, ModelUpdater, UpdateRef
 from .reflection import GradedCall, make_corrections
+from .run_store import RunStore, open_store
 from .runner import run_agent
 
 MetricsFn = Callable[[str, str, date], dict]
@@ -62,26 +64,39 @@ class LoopResult:
 def run_correction_loop(agent: str, company_id: str, as_of: date, next_as_of: date,
                         gateway: LLMGateway, updater: ModelUpdater,
                         metrics_fn: MetricsFn = get_metrics_stub,
-                        outcome_fn: OutcomeFn | None = None) -> LoopResult:
+                        outcome_fn: OutcomeFn | None = None, store: RunStore | None = None) -> LoopResult:
     grade_fn = (lambda c: grade(c, outcome_fn)) if outcome_fn else grade
     res = LoopResult(agent, company_id, updater.get_model_version(agent), None, None)
+    run_id = str(uuid.uuid4())
+    if store:
+        store.start_run(run_id, "train", {"kind": "correction_loop", "agent": agent, "company_id": company_id})
+
+    def save(call: AgentCall, g: Grade) -> None:
+        if store:
+            store.write_call(call)
+            store.write_grade(g)
 
     m1 = metrics_fn(company_id, agent, as_of)
-    res.before = run_agent(agent, company_id, as_of, m1, gateway, updater)
+    res.before = run_agent(agent, company_id, as_of, m1, gateway, updater, run_id=run_id)
     if res.before is None:
         return res
     res.before_grade = grade_fn(res.before)
+    save(res.before, res.before_grade)
 
     res.corrections = make_corrections([GradedCall(res.before, res.before_grade, m1)], gateway)
     if res.corrections:
         res.update_ref = updater.submit_corrections(agent, res.corrections)
         res.update_state = updater.status(res.update_ref).state
+        if store:
+            for c in res.corrections:
+                store.write_correction(c, mubit_ref=res.update_ref.ref, applied=res.update_state == "applied")
     res.version_after = updater.get_model_version(agent)
 
     m2 = metrics_fn(company_id, agent, next_as_of)
-    res.after = run_agent(agent, company_id, next_as_of, m2, gateway, updater)
+    res.after = run_agent(agent, company_id, next_as_of, m2, gateway, updater, run_id=run_id)
     if res.after is not None:
         res.after_grade = grade_fn(res.after)
+        save(res.after, res.after_grade)
     return res
 
 
@@ -134,6 +149,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--live", action="store_true", help="use MubitGateway + MubitUpdater instead of the offline pieces")
     ap.add_argument("--no-cache", action="store_true", help="with --live: skip the reply cache and always call Mubit")
     ap.add_argument("--memory-dir", help="fallback updater memory (default: a fresh temp dir, so every run starts at v0)")
+    ap.add_argument("--save", help="'postgres' (DATABASE_URL) or a directory for JSONL tables")
     ap.add_argument("--json", help="also write the full loop result as JSON (e.g. for the dashboard)")
     args = ap.parse_args(argv)
 
@@ -158,8 +174,11 @@ def main(argv: list[str] | None = None) -> int:
         note = ("OFFLINE DEMO: stub metrics, scripted LLM, stub outcome rule, FALLBACK updater "
                 "(not Mubit). Not real results.")
 
+    store = open_store(args.save)
     res = run_correction_loop(args.agent, args.company, args.as_of, args.next_as_of, gateway, updater,
-                              outcome_fn=outcome_fn)
+                              outcome_fn=outcome_fn, store=store)
+    if store:
+        store.close()
     print_report(res, note)
     for r in getattr(gateway, "requests", []):
         print(f"   mubit {r.request_id}  {r.purpose:<10} {r.agent}")

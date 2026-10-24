@@ -57,13 +57,16 @@ def render_markdown(report: dict) -> str:
         out += [f"## {agent}", "",
                 f"Corrections applied in training: {r['corrections_applied']}. "
                 f"Model version {r['learned_version_start']} to {r['learned_version_end']}. "
-                f"Dropped calls (held-out, frozen/learned): {r['held_out_dropped']['frozen']}/{r['held_out_dropped']['learned']}.", ""]
+                f"Dropped calls (held-out, frozen/learned): {r['held_out_dropped'].get('frozen', 0)}/{r['held_out_dropped'].get('learned', 0)}."
+                + (f" Frontier model: {r['frontier_version']}." if r.get("frontier_version") else ""), ""]
         for seg, label in labels.items():
             s = r["segments"][seg]
             out += [f"### {label} (n = {s['n']})", "",
                     "| | accuracy | Brier |", "|---|---|---|",
                     f"| frozen | {_pct(s['frozen']['accuracy'])} | {_num(s['frozen']['brier'])} |",
                     f"| learned | {_pct(s['learned']['accuracy'])} | {_num(s['learned']['brier'])} |"]
+            if "frontier" in s:
+                out.append(f"| frontier (no learning) | {_pct(s['frontier']['accuracy'])} | {_num(s['frontier']['brier'])} |")
             for name, b in s["baselines"].items():
                 out.append(f"| {name} | {_pct(b['accuracy'])} | {_num(b['brier'])} |")
             d = s["learned_minus_frozen"]

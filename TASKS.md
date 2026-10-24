@@ -110,7 +110,14 @@ Interface (store gate): `get_facts`, `get_events`, `get_macro`, `get_metrics`, a
 - [ ] Rehearse the live correction-to-update moment
 
 ### B stretch (in order)
-Valuation and Moat agents with `principles/graham.md`, frontier-model comparison, cross-examination round, `memos/` drafting with placeholder number check.
+- [x] Valuation and Moat agents with `principles/graham.md` (Moat uses `principles/buffett_moat.md`)
+- [x] Frontier-model comparison (`eval.run --frontier-model`)
+- [x] Cross-examination round (`agents/cross_exam.py`)
+- [x] `memos/` drafting with placeholder number check
+
+### B extras built
+- [x] Run store: calls, grades, corrections, snapshots and eval results to Postgres or JSONL (`agents/run_store.py`, `schemas/run_extras.sql`). Tell A: adds `grades.resolution_date`, `snapshots`, `eval_results`
+- [x] Bounded tool use in the runner (`agents/tools.py`), ready for A's MCP tools
 
 ---
 

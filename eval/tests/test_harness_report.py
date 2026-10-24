@@ -112,3 +112,33 @@ def test_report_banner_markdown_and_write_once(tmp_path):
     with pytest.raises(FileExistsError):
         write_report(real, tmp_path / "out")
     write_report(real, tmp_path / "out", force=True)
+
+
+def test_frontier_arm_curves_and_saving(tmp_path):
+    from agents.run_store import MemoryRunStore
+    from eval.harness import Arm, snapshots
+    store = MemoryRunStore()
+    store.start_run("t", "train"); store.start_run("h", "heldout")
+    ev = evaluate_agent("fundamentals", SPLIT, GW, FakeModelUpdater(tmp_path / "mem"), FrozenUpdater("m"),
+                        outcome_fn=demo_reality, frontier=Arm("frontier", GW, FrozenUpdater("big")),
+                        store=store, train_run_id="t", heldout_run_id="h", frozen_in_train=True)
+    s = summarise(ev)
+    seg = s["segments"]["all_companies"]
+    assert "frontier" in seg and seg["frontier"]["n"] == seg["n"] and s["frontier_version"].startswith("frozen:big")
+    assert {c.arm for c in ev.train_cells} == {"learned", "frozen"}
+    calls = store.rows("calls")
+    assert len(calls) == len(ev.train_cells) + len(ev.cells)
+    assert {r["run_id"] for r in calls} == {"t", "h"}
+    assert len(store.rows("corrections")) == ev.corrections_applied
+    snaps = snapshots(ev)
+    assert {(x["phase"], x["arm"]) for x in snaps} == {("train", "learned"), ("train", "frozen"),
+                                                      ("heldout", "learned"), ("heldout", "frozen"), ("heldout", "frontier")}
+    assert planned_calls(SPLIT, 1, frozen_in_train=True, frontier=True)["per_agent_held_out"] == 3 * 5 * 8
+    assert "frontier (no learning)" in render_markdown(build_report(SPLIT, {"fundamentals": s}, {"real_results": False}))
+
+
+def test_frozen_curve_calls_never_feed_learning(tmp_path):
+    a, _ = run(tmp_path / "a")
+    b = evaluate_agent("fundamentals", SPLIT, GW, FakeModelUpdater(tmp_path / "b"), FrozenUpdater("m"),
+                       outcome_fn=demo_reality, frozen_in_train=True)
+    assert a.corrections_applied == b.corrections_applied and a.learned_version_end == b.learned_version_end

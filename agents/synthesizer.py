@@ -184,18 +184,26 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Offline committee demo (stub metrics, scripted LLM).")
     ap.add_argument("--company", default="anon_001")
     ap.add_argument("--as-of", default="2019-06-30", type=date.fromisoformat)
+    ap.add_argument("--agents", default="fundamentals,risk,scenarios")
+    ap.add_argument("--cross-exam", action="store_true", help="one cross-examination round before the verdict")
     args = ap.parse_args(argv)
 
     gw = ScriptedGateway(scripted_llm)
     upd = FakeModelUpdater(tempfile.mkdtemp(prefix="cm-memory-"))
     run_id = str(uuid.uuid4())
-    calls = [c for a in ("fundamentals", "risk", "scenarios")
+    calls = [c for a in args.agents.split(",")
              if (c := run_agent(a, args.company, args.as_of, get_metrics_stub(args.company, a, args.as_of), gw, upd, run_id))]
+    revisions = []
+    if args.cross_exam:
+        from .cross_exam import cross_examine
+        calls, revisions = cross_examine(calls, gw)
     verdict = synthesize(calls, history=[], gateway=gw, updater=upd, run_id=run_id)
 
     print("OFFLINE DEMO: stub metrics, scripted LLM, no grade history (equal weights). Not real results.\n")
     for c in calls:
         print(f"  {c.agent:<13} {c.claim.answer:<5} @ {c.claim.probability:.0%}")
+    for r in revisions:
+        print(f"  cross-exam {r.agent:<13} {r.original_probability:.0%} -> {r.revised_probability:.0%}  {r.challenge}")
     print(f"\n  COMMITTEE     {verdict.claim.answer} @ {verdict.claim.probability:.0%}")
     for r in verdict.reasoning:
         print(f"    - {r}")

@@ -257,6 +257,8 @@ Bucket definitions for Scenarios are fixed and numeric, set once in `grader/conf
 ### 7.3 Synthesizer
 Takes the other agents' calls (not raw data), weighs them by each agent's trailing accuracy (from `grades`), and outputs the committee verdict with a calibrated confidence. MVP: weighted vote plus an LLM-written rationale. Stretch: **cross-examination round**, where agents challenge each other's evidence (max 1 round).
 
+**Built (B):** cross-examination in `agents/cross_exam.py` (`python -m agents.synthesizer --cross-exam`): confidence only, shift capped at 0.15, originals untouched. Tool use in `agents/runner.py` + `agents/tools.py`: off unless a toolbox is passed, at most 5 calls, instructions in the user message only, tool values citable as evidence. Valuation and Moat agents are in `agents/specs.py`; Moat reads `principles/buffett_moat.md` so the Fundamentals prompt (also Buffett) never changes. Their stub metrics are in `store/stubs/` and their metric names are the contract for `metrics/`.
+
 ### 7.4 Mubit adapter (one per agent)
 `agents/adapters/<agent>.py` wraps the single Mubit client with that agent's identity, so Mubit tracks each agent's model separately. Interface in section 10.
 
@@ -306,7 +308,7 @@ Prevents the demo from just showing overfitting.
 - Held-out results are generated once, before freeze, and shown as a single slide/panel. No tuning against them.
 - Stretch: frontier-model comparison (same questions, a larger model with no learning), shown as a bar next to ours.
 
-**Status (harness built, results pending).** `eval/` implements the split, the frozen twin (`agents/frozen.py`), both baselines and the report. Run `python -m eval.run` for an offline preview (stub metrics, scripted LLM, stamped NOT RESULTS, written to `data/eval_preview/`). `python -m eval.run --live` is a dry run that prints the call count; `--live --yes` spends real Mubit calls. The official report goes to `eval/reports/` only for runs on real inputs and is never overwritten without `--force`. It needs Person A's real `get_metrics` and the fundamentals and scenarios grader rules first (`eval/metrics_source.py` is the one switch). Results section: none yet, by design.
+**Status (harness built, results pending).** `eval/` implements the split, the frozen twin (`agents/frozen.py`), both baselines, the frontier-model arm (`--frontier-model`), accuracy curves (`--curves`) and the report. Run `python -m eval.run` for an offline preview (stub metrics, scripted LLM, stamped NOT RESULTS, written to `data/eval_preview/`). `python -m eval.run --live` is a dry run that prints the call count; `--live --yes` spends real Mubit calls. `--save postgres` (or `--save <dir>` for JSONL) stores runs, calls, grades, corrections, snapshots and the report for the dashboard (`agents/run_store.py`, extra tables in `schemas/run_extras.sql`). The official report goes to `eval/reports/` only for runs on real inputs and is never overwritten without `--force`. It needs Person A's real `get_metrics` and the fundamentals and scenarios grader rules first (`eval/metrics_source.py` is the one switch). Results section: none yet, by design.
 
 ---
 
@@ -365,6 +367,8 @@ Turns the call-grade-correct engine into something that fits an investment team'
 - Sections: Business outlook summary, Key metrics (table rendered by Python), Agent views and disagreements, Risks and distress flags, What would change the view (referencing principles), Source accessions.
 - Anonymized by default. Name/ticker mapping happens only at render time in the dashboard, and only for the demo's chosen company, never in the prompt.
 - Footer on every memo: "Research tool, not financial advice."
+
+**Built (B):** `memos/` (`python -m memos --company anon_001 --as-of 2019-06-30`). The drafter writes four prose sections using placeholders only; `check_prose` rejects any digit, unknown placeholder or buy/sell language, with one repair retry, then the memo renders without LLM prose.
 
 ### 11b.3 Calibration and track-record tracker (`grader/calibration.py`, owner A)
 - Maintains a persistent track record per agent (and per principle ID used): accuracy, Brier, calibration curve, overconfidence gap (mean confidence minus accuracy), per-regime breakdown.
