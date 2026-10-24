@@ -2,11 +2,15 @@
 
     streamlit run dashboard/app.py                         # Postgres if reachable, else data/runs
     DASHBOARD_SOURCE=data/runs streamlit run dashboard/app.py
+    streamlit run dashboard/app.py -- --source data/runs_final   # the real replay, even while it runs
 
-Reads stored runs only. No live API calls, no LLM calls.
+Reads stored runs only. No live API calls, no LLM calls. A JSONL source is re-read whenever its files
+change, so a replay that is still writing shows its finished quarters and flags the partial one.
 """
 from __future__ import annotations
 
+import argparse
+import os
 import sys
 import time
 from pathlib import Path
@@ -25,9 +29,17 @@ from dashboard import data as D  # noqa: E402
 load_dotenv(ROOT / ".env")
 st.set_page_config(page_title="Compounding Minds", page_icon="📈", layout="wide")
 
-LEARNED, FROZEN, FRONTIER = "#2563eb", "#9ca3af", "#a855f7"
+LEARNED, FROZEN, FRONTIER, BASELINE = "#2563eb", "#9ca3af", "#a855f7", "#f59e0b"
 GOOD, BAD = "#16a34a", "#dc2626"
-ARM_COLOR = {"learned": LEARNED, "frozen": FROZEN, "frontier": FRONTIER}
+ARM_COLOR = {"learned": LEARNED, "frozen": FROZEN, "frontier": FRONTIER, "baseline": BASELINE}
+CURVE_ARMS = ("learned", "frozen", "frontier", "baseline")
+
+# `streamlit run dashboard/app.py -- --source data/runs_final` (Streamlit passes args after `--`).
+_cli = argparse.ArgumentParser(add_help=False)
+_cli.add_argument("--source")
+_args, _ = _cli.parse_known_args(sys.argv[1:])
+if _args.source:
+    os.environ["DASHBOARD_SOURCE"] = _args.source
 
 st.markdown("""
 <style>
@@ -53,14 +65,14 @@ st.markdown('<div class="cm-footer">Research tool, not financial advice. Replay 
 
 # ---- data --------------------------------------------------------------------
 
-@st.cache_data(show_spinner="Loading stored runs…")
-def _load(source: str) -> D.Bundle:
+@st.cache_data(show_spinner="Loading stored runs…", max_entries=2)
+def _load(source: str, stamp: float) -> D.Bundle:  # stamp: files' mtime, so new replay rows reload
     return D.load(source)
 
 
 source = D.resolve_source()
 try:
-    bundle = _load(source)
+    bundle = _load(source, D.source_stamp(source))
 except Exception as e:  # noqa: BLE001
     st.title("Compounding Minds")
     st.error(f"Could not read runs from `{source}`: {e}")
@@ -105,6 +117,8 @@ def num(x, fmt=".3f") -> str:
 
 if "q_idx" not in st.session_state:
     st.session_state.q_idx = len(QUARTERS) - 1
+# A replay still writing (or a reload mid-rewrite) can change the number of quarters between reruns.
+st.session_state.q_idx = max(0, min(st.session_state.q_idx, len(QUARTERS) - 1))
 if "playing" not in st.session_state:
     st.session_state.playing = False
 # The play loop asks for the next quarter here, before the slider exists: Streamlit forbids
@@ -156,6 +170,9 @@ with st.sidebar:
     if (CTABLE["sector"] == "unknown").all():
         st.caption("Sector unavailable: no `companies` table or `companies.jsonl` in this source.")
     st.caption(f"Runs: {len(bundle.runs)} · calls: {len(bundle.calls):,} · corrections: {len(bundle.corrections):,}")
+    if stamp := D.source_stamp(source):
+        st.caption(f"Files last written {time.strftime('%H:%M:%S', time.localtime(stamp))} "
+                   f"({(time.time() - stamp) / 60:.0f} min ago); new rows load on the next rerun.")
     if prov:
         st.caption(f"metrics: {prov.get('metrics')} · grader: {prov.get('outcome_rule')} · llm: {prov.get('llm')}")
     if st.button("Reload data", width="stretch"):
@@ -174,6 +191,14 @@ if not prov.get("real_results", False):
 if bundle.uses_fallback_updater():
     st.markdown('<div class="cm-banner cm-info"><b>Fallback updater.</b> Lessons were applied by the local '
                 '<code>FakeModelUpdater</code> (principle memory), not by a Mubit model update.</div>',
+                unsafe_allow_html=True)
+PROGRESS = bundle.progress()
+if PROGRESS["in_progress"]:
+    lc = PROGRESS["last_complete"]
+    st.markdown(f'<div class="cm-banner cm-info"><b>Replay in progress.</b> {PROGRESS["quarters_complete"]} '
+                f'quarter(s) complete{f" (through {qlabel(lc)})" if lc else ""}; '
+                f'{", ".join(qlabel(q) for q in PROGRESS["partial_quarters"])} still being written, so its calls '
+                f'are partial and not yet graded. The view reloads as new rows land.</div>',
                 unsafe_allow_html=True)
 
 # Headline numbers at the current as_of
@@ -212,12 +237,10 @@ def shade_windows(fig: go.Figure) -> None:
     lo, hi = D.COVID_WINDOW
     fig.add_vrect(x0=lo, x1=hi, fillcolor="rgba(220,38,38,.08)", line_width=0,
                   annotation_text="COVID", annotation_position="top left")
-    heldout = bundle.runs[bundle.runs["kind"] == "heldout"]
-    if not heldout.empty:
-        win = (heldout.iloc[-1]["config"] or {}).get("split", {}).get("held_out_window")
-        if win:
-            fig.add_vrect(x0=win[0], x1=win[1], fillcolor="rgba(168,85,247,.07)", line_width=0,
-                          annotation_text="held-out", annotation_position="top right")
+    win = bundle.held_out_window()
+    if win:
+        fig.add_vrect(x0=win[0], x1=win[1], fillcolor="rgba(168,85,247,.07)", line_width=0,
+                      annotation_text="held-out", annotation_position="top right")
 
 
 with tabs[0]:
@@ -234,7 +257,7 @@ with tabs[0]:
         fig = go.Figure()
         shade_windows(fig)
         if agent_pick == "All agents":
-            for arm in ("learned", "frozen", "frontier"):
+            for arm in CURVE_ARMS:
                 g = curves[curves["variant"] == arm]
                 if g.empty:
                     continue
@@ -243,7 +266,7 @@ with tabs[0]:
                                 line=dict(color=ARM_COLOR[arm], width=3 if arm == "learned" else 2,
                                           dash=None if arm == "learned" else "dot"))
         else:
-            for arm in ("learned", "frozen", "frontier"):
+            for arm in CURVE_ARMS:
                 g = curves[(curves["variant"] == arm) & (curves["agent"] == agent_pick)]
                 if not g.empty:
                     fig.add_scatter(x=g["as_of"], y=g[col], name=arm, mode="lines+markers",
@@ -257,7 +280,9 @@ with tabs[0]:
                                      range=[0, 1.02] if metric == "Accuracy" else None))
         st.plotly_chart(fig, width="stretch")
         st.caption("Learned agents receive corrections after every graded quarter; the frozen twin never does. "
-                   "Same prompts, same data, same quarters.")
+                   "Same prompts, same data, same quarters."
+                   + (" Baseline: no LLM, always the base answer (yes / base bucket)."
+                      if "baseline" in set(curves["variant"]) else ""))
 
     st.subheader("Per agent")
     grid = st.columns(len(AGENTS))

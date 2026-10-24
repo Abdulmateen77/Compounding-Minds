@@ -1,7 +1,8 @@
 """Investor UI API (INVESTOR_UI_PLAN.md). Demo mode: replays stored runs, no live calls, no LLM.
 
     .venv/bin/uvicorn api.main:app --port 8000
-    DASHBOARD_SOURCE=data/runs|postgres to pick the data source (same switch as the Streamlit view).
+    DASHBOARD_SOURCE=data/runs|data/runs_final|postgres to pick the data source (same switch as the
+    Streamlit view; a relative directory resolves against the repo root).
 """
 from __future__ import annotations
 
