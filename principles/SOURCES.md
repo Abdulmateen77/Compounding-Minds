@@ -26,7 +26,10 @@ wrong, the column "Correct citation" below is the one to use in the demo, the RE
 | dalio.01, .05 | Principles, decision-making | Principles (2017), decisions as bets weighed by probability and reward (expected value) | principles.com: every decision as a bet with a probability of being right and a reward, and of being wrong and a penalty | [x] the idea; "calibrated confidence vs growth std" is our operationalisation |
 | dalio.04 | Principles, cause-and-effect patterns | Principles (2017), the economy and life as machines of cause and effect | not checked word for word against the book | [~] plausible, unchecked text |
 | dalio.02, .03 | "How the Economic Machine Works" (credit cycle) | "How the Economic Machine Works" (2013), credit, interest rates, leveraging and deleveraging cycles | the piece is about credit and debt cycles; it does **not** mention the yield curve or credit spreads | [x] the idea; the yield-curve and BAA-spread checks are our operationalisation |
-| graham.01 to .06 | The Intelligent Investor, ch. 11, 14, 20 | stretch agent, not in the MVP replay | not checked | [ ] |
+| graham.01 | The Intelligent Investor, ch. 20 | ch. 20, “Margin of Safety as the Central Concept of Investment” | chapter title and theme confirmed (Buffett also singles out ch. 8 and 20) | [x] |
+| graham.03, .05, .06 | The Intelligent Investor, ch. 14 | ch. 14, the defensive investor's criteria: earnings stability, strong financial condition, dividend record | the criteria list is confirmed; Graham's exact thresholds were not checked against the book | [x] the ideas; thresholds are ours |
+| graham.04 | ch. 14 | ch. 14, moderate price against average earnings | the idea is confirmed; sources disagree on the multiple (15× to 20×), so ours (20× pass, 30× partial) is our own | [x] idea only |
+| graham.02 | ch. 11 and 14 | not located | not confirmed | [ ] |
 | moat.01 | Berkshire letters, "economic castle" (1995 and 2007) | 1995 letter; 2007 letter | 1995: "economic castles protected by unbreachable 'moats'"; 2007: "an enduring 'moat' that protects excellent returns on invested capital" | [x] (stretch agent) |
 | moat.02 to .06 | FCIC interview / letters / derived | stretch agent | not checked | [ ] |
 
