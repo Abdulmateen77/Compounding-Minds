@@ -103,3 +103,15 @@ def test_replay_run_in_progress(tmp_path):
     tr = s.track_record("fundamentals")
     assert tr.last_correction and tr.last_correction.mubit_ref == "lessons:fundamentals:1"
     assert tr.last_correction.version_after.endswith("-lessons-v1") and tr.fallback_updater is False
+
+
+def test_heldout_report_served_or_404(monkeypatch, tmp_path):
+    from dashboard import data as D
+    rep = {"agents": {"risk": {"segments": {}}}, "banner": None}
+    (tmp_path / "heldout_report.json").write_text(__import__("json").dumps(rep))
+    monkeypatch.setattr(D, "HELDOUT_CANDIDATES", (tmp_path / "heldout_report.json",))
+    monkeypatch.setattr(D, "ROOT", tmp_path)
+    r = client.get("/api/heldout")
+    assert r.status_code == 200 and r.json() == {"path": "heldout_report.json", "report": rep}
+    monkeypatch.setattr(D, "HELDOUT_CANDIDATES", (tmp_path / "missing.json",))
+    assert client.get("/api/heldout").status_code == 404
