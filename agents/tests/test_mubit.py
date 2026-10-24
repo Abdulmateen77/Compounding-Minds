@@ -32,7 +32,8 @@ class FakeAnthropic:
         self.messages = SimpleNamespace(with_raw_response=_Raw())
 
 
-def test_gateway_sends_anthropic_shape_and_records_request_id():
+def test_gateway_sends_anthropic_shape_and_records_request_id(monkeypatch):
+    monkeypatch.delenv("MUBIT_MODEL", raising=False)  # .env may set it (api/main loads it)
     fake = FakeAnthropic(lambda a, m: "hello")
     gw = MubitGateway(client=fake)
     out = gw.complete("fundamentals",
