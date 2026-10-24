@@ -9,3 +9,4 @@ data/
 agents/memory/
 .vercel
 /public/
+web/dist/

@@ -2,15 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { api } from "./api/client";
 import { useRoute } from "./route";
-import Select from "./screens/Select";
 import Run from "./screens/Run";
 import Verdict from "./screens/Verdict";
 import Mubit from "./screens/Mubit";
+import Research from "./screens/Research";
+import { CompanySearch } from "./components/CompanySearch";
 
 export default function App() {
   const route = useRoute();
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const onMubit = route.name === "mubit";
+  const onResearch = route.name === "home" || route.name === "research";
   const navStyle = (on: boolean) => ({ color: on ? "var(--text)" : "var(--mute)", borderBottom: `2px solid ${on ? "var(--blue)" : "transparent"}` });
 
   return (
@@ -26,15 +28,18 @@ export default function App() {
           Compounding Minds
         </a>
         <nav aria-label="Pages" className="flex gap-5 text-sm font-medium">
-          <a href="#/" aria-current={!onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(!onMubit)}>Assess</a>
-          <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(onMubit)}>Mubit</a>
+          <a href="#/" aria-current={onResearch ? "page" : undefined} className="py-1 no-underline" style={navStyle(onResearch)}>Research</a>
+          <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(onMubit)}>Track record</a>
         </nav>
-        <span className="chip hidden sm:inline-flex">{health.data ? `${health.data.companies} companies · replay mode` : "connecting…"}</span>
+        {route.name === "home"
+          ? <span className="chip hidden sm:inline-flex">{health.data ? "US-listed companies" : "connecting…"}</span>
+          : <CompanySearch compact />}
       </header>
       <main className="max-w-5xl w-full mx-auto px-4 py-6 flex-1">
         <AnimatePresence mode="wait">
           <motion.div key={route.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
-            {route.name === "home" && <Select />}
+            {route.name === "home" && <Research />}
+            {route.name === "research" && <Research cik={route.cik} view={route.view} />}
             {route.name === "run" && <Run id={route.id} />}
             {route.name === "verdict" && <Verdict id={route.id} />}
             {route.name === "mubit" && <Mubit agent={route.agent} />}

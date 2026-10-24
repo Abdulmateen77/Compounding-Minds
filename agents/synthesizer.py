@@ -34,6 +34,8 @@ VERDICTS = ("attractive", "neutral", "unattractive")
 THRESHOLD = 0.2  # tune on the training window only
 TRAILING_WINDOW = 12  # most recent resolved grades per agent
 SYNTH_TAG = "COMMITTEE SYNTHESIZER"
+PYTHON_MODEL = "python/committee-v0"  # no LLM in the loop: weights, verdict and bullets are all Python
+DISCLAIMER = "Research tool, not financial advice."
 
 # What each agent's answer (or actual outcome) means for the business outlook.
 DIRECTION: dict[str, dict[str, int]] = {
@@ -142,6 +144,50 @@ def fit_calibration(pairs: list[tuple[float, bool]], edges: tuple[float, ...] = 
     return Calibration(edges, rates)
 
 
+MIN_CALIBRATION_PAIRS = 20  # below this the fit is mostly prior: report the heuristic instead
+
+
+def calibration_pairs(history: list[tuple[AgentCall, Grade | None]], as_of: date, fit_until: date | None = None,
+                      exclude: frozenset[str] | set[str] = frozenset()) -> list[tuple[float, bool]]:
+    """(score, hit) for past committee verdicts whose composite outcome is known at `as_of`.
+
+    `history` is every agent call with its grade (None if not graded yet). A past (company, quarter)
+    counts only when every call in it has a grade and every resolved grade resolved by `as_of`, so
+    no later outcome leaks into the fit. Each score uses the weights known at that quarter.
+    `fit_until` keeps the fit inside the training window; `exclude` drops held-out companies.
+    """
+    graded = [(c, g) for c, g in history if g is not None]
+    groups: dict[tuple[str, date], list[tuple[AgentCall, Grade | None]]] = defaultdict(list)
+    for c, g in history:
+        if c.agent != "synthesizer":
+            groups[(c.company_id, c.as_of)].append((c, g))
+    last = min(as_of, fit_until) if fit_until else as_of
+    weights_at: dict[date, dict[str, Weight]] = {}
+    pairs = []
+    for (company, t), rows in sorted(groups.items()):
+        if t >= as_of or t > last or company in exclude:
+            continue
+        if any(g is None or (g.correct is not None and (g.resolution_date is None or g.resolution_date > as_of))
+               for _, g in rows):
+            continue
+        outcome = committee_outcome_from_grades(rows)
+        if outcome is None:
+            continue
+        if t not in weights_at:
+            weights_at[t] = trailing_weights(graded, t)
+        score, _ = committee_score([c for c, _ in rows], weights_at[t])
+        pairs.append((score, verdict_for(score) == outcome))
+    return pairs
+
+
+def calibrate(history: list[tuple[AgentCall, Grade | None]], as_of: date, fit_until: date | None = None,
+              exclude: frozenset[str] | set[str] = frozenset(),
+              min_pairs: int = MIN_CALIBRATION_PAIRS) -> tuple[Calibration | None, int]:
+    """A point-in-time Calibration and how many past verdicts it was fitted on (None if too few)."""
+    pairs = calibration_pairs(history, as_of, fit_until, exclude)
+    return (fit_calibration(pairs) if len(pairs) >= min_pairs else None), len(pairs)
+
+
 def committee_outcome_from_grades(call_grades: list[tuple[AgentCall, Grade]]) -> str | None:
     """Composite outcome from the underlying agents' graded outcomes (None if none resolved)."""
     outcomes = {c.agent: g.outcome for c, g in call_grades if g.correct is not None}
@@ -199,10 +245,14 @@ def _parse_rationale(raw: str) -> list[str]:
     return [b.strip() for b in bullets[:5]]
 
 
-def synthesize(calls: list[AgentCall], history: list[tuple[AgentCall, Grade]], gateway: LLMGateway,
-               updater: ModelUpdater, run_id: str | None = None,
+def synthesize(calls: list[AgentCall], history: list[tuple[AgentCall, Grade]], gateway: LLMGateway | None,
+               updater: ModelUpdater | None, run_id: str | None = None,
                calibration: Calibration | None = None) -> AgentCall:
-    """One committee AgentCall for a single (company, as_of)."""
+    """One committee AgentCall for a single (company, as_of).
+
+    `gateway=None` skips the LLM entirely (the report renders this way): the rationale is the
+    Python fallback bullets. `updater=None` labels the model PYTHON_MODEL.
+    """
     if not calls:
         raise ValueError("synthesizer needs at least one agent call")
     company_id, as_of = calls[0].company_id, calls[0].as_of
@@ -214,12 +264,15 @@ def synthesize(calls: list[AgentCall], history: list[tuple[AgentCall, Grade]], g
     score, weights = committee_score(calls, trailing_weights(history, as_of))
     verdict, conf = verdict_for(score), confidence_for(score, calibration)
 
-    try:
-        messages = build_rationale_messages(calls, weights, verdict, score, as_of)
-        reasoning = _parse_rationale(gateway.complete("synthesizer", messages, purpose="rationale"))
-    except Exception as err:  # the rationale is decoration; never lose the verdict over it
-        log.warning("synthesizer rationale failed, using fallback bullets: %s", err)
+    if gateway is None:
         reasoning = _fallback_reasoning(calls, weights)
+    else:
+        try:
+            messages = build_rationale_messages(calls, weights, verdict, score, as_of)
+            reasoning = _parse_rationale(gateway.complete("synthesizer", messages, purpose="rationale"))
+        except Exception as err:  # the rationale is decoration; never lose the verdict over it
+            log.warning("synthesizer rationale failed, using fallback bullets: %s", err)
+            reasoning = _fallback_reasoning(calls, weights)
 
     evidence = [{"metric": "committee_score", "value": round(score, 6), "as_of": as_of}]
     evidence += [{"metric": f"weight_{a}", "value": round(v, 6), "as_of": as_of} for a, v in weights.items()]
@@ -229,7 +282,7 @@ def synthesize(calls: list[AgentCall], history: list[tuple[AgentCall, Grade]], g
         company_id=company_id, as_of=as_of, horizon="12_months",
         claim={"type": "bucket", "question_id": QUESTION_ID, "answer": verdict, "probability": conf},
         confidence=conf, reasoning=reasoning, evidence=evidence, principles_used=principles,
-        tool_calls=0, model=updater.get_model_version("synthesizer"),
+        tool_calls=0, model=updater.get_model_version("synthesizer") if updater else PYTHON_MODEL,
     )
 
 
@@ -261,7 +314,8 @@ def main(argv: list[str] | None = None) -> int:
         calls, revisions = cross_examine(calls, gw)
     verdict = synthesize(calls, history=[], gateway=gw, updater=upd, run_id=run_id)
 
-    print("OFFLINE DEMO: stub metrics, scripted LLM, no grade history (equal weights). Not real results.\n")
+    print("OFFLINE DEMO: stub metrics, scripted LLM, no grade history (equal weights). Not real results.")
+    print(f"{DISCLAIMER}\n")
     for c in calls:
         print(f"  {c.agent:<13} {c.claim.answer:<5} @ {c.claim.probability:.0%}")
     for r in revisions:

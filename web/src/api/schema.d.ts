@@ -158,6 +158,14 @@ export interface components {
             model: string;
             /** Revised From */
             revised_from?: number | null;
+            /** Outcome */
+            outcome?: string | null;
+            /** Correct */
+            correct?: boolean | null;
+            /** Resolved On */
+            resolved_on?: string | null;
+            /** What Happened */
+            what_happened?: string | null;
         };
         /** Assessment */
         Assessment: {

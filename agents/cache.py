@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 import time
 from pathlib import Path
 from typing import Callable
@@ -56,7 +57,7 @@ class CachingGateway(LLMGateway):
         return getattr(self.inner, "requests", [])
 
     def key_for(self, agent: str, messages: list[dict], **kw) -> str:
-        payload = {"v": 1, "model": self.model, "agent": agent, "messages": messages,
+        payload = {"v": 2, "model": self.model, "agent": agent, "messages": messages,
                    "params": {k: v for k, v in sorted(kw.items()) if k not in _LABEL_ONLY}}
         if self.version_fn is not None:  # absent unless used, so existing keys stay valid
             payload["model_version"] = self.version_fn(agent)
@@ -73,7 +74,11 @@ class CachingGateway(LLMGateway):
         key = self.key_for(agent, messages, **kw)
         path = self._path(key)
         if path.exists() and not self.refresh:
-            entry = json.loads(path.read_text())
+            raw = path.read_bytes()
+            try:
+                entry = json.loads(raw.decode("utf-8"))
+            except UnicodeDecodeError:  # written before the utf-8 fix by Windows' default codec
+                entry = json.loads(raw.decode("cp1252"))
             self.hits += 1
             self.last_request_id = entry.get("mubit_request_id")
             return entry["text"]
@@ -84,7 +89,8 @@ class CachingGateway(LLMGateway):
         self.last_request_id = getattr(self.inner, "last_request_id", None)
         entry = {"key": key, "agent": agent, "model": self.model, "text": text,
                  "mubit_request_id": self.last_request_id, "saved_at": int(time.time())}
-        tmp = path.with_suffix(f".{os.getpid()}.tmp")
-        tmp.write_text(json.dumps(entry, ensure_ascii=False))
+        tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")  # replay threads share a pid
+        # utf-8 always: Windows' default codec cannot encode replies such as "≈" and crashed the replay
+        tmp.write_text(json.dumps(entry, ensure_ascii=False), encoding="utf-8")
         tmp.replace(path)  # atomic: a crash never leaves a half-written reply
         return text

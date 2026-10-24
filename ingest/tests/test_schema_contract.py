@@ -4,6 +4,7 @@ import re
 from datetime import date
 
 from ingest import concepts as ic
+from ingest import universe
 from ingest.load import (COLUMNS, SCHEMA_FILE, UNIVERSE_FILE, Dataset, load, read_universe,
                          write_postgres, write_runs_companies)
 from ingest.macro import FredClient, parse_alfred
@@ -97,7 +98,12 @@ def test_default_universe_supplies_anon_ids_sector_heldout(tmp_path):
 
 def test_no_tickers_means_whole_universe_and_unknown_ticker_gets_free_id(tmp_path):
     sec = sec_client(tmp_path)
-    ds = load(None, sec)  # nothing resolves in the fixture tickers file: every company is a gap
+    # nothing resolves in the fixture tickers file: every company is a gap. Pinned CIKs (XOM, DIS) are
+    # stripped here because the fixture client serves no per-CIK URLs.
+    uni = tmp_path / "universe.json"
+    uni.write_text(json.dumps({"companies": [{**c, "cik": None, "prior_ciks": []}
+                                             for c in json.loads(universe.PATH.read_text())["companies"]]}))
+    ds = load(None, sec, universe_file=uni)
     assert len(ds.companies) == 50 and len(ds.gaps) == 50
     ds2 = load(["ACME"], sec_client(tmp_path))
     assert ds2.companies[0]["company_id"] == "anon_051" and ds2.companies[0]["held_out"] is False

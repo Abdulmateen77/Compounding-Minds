@@ -31,24 +31,40 @@ def _c(key, tags, unit="USD", kind="duration", cum=False, note=""):
 CONCEPTS: dict[str, Concept] = {c.key: c for c in [
     # ---- income statement: 10-Qs report discrete 3-month facts, so no derivation needed
     _c("revenue", ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax",
-                   "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet"]),
+                   "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet",
+                   "SalesRevenueGoodsNet",       # JNJ tagged its revenue this way until 2016
+                   "RevenuesNetOfInterestExpense"]),   # banks (JPMorgan): total net revenue
     _c("cost_of_revenue", ["CostOfRevenue", "CostOfGoodsAndServicesSold", "CostOfGoodsSold"]),
     _c("gross_profit", ["GrossProfit"], note="if missing: revenue - cost_of_revenue, decided in metrics/"),
-    _c("operating_income", ["OperatingIncomeLoss"]),
+    _c("operating_income", ["OperatingIncomeLoss"],
+       note="many filers (pharma, energy, Nike, Nucor) never tag it: metrics/context.py derives it, see costs_and_expenses"),
+    _c("costs_and_expenses", ["CostsAndExpenses", "OperatingCostsAndExpenses"],
+       note="fallback: operating income = revenue - costs_and_expenses"),
     _c("net_income", ["NetIncomeLoss"]),
     _c("pretax_income", ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
                          "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments"]),
+    _c("pretax_income_domestic", ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesDomestic"],
+       note="component: pretax_income = domestic + foreign when a filer reports no total (MCD)"),
+    _c("pretax_income_foreign", ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesForeign"],
+       note="component: see pretax_income_domestic"),
     _c("income_tax_expense", ["IncomeTaxExpenseBenefit"]),
     _c("interest_expense", ["InterestExpense", "InterestExpenseDebt", "InterestAndDebtExpense"]),
     _c("rnd_expense", ["ResearchAndDevelopmentExpense"], note="Moat agent only"),
     _c("sga_expense", ["SellingGeneralAndAdministrativeExpense"], note="Moat agent only"),
     # ---- cash flow: 10-Qs report year-to-date (3, 6, 9 months), Q4 = full year - 9 months
-    _c("op_cash_flow", ["NetCashProvidedByUsedInOperatingActivities"], cum=True),
-    _c("capex", ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"], cum=True,
+    _c("op_cash_flow", ["NetCashProvidedByUsedInOperatingActivities",
+                        "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"], cum=True),  # COST, 2013 to 2019
+    _c("capex", ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets",
+                 "PaymentsToAcquireOtherPropertyPlantAndEquipment"], cum=True,
        note="reported as a positive outflow; FCF = op_cash_flow - capex"),
     _c("depreciation_amortization", ["DepreciationDepletionAndAmortization", "DepreciationAndAmortization",
-                                     "DepreciationAmortizationAndAccretionNet"], cum=True),
-    _c("dividends_paid", ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock"], cum=True),
+                                     "DepreciationAmortizationAndAccretionNet", "DepreciationAmortizationAndOther"],
+       cum=True),
+    _c("depreciation", ["Depreciation"], cum=True,
+       note="component: depreciation_amortization = depreciation + amortization_intangibles when a filer reports no total"),
+    _c("amortization_intangibles", ["AmortizationOfIntangibleAssets"], cum=True, note="component: see depreciation"),
+    _c("dividends_paid", ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"],
+       cum=True),
     _c("dividends_per_share", ["CommonStockDividendsPerShareDeclared", "CommonStockDividendsPerShareCashPaid"],
        unit="USD/shares", note="cross-check for dividend cuts; not every filer tags it"),
     # ---- balance sheet: point-in-time (instant) values
@@ -59,10 +75,25 @@ CONCEPTS: dict[str, Concept] = {c.key: c for c in [
                 "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"], kind="instant"),
     _c("equity", ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
        kind="instant"),
-    _c("long_term_debt", ["LongTermDebtNoncurrent", "LongTermDebt"], kind="instant",
-       note="LongTermDebt may already include the current part: check before adding short_term_debt"),
-    _c("short_term_debt", ["DebtCurrent", "ShortTermBorrowings", "LongTermDebtCurrent"], kind="instant"),
+    # Debt is tagged three ways. `total_debt` (current + non-current in one figure) is used when reported;
+    # otherwise the two parts are added.
+    _c("total_debt", ["DebtLongtermAndShorttermCombinedAmount",
+                      "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities", "LongTermDebt"],
+       kind="instant", note="includes the current part: never add short_term_debt on top"),
+    _c("long_term_debt", ["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"], kind="instant",
+       note="the non-current part only"),
+    _c("short_term_debt", ["DebtCurrent", "ShortTermBorrowings", "LongTermDebtCurrent",
+                           "LongTermDebtAndCapitalLeaseObligationsCurrent", "CommercialPaper"], kind="instant",
+       note="the current part: current maturities plus short-term borrowings"),
 ]}
+
+# Concepts a filer may report only as parts. Where a quarter has no directly reported value, the metrics
+# engine (metrics/context.py) uses the sum of these components for that quarter. Never a substitute for a
+# reported total: a directly reported quarter always wins. Documented in metrics/SPEC.md.
+COMPOSITES: dict[str, tuple[str, ...]] = {
+    "depreciation_amortization": ("depreciation", "amortization_intangibles"),
+    "pretax_income": ("pretax_income_domestic", "pretax_income_foreign"),
+}
 
 TAG_TO_CONCEPT: dict[str, str] = {tag: c.key for c in CONCEPTS.values() for tag in c.tags}
 ALL_TAGS: frozenset[str] = frozenset(TAG_TO_CONCEPT)
@@ -82,20 +113,22 @@ METRIC_INPUTS: dict[str, tuple[str, ...]] = {
     # Fundamentals (Buffett)
     "fcf_margin_ttm": ("op_cash_flow", "capex", "revenue"),
     "fcf_margin_qoq_change": ("op_cash_flow", "capex", "revenue"),
-    "operating_margin": ("operating_income", "revenue"),
-    "roic": ("operating_income", "income_tax_expense", "pretax_income", "equity", "long_term_debt",
-             "short_term_debt", "cash"),
-    "debt_to_ebitda": ("long_term_debt", "short_term_debt", "operating_income", "depreciation_amortization"),
+    "operating_margin": ("operating_income", "costs_and_expenses", "pretax_income", "interest_expense", "revenue"),
+    "roic": ("operating_income", "costs_and_expenses", "income_tax_expense", "pretax_income", "equity",
+             "total_debt", "long_term_debt", "short_term_debt", "cash"),
+    "debt_to_ebitda": ("total_debt", "long_term_debt", "short_term_debt", "operating_income",
+                       "costs_and_expenses", "pretax_income", "interest_expense", "depreciation_amortization"),
     "fcf_slope_8q": ("op_cash_flow", "capex", "revenue"),
     "capex_to_revenue": ("capex", "revenue"),
     # Risk (Munger)
-    "interest_coverage": ("operating_income", "interest_expense"),
+    "interest_coverage": ("operating_income", "costs_and_expenses", "pretax_income", "interest_expense"),
     "current_ratio": ("current_assets", "current_liabilities"),
     "cash_runway_quarters": ("cash", "op_cash_flow", "capex"),
     "dividend_cut_history_5y": ("dividends_paid", "dividends_per_share"),
     "auditor_changes_5y": ("event:8-K item 4.01",),
     "going_concern_hits": ("event:10-K/10-Q going-concern passages",),
-    "leverage_trend_8q": ("long_term_debt", "short_term_debt", "operating_income", "depreciation_amortization"),
+    "leverage_trend_8q": ("total_debt", "long_term_debt", "short_term_debt", "operating_income",
+                          "costs_and_expenses", "pretax_income", "interest_expense", "depreciation_amortization"),
     # Scenarios (Dalio)
     "revenue_growth_yoy": ("revenue",),
     "revenue_growth_mean_5y": ("revenue",),

@@ -6,8 +6,8 @@ scoring, so the verdict matches the rest of the system. Numbers come from stored
 from __future__ import annotations
 
 import json
+import threading
 from datetime import date
-from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -54,12 +54,7 @@ class Service:
         return out
 
     def _held_out(self) -> set[str]:
-        runs = self.bundle.runs
-        for cfg in runs["config"]:
-            held = (cfg or {}).get("split", {}).get("held_out_companies")
-            if held:
-                return set(held)
-        return set()
+        return self.bundle.held_out_companies()  # eval.run's split or grader.replay's top-level list
 
     def companies(self) -> list[M.Company]:
         if self.bundle.empty:
@@ -128,7 +123,10 @@ class Service:
             p = r["payload"]
             ans, prob = p["claim"]["answer"], p["claim"]["probability"]
             d = D.direction(r["agent"], ans)
+            outcome, correct, resolved_on = _settled(r)
             views.append(M.AgentView(
+                outcome=outcome, correct=correct, resolved_on=resolved_on,
+                what_happened=_what_happened(r["agent"], outcome, r.get("grade_evidence")),
                 agent=r["agent"], investor=D.INVESTOR.get(r["agent"], r["agent"]),
                 question=D.QUESTION.get(r["agent"], p["claim"]["question_id"]),
                 answer=ans, probability=prob, confidence=p["confidence"],
@@ -259,17 +257,63 @@ class Service:
         board = D.scoreboard(b, as_of).set_index("agent")
         row = board.loc[agent] if agent in board.index else None
         corr = self._corrections_upto(agent, as_of)
+        # Start at the first quarter with a graded call: before that there is no accuracy, not 0% accuracy.
+        acc = pd.DataFrame({"as_of": learned["as_of"].values, "learned": learned["rolling_accuracy"].values}).merge(
+            pd.DataFrame({"as_of": frozen["as_of"].values, "frozen": frozen["rolling_accuracy"].values}),
+            on="as_of", how="left")
+        seen = acc[["learned", "frozen"]].notna().any(axis=1)
+        acc = acc[seen.cummax()].ffill().fillna(0)
         return M.TrackRecord(
             agent=agent, investor=D.INVESTOR.get(agent, agent), as_of=as_of.isoformat(),
-            learned=[float(x) for x in learned["rolling_accuracy"].fillna(0)],
-            frozen=[float(x) for x in frozen["rolling_accuracy"].fillna(0)],
-            quarters=[q.isoformat() for q in learned["as_of"]],
+            learned=[float(x) for x in acc["learned"]],
+            frozen=[float(x) for x in acc["frozen"]],
+            quarters=[q.isoformat() for q in acc["as_of"]],
             model_version=D.model_version_at(b, agent, as_of),
             accuracy=None if row is None else float(row["accuracy"]),
             brier=None if row is None or pd.isna(row["brier"]) else float(row["brier"]),
             calls_graded=0 if row is None else int(row["calls"]), corrections_applied=len(corr),
             last_correction=self._correction(corr.iloc[-1]) if len(corr) else None,
             fallback_updater=b.uses_fallback_updater())
+
+
+def _settled(r: pd.Series) -> tuple[str | None, bool | None, str | None]:
+    """(outcome, correct, resolved_on) when the grader settled the call, else Nones."""
+    outcome = r.get("outcome")
+    if outcome is None or pd.isna(outcome) or outcome == "unresolvable":
+        return None, None, None
+    correct = r.get("correct")
+    rd = r.get("resolution_date")
+    return (str(outcome), None if correct is None or pd.isna(correct) else bool(correct),
+            None if rd is None or pd.isna(rd) else str(pd.Timestamp(rd).date()))
+
+
+def _p(x: float) -> str:
+    return f"{x * 100:.1f}%"
+
+
+def _what_happened(agent: str, outcome: str | None, evidence) -> str | None:
+    """One plain sentence from the grader's own evidence. Every number in it was computed by the grader."""
+    if outcome is None:
+        return None
+    info = next((e for e in (evidence or []) if isinstance(e, dict)), {})
+    if agent == "fundamentals":
+        q0, q1 = info.get("q0") or {}, info.get("q1") or {}
+        if "fcf_margin_ttm" in q0 and "fcf_margin_ttm" in q1 and "operating_margin" in q0 and "operating_margin" in q1:
+            return (f"Free-cash-flow margin went {_p(q0['fcf_margin_ttm'])} → {_p(q1['fcf_margin_ttm'])} and operating "
+                    f"margin {_p(q0['operating_margin'])} → {_p(q1['operating_margin'])}: "
+                    + ("both improved." if outcome == "yes" else "they did not both improve."))
+        return "Both margins improved." if outcome == "yes" else "Margins did not both improve."
+    if agent == "scenarios":
+        g = info.get("revenue_growth")
+        band = {"bear": "shrank (bear: below 0%)", "base": "grew modestly (base: 0 to 10%)",
+                "bull": "grew strongly (bull: 10% or more)"}.get(outcome, outcome)
+        return f"Revenue over the next four quarters {band}" + (f", at {g * 100:+.1f}%." if g is not None else ".")
+    if agent == "risk":
+        if outcome == "no":
+            return "No distress event in the next 12 months: no dividend cut, auditor change or going-concern warning."
+        hit = [k.replace("_", " ") for k, v in (info.get("components") or {}).items() if v.get("result") == "yes"]
+        return f"A distress event happened within 12 months: {', '.join(hit) or 'see filings'}."
+    return f"Outcome: {outcome}."
 
 
 def _revised_from(p: dict) -> float | None:
@@ -285,6 +329,17 @@ def _ans(d: dict | None, key: str) -> str | None:
     return None if not d else str(d.get(key))
 
 
-@lru_cache(maxsize=1)
+_svc: tuple[float, Service] | None = None
+_svc_lock = threading.Lock()
+
+
 def get_service() -> Service:
-    return Service()
+    """One Service per state of the run files: a replay still writing (each quarter rewrites the JSONL) shows up
+    on the next request instead of after a restart. Postgres has no stamp, so it loads once."""
+    global _svc
+    stamp = D.source_stamp(D.resolve_source(None))
+    if _svc is None or _svc[0] != stamp:
+        with _svc_lock:
+            if _svc is None or _svc[0] != stamp:
+                _svc = (stamp, Service())
+    return _svc[1]

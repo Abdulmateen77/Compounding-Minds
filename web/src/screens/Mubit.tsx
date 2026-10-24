@@ -1,15 +1,17 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
-import { api, pct, type Correction, type TrackRecord } from "../api/client";
+import { useState } from "react";
+import { api, pct, type Correction, type HeldOutReport, type Score, type TrackRecord } from "../api/client";
 import { ErrorBox, Skeleton, StubChip } from "../components/bits";
 import { go, mubitHref } from "../route";
 
-const AGENTS = ["fundamentals", "valuation", "risk", "scenarios"] as const;
-const ROLE: Record<string, string> = { fundamentals: "Fundamentals", valuation: "Valuation", risk: "Risk", scenarios: "Scenarios" };
+const AGENTS = ["fundamentals", "risk", "scenarios"] as const; // the MVP committee; Valuation is a stretch agent
+const ROLE: Record<string, string> = { fundamentals: "Fundamentals", valuation: "Valuation", moat: "Moat", risk: "Risk", scenarios: "Scenarios" };
 const last = (x: number[]) => (x.length ? x[x.length - 1] : null);
 const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : null);
 
 export default function Mubit({ agent }: { agent?: string }) {
+  const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const qs = useQueries({ queries: AGENTS.map((a) => ({ queryKey: ["track", a], queryFn: () => api.trackRecord(a) })) });
   const loading = qs.some((q) => q.isLoading);
   const data = qs.map((q) => q.data).filter((d): d is TrackRecord => !!d);
@@ -29,7 +31,7 @@ export default function Mubit({ agent }: { agent?: string }) {
       <div>
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">Mubit: how the analysts learn</h1>
-          <StubChip />
+          {health.data?.stub !== false && <StubChip />}
         </div>
         <p className="mute mt-2 mb-0 max-w-2xl">Every wrong call becomes a correction, and Mubit turns corrections into a new model version. Each analyst here is compared with a frozen twin that never updates.{asOf && <> Figures run to <span className="num">{asOf}</span>.</>}</p>
       </div>
@@ -78,7 +80,69 @@ export default function Mubit({ agent }: { agent?: string }) {
           )}
         </>
       )}
+
+      <HeldOut />
     </div>
+  );
+}
+
+const SEGMENTS = [["all_companies", "All companies"], ["seen_companies", "Seen in training"], ["unseen_companies", "Never seen"]] as const;
+const acc = (s?: Score) => (s?.accuracy == null ? "n/a" : pct(s.accuracy));
+
+/** The one-shot held-out test: quarters after training, scored once, learned against its frozen twin. */
+function HeldOut() {
+  const q = useQuery({ queryKey: ["heldout"], queryFn: api.heldout, retry: false });
+  const [seg, setSeg] = useState<string>("all_companies");
+  if (q.isLoading) return <Skeleton h={160} />;
+  if (q.isError || !q.data) return null; // no report yet: nothing to show, nothing to claim
+  const r: HeldOutReport = q.data.report;
+  const [from, to] = r.split.held_out_window;
+  return (
+    <section className="card p-5" aria-label="Held-out test">
+      <div className="flex items-center gap-3 flex-wrap">
+        <h2 className="text-xl font-semibold m-0">Held-out test</h2>
+        {r.banner && <StubChip />}
+      </div>
+      <p className="mute text-sm mt-1 mb-3 max-w-2xl">
+        Quarters <span className="num">{from}</span> to <span className="num">{to}</span>, after training ended, scored once.
+        {" "}{r.split.held_out_companies.length} {r.split.held_out_companies.length === 1 ? "company was" : "companies were"} never learned from. Only quarters where both the learning analyst
+        and its frozen twin have a graded call are counted.
+      </p>
+      <div role="tablist" aria-label="Companies" className="flex gap-2 mb-3 flex-wrap">
+        {SEGMENTS.map(([k, label]) => (
+          <button key={k} role="tab" aria-selected={seg === k} onClick={() => setSeg(k)} className="chip cursor-pointer"
+            style={{ borderColor: seg === k ? "var(--blue)" : undefined, color: seg === k ? "var(--text)" : undefined }}>{label}</button>
+        ))}
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm num">
+          <thead className="mute text-xs text-left">
+            <tr><th className="py-1 pr-4 font-normal">Analyst</th><th className="pr-4 font-normal">calls</th><th className="pr-4 font-normal">Learns with Mubit</th>
+              <th className="pr-4 font-normal">Frozen twin</th><th className="pr-4 font-normal">difference</th><th className="pr-4 font-normal">Naive</th><th className="font-normal">Base rate</th></tr>
+          </thead>
+          <tbody>
+            {Object.entries(r.agents).map(([agent, a]) => {
+              const s = a.segments[seg];
+              if (!s) return null;
+              const d = s.learned_minus_frozen.accuracy;
+              const naive = Object.entries(s.baselines).find(([k]) => k !== "base_rate")?.[1];
+              return (
+                <tr key={agent} className="border-t" style={{ borderColor: "var(--line)" }}>
+                  <td className="py-2 pr-4" style={{ fontFamily: "inherit" }}>{ROLE[agent] ?? agent}</td>
+                  <td className="pr-4">{s.n}</td>
+                  <td className="pr-4" style={{ color: "var(--green)" }}>{acc(s.learned)}</td>
+                  <td className="pr-4">{acc(s.frozen)}</td>
+                  <td className="pr-4" style={{ color: d == null ? undefined : d >= 0 ? "var(--green)" : "var(--red)" }}>
+                    {d == null ? "n/a" : `${d >= 0 ? "+" : ""}${Math.round(d * 1000) / 10} pts`}</td>
+                  <td className="pr-4">{acc(naive)}</td>
+                  <td>{acc(s.baselines.base_rate)}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </section>
   );
 }
 

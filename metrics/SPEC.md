@@ -27,6 +27,31 @@ for their period, as the date gate returns them. If a restatement changes the 3-
 that day would also get. A period counts as a 3, 6, 9 or 12 month period only if its length is within 12 days
 of the nominal one, which covers 52/53-week calendars.
 
+**1b. Concepts reported only as parts.** Some filers give no total line for a concept, only its components.
+Two are handled, by adding the components quarter by quarter (`store.concepts.COMPOSITES`, applied in
+`metrics/context.py`):
+
+| Concept | Where a quarter has no reported value, it is | Seen at |
+|---|---|---|
+| `depreciation_amortization` | `depreciation` (`Depreciation`) + `amortization_intangibles` (`AmortizationOfIntangibleAssets`) | MSFT, TXN, ABT, ORCL, NUE |
+| `pretax_income` | `pretax_income_domestic` + `pretax_income_foreign` | MCD |
+
+Rules: a directly reported value for a quarter always wins over the sum. A quarter missing any one component
+is missing, never half a value. The components go through the same quarter derivation as any flow concept
+(cash-flow items are year-to-date) and the date gate, so the sum is visible only once every part is public,
+and the metric's `inputs` cite the filings of all parts. **Known limit:** the two D&A tags may not cover every
+amortization line a company's cash-flow statement adds back (for example software or lease amortization), so a
+summed D&A can be somewhat below the cash-flow figure. The metrics that use it (`debt_to_ebitda`,
+`leverage_trend_8q`) are least sensitive for firms with small debt; this is accepted, not hidden.
+
+**Operating income is never derived.** COP, MRK, NKE, XOM, NUE, PFE and LLY report no `OperatingIncomeLoss`
+line; HON tags it only from 2021 (its annual figure first appears in a 2025 filing); JNJ has no operating line; GE's
+tag stops in 2014. Pretax income plus interest would also include non-operating items, so it is not used as a stand-in.
+For these companies `operating_margin`, `roic`, `debt_to_ebitda`, `interest_coverage` and `leverage_trend_8q`
+are missing, the rule above (3 or more missing) usually makes their bundles unusable, and the Fundamentals
+outcome rule (which needs operating margin) returns `unresolvable`. `store/quality.py::OPERATING_INCOME_EXEMPT`
+lists them so the data-quality report does not flag them as a data error.
+
 **TTM** = sum of the last 4 discrete quarters. **Latest quarter (Q0)** = the most recent period end visible
 at `as_of`. Q-1, Q-2 ... are the quarters before it. Prompts only ever say Q0, Q-1 and so on.
 
@@ -41,6 +66,23 @@ compares copied values to the engine's output.
 
 **Units.** Ratios are fractions (0.142, not 14.2). Multiples are `x`. Counts are `count`. Rates from FRED are
 divided by 100 so 3.6% is 0.036.
+
+## 1b. Fallbacks learned from the first real load (Sat 24 Oct)
+
+Running the engine on all 50 companies' real filings showed that filers do not all tag the same things. These
+rules were added, each driven by a company that failed without them:
+
+| Problem on real data | Rule |
+|---|---|
+| Many filers (Merck, Pfizer, Lilly, Nike, Nucor, ConocoPhillips) never tag `OperatingIncomeLoss` | Operating income is **derived**: first revenue minus `CostsAndExpenses` / `OperatingCostsAndExpenses`, then pre-tax income plus interest expense (EBIT). A directly tagged quarter always wins. A filer that never reports interest uses pre-tax income as EBIT. These are approximations of the reported figure |
+| Debt is tagged three ways (a total, or non-current plus current parts) | `total_debt` is used when the company reports one for that date, otherwise `long_term_debt` + `short_term_debt` |
+| Depreciation is often tagged `Depreciation` alone | Accepted as D&A. It understates D&A slightly (intangible amortization is separate), which makes debt/EBITDA a little high |
+| McDonald's reports pre-tax income only split into domestic and foreign | ROIC uses the 21% US statutory rate when pre-tax income is absent |
+| Retailers use 52/53-week calendars (Costco: 12-week quarters, a 16-week fourth quarter, 24 and 36 week year-to-date figures) | Period lengths are matched in day windows (3 months: 75 to 105 days, 6: 165 to 200, 9: 250 to 290, 12: 355 to 385) and consecutive quarter ends may be up to 120 days apart |
+| ExxonMobil's SEC data under its current identifier starts in 2025 | Replaced by Chevron in the universe, same anonymous ID |
+
+Known data limits that no tag can fix: Costco has no 10-Q cash-flow facts in the SEC data for 2016 to 2019, and
+Nvidia's FY2019 10-K carries no capital-expenditure figure. Those company-dates are skipped (bundle not usable).
 
 ## 2. Fundamentals (Buffett)
 

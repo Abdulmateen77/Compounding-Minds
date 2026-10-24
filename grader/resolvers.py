@@ -30,7 +30,7 @@ from schemas import AgentCall
 from store import queries  # noqa: F401  (backend is set on store.queries)
 
 from .config import FUNDAMENTALS_RESOLUTION_DAYS, SCENARIOS_RESOLUTION_DAYS
-from .facts import Quarter, common_ends, quarter_table, run_ending_at, ttm
+from .facts import MAX_GAP, MIN_GAP, Quarter, common_ends, quarter_table, run_ending_at, ttm
 from .scoring import bucket_for_growth
 
 FUNDAMENTALS_Q = "fcf_margin_improves_next_q"
@@ -90,7 +90,7 @@ def resolve_fundamentals(call: AgentCall) -> tuple[str, dict]:
     later = quarter_table(call.company_id, FCF_CONCEPTS, deadline)
     nxt = [e for e in common_ends(later) if e > q0 and run_ending_at(later["revenue"], e, 1)]
     # next quarter must follow Q0 directly (a gap would compare non-adjacent quarters)
-    nxt = [e for e in nxt if 80 <= (e - q0).days <= 110]
+    nxt = [e for e in nxt if MIN_GAP <= (e - q0).days <= MAX_GAP]
     if not nxt:
         return _unresolvable("next quarter not filed (or not derivable) by the deadline", deadline,
                              latest_quarter=str(q0))
@@ -126,7 +126,7 @@ def resolve_scenarios(call: AgentCall) -> tuple[str, dict]:
 
     later = quarter_table(call.company_id, ("revenue",), deadline)["revenue"]
     fwd = [q for q in later if q.period_end > q0][:4]  # `later` is sorted by period_end
-    ok = len(fwd) == 4 and 80 <= (fwd[0].period_end - q0).days <= 110 and \
+    ok = len(fwd) == 4 and MIN_GAP <= (fwd[0].period_end - q0).days <= MAX_GAP and \
         run_ending_at(later, fwd[3].period_end, 4) is not None and \
         run_ending_at(later, fwd[3].period_end, 4)[0].period_end == fwd[0].period_end
     if not ok:

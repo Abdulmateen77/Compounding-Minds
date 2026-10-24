@@ -1,7 +1,8 @@
 """Investor UI API (INVESTOR_UI_PLAN.md). Demo mode: replays stored runs, no live calls, no LLM.
 
     .venv/bin/uvicorn api.main:app --port 8000
-    DASHBOARD_SOURCE=data/runs|postgres to pick the data source (same switch as the Streamlit view).
+    DASHBOARD_SOURCE=data/runs|data/runs_final|postgres to pick the data source (same switch as the
+    Streamlit view; a relative directory resolves against the repo root).
 """
 from __future__ import annotations
 
@@ -12,9 +13,12 @@ from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
+from typing import Literal
+
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
+from pydantic import BaseModel, Field
 
 from api import models as M
 from api.service import NotFound, Service, get_service
@@ -117,6 +121,77 @@ def track_record(agent: str, as_of: str | None = Query(None), s: Service = Depen
         raise _nf(e)
     except ValueError:
         raise HTTPException(422, "as_of must be YYYY-MM-DD")
+
+
+@app.get("/api/heldout")
+def heldout():
+    """The held-out report (eval/reports/heldout_report.json, else the stub preview with its banner), as written."""
+    from dashboard.data import ROOT, find_heldout_report
+    path, report, why = find_heldout_report()
+    if report is None:
+        raise HTTPException(404, f"no held-out report yet ({why})")
+    return {"path": str(path.relative_to(ROOT)), "report": report}
+
+
+# ---- research on any listed company, as it stands today (research/) ----------------------------------------------
+_research = None
+
+
+def research_service():
+    """Built on first use: it opens the SEC client, which needs SEC_USER_AGENT."""
+    global _research
+    if _research is None:
+        from research.service import ResearchService
+        _research = ResearchService()
+    return _research
+
+
+@app.get("/api/research/search")
+def research_search(q: str = Query("", max_length=80)):
+    try:
+        return research_service().search(q)
+    except Exception as e:
+        raise HTTPException(502, f"Could not search the SEC company list: {e}")
+
+
+@app.get("/api/research/evidence")
+def research_evidence():
+    """The back-test summary: how the investor checks did against what happened next (research/backtest.py)."""
+    from research.backtest import EVIDENCE
+    if not EVIDENCE.exists():
+        raise HTTPException(404, "no back-test summary yet: run python -m research.backtest --write-evidence")
+    return json.loads(EVIDENCE.read_text(encoding="utf-8"))
+
+
+@app.get("/api/research/company/{cik}")
+def research_company(cik: int, refresh: bool = False):
+    try:
+        return research_service().report(cik, force=refresh)
+    except Exception as e:
+        raise HTTPException(502, f"Could not build the report: {e}")
+
+
+class ChatTurn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str = Field(max_length=1200)
+
+
+class ChatIn(BaseModel):
+    lens: str = Field(min_length=1, max_length=30)
+    question: str = Field(min_length=1, max_length=400)
+    history: list[ChatTurn] = Field(default_factory=list, max_length=12)
+
+
+@app.post("/api/research/company/{cik}/chat")
+def research_chat(cik: int, body: ChatIn):
+    """Ask one investor lens why it reached its reading. Answers come only from that lens's checks in the report."""
+    try:
+        out = research_service().chat(cik, body.lens, body.question, [t.model_dump() for t in body.history])
+    except Exception as e:
+        raise HTTPException(502, f"Could not answer: {e}")
+    if out is None:
+        raise HTTPException(404, "No such investor for this company's report.")
+    return out
 
 
 # Built front end (npm run build in web/). Absent in dev, where Vite serves the UI and proxies /api.

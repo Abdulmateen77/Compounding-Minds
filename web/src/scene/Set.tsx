@@ -116,8 +116,8 @@ export function Desk({ p = [0, 0, 0], name, role, glowRef }: {
   );
 }
 
-export const Partition = ({ x, z = -0.3 }: { x: number; z?: number }) => (
-  <group position={[x, 0, z]}>
+export const Partition = ({ x, z = -0.3, ry = 0 }: { x: number; z?: number; ry?: number }) => (
+  <group position={[x, 0, z]} rotation={[0, ry, 0]}>
     <Box p={[0, 0.75, 0]} s={[0.08, 1.5, 1.6]} c="#3b4577" />
     <Box p={[0, 1.52, 0]} s={[0.12, 0.06, 1.64]} c="#c9cde0" />
   </group>

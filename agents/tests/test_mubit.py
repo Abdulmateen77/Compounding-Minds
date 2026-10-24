@@ -6,7 +6,9 @@ from types import SimpleNamespace
 import pytest
 
 from agents.correction_loop import run_correction_loop
-from agents.gateway import DEFAULT_MODEL, MubitGateway, MubitUpdater
+from agents.cache import CachingGateway
+from agents.gateway import (MAX_LESSONS_IN_PROMPT, DEFAULT_MAX_TOKENS, DEFAULT_MODEL, MAX_OUTPUT_TOKENS, MubitGateway, MubitUpdater,
+                            ReplyTruncated)
 from agents.offline import demo_reality, scripted_llm
 from schemas import Correction
 
@@ -16,8 +18,9 @@ _ids = (f"mreq_{i:032x}" for i in itertools.count(1))
 class FakeAnthropic:
     """Mimics client.messages.with_raw_response.create(...) -> raw with .headers and .parse()."""
 
-    def __init__(self, reply_fn):
+    def __init__(self, reply_fn, stop_reasons=None):
         self.sent = []
+        stops = iter(stop_reasons or [])
         outer = self
 
         class _Raw:
@@ -27,12 +30,14 @@ class FakeAnthropic:
                 text = reply_fn("?", msgs)
                 return SimpleNamespace(
                     headers={"x-middleware-request-id": next(_ids)},
-                    parse=lambda: SimpleNamespace(content=[SimpleNamespace(type="text", text=text)]))
+                    parse=lambda: SimpleNamespace(content=[SimpleNamespace(type="text", text=text)],
+                                                  stop_reason=next(stops, "end_turn")))
 
         self.messages = SimpleNamespace(with_raw_response=_Raw())
 
 
-def test_gateway_sends_anthropic_shape_and_records_request_id():
+def test_gateway_sends_anthropic_shape_and_records_request_id(monkeypatch):
+    monkeypatch.delenv("MUBIT_MODEL", raising=False)  # .env may set it (api/main loads it)
     fake = FakeAnthropic(lambda a, m: "hello")
     gw = MubitGateway(client=fake)
     out = gw.complete("fundamentals",
@@ -91,3 +96,42 @@ def test_live_shaped_loop_with_fake_client(tmp_path):
     assert [r.purpose for r in gw.requests] == ["call", "reflection", "call"]
     sessions = [p["metadata"]["user_id"] for p in gw.client.sent]
     assert sessions[0].startswith("fundamentals:anon_001:") and sessions[1].startswith("reflection:")
+
+
+# ---- output cap: a cut-off reply is retried with more room, never cached ---------------------------------
+
+def test_default_cap_leaves_room_for_the_models_hidden_reasoning():
+    fake = FakeAnthropic(lambda a, m: "{}")
+    MubitGateway(client=fake).complete("risk", [{"role": "system", "content": "S"}, {"role": "user", "content": "u"}])
+    assert fake.sent[0]["max_tokens"] == DEFAULT_MAX_TOKENS >= 4096
+
+
+def test_a_cut_off_reply_is_retried_with_a_bigger_cap():
+    fake = FakeAnthropic(lambda a, m: "{}", stop_reasons=["max_tokens", "end_turn"])
+    out = MubitGateway(client=fake).complete("risk", [{"role": "system", "content": "S"}, {"role": "user", "content": "u"}])
+    assert out == "{}" and [p["max_tokens"] for p in fake.sent] == [DEFAULT_MAX_TOKENS, MAX_OUTPUT_TOKENS]
+
+
+def test_a_reply_still_cut_off_at_the_ceiling_raises_and_is_not_cached(tmp_path):
+    fake = FakeAnthropic(lambda a, m: '{"claim": {"type', stop_reasons=["max_tokens"] * 10)
+    cg = CachingGateway(MubitGateway(client=fake), tmp_path)
+    with pytest.raises(ReplyTruncated):
+        cg.complete("risk", [{"role": "system", "content": "S"}, {"role": "user", "content": "u"}])
+    assert fake.sent[-1]["max_tokens"] == MAX_OUTPUT_TOKENS
+    assert list(tmp_path.glob("*.json")) == []          # nothing stored, so a re-run asks again
+
+
+# ---- the prompt gets a rolling window of lessons; the version still counts them all -----------------------
+
+def test_prompt_gets_the_most_recent_lessons_but_the_version_counts_every_one(tmp_path):
+    up = MubitUpdater(tmp_path, model="m")
+    n = MAX_LESSONS_IN_PROMPT + 15
+    for i in range(n):
+        up.submit_corrections("risk", [Correction(correction_id=f"c{i}", call_id=f"k{i}", agent="risk", company_id="anon_001",
+                                                  as_of=date(2019, 6, 30), predicted={"answer": "no"}, actual={"outcome": "yes"},
+                                                  error_type="wrong_signal", lesson=f"lesson number {i} " + "x" * 30)])
+    got = up.lessons("risk")
+    assert len(got) == MAX_LESSONS_IN_PROMPT == 40
+    assert got[0].startswith("lesson number 15 ") and got[-1].startswith(f"lesson number {n - 1} ")   # newest kept, in order
+    assert len(up.all_lessons("risk")) == n
+    assert up.get_model_version("risk").endswith(f"-v{n}")                                             # not stuck at v40

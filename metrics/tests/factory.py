@@ -27,6 +27,8 @@ DEFAULTS = dict(
     income_tax_expense=lambda i: 2,
     pretax_income=lambda i: 18 + i,
     dividends_paid=None,                          # None: the company never paid a dividend
+    costs_and_expenses=None,                      # None: not tagged (derived operating income needs it)
+    total_debt=None,                              # None: debt is reported as parts, not as one total
     current_assets=lambda i: 200 + i,
     current_liabilities=lambda i: 100,
     cash=lambda i: 50,
@@ -34,10 +36,10 @@ DEFAULTS = dict(
     long_term_debt=lambda i: 100,
     short_term_debt=lambda i: 20,
 )
-INCOME = ("revenue", "operating_income", "interest_expense", "income_tax_expense", "pretax_income")
+INCOME = ("revenue", "operating_income", "interest_expense", "income_tax_expense", "pretax_income", "costs_and_expenses")
 INCOME_WITH_YTD = ("revenue",)                    # the others rely on the FY - (Q1+Q2+Q3) fallback
 CASH_FLOW = ("op_cash_flow", "capex", "depreciation_amortization", "dividends_paid")
-BALANCE = ("current_assets", "current_liabilities", "cash", "equity", "long_term_debt", "short_term_debt")
+BALANCE = ("current_assets", "current_liabilities", "cash", "equity", "long_term_debt", "short_term_debt", "total_debt")
 
 
 def accession(year: int, k: int) -> str:
@@ -67,7 +69,8 @@ def build_facts(company="anon_001", years=6, skip_quarters=(), **overrides):
             ends = [date(y, *QUARTER_ENDS[k]) for k in range(4)]
             starts = [date(y, *QUARTER_STARTS[k]) for k in range(4)]
             if concept in BALANCE:
-                tag = {"long_term_debt": "LongTermDebtNoncurrent", "short_term_debt": "DebtCurrent"}.get(concept)
+                tag = {"long_term_debt": "LongTermDebtNoncurrent", "short_term_debt": "DebtCurrent",
+                       "total_debt": "DebtLongtermAndShorttermCombinedAmount"}.get(concept)
                 for k in range(4):
                     if (y - FIRST_YEAR) * 4 + k in skip_quarters:
                         continue

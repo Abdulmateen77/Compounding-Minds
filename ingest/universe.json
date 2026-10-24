@@ -260,7 +260,7 @@
       "covid_group": "hit",
       "held_out": false,
       "short_history": false,
-      "cik": null
+      "cik": 34088
     },
     {
       "company_id": "anon_027",
@@ -360,7 +360,10 @@
       "covid_group": "hit",
       "held_out": false,
       "short_history": false,
-      "cik": null
+      "cik": 1744489,
+      "prior_ciks": [
+        1001039
+      ]
     },
     {
       "company_id": "anon_037",
