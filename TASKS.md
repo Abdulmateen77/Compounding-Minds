@@ -79,6 +79,25 @@ companies in 55 seconds: **95,556 facts, 23,421 filing events, 29,182 macro rows
 
 Full-replay estimate from this trial: about 1.3 calls per second with 8 workers, so about 8,400 analyst calls take roughly 2 hours (about 1 hour at 16 workers, if Mubit allows it), plus reflections. Cost depends on the Mubit credit: each call is about 700 tokens in and 700 out.
 
+## 0e. The pivot: research any listed company (Sat 24 Oct, evening) : owner A
+
+The product is now a report on any US-listed company as it stands today (README section 0). Built by A in `research/`, with the API routes and the Research screen it needs (B's `api/main.py` and `web/`: B, please read them before editing).
+
+| Piece | State |
+|---|---|
+| Search by name or ticker, market shown | Done (US only). A search that finds nothing says London and Europe are not covered |
+| Report: growth, profit, cash, balance sheet, R&D, risk, plans in the company's own words, price and multiples | Done; every figure names its filings; approximations marked |
+| Six investor lenses from the books in `principles/guides/` | Done; each check cites its source; only Buffett and Munger are back-tested, and the page says so |
+| Valuation range, what the price assumes, ten-year scenarios, overall reading | Done; assumptions on the page; not a price target, not advice |
+| Back-test of the Buffett and Munger checks | Done: Munger's failure checks work (3% vs 45% distress); Buffett's predict cash margin, not sales growth |
+| Demo script and judge Q&A | `docs/DEMO.md`; replay numbers to fill in |
+| Not done | UK and European listings; banks and insurers only partly covered; price checks not back-tested (no historical prices) |
+
+Notes for B:
+- `main` fails on every Fundamentals call until `person-a/env-and-checks` is merged: an earlier GitHub merge dropped the `total_debt` concept that `metrics/fundamentals.py` reads, and left `anon_026` named Chevron with Exxon's CIK. Both are fixed on the branch.
+- `agents/cache.py` now writes UTF-8: on Windows a reply containing a character such as "≈" crashed the replay.
+- The replay agents' prompt files (`principles/<investor>.md`) are unchanged on purpose: the demo replays from a cache keyed on the prompt.
+
 ## 1. Where we are now (Sat 24 Oct, ~19:00)
 
 Checked against the repo and the local Postgres. 531 tests pass (4 skip). Postgres holds the 50-company universe: 97,591 facts and 23,788 events. `.env` has `USE_STUBS=0` and `USE_FAKE_UPDATER=0`. `MUBIT_BASE_URL` is empty in `.env`.
