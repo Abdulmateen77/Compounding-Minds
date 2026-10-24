@@ -84,3 +84,7 @@ export type Evidence = {
 export type NewsLine = { text: string; url: string; source: string; title: string; age: string | null };
 export type NewsArticle = { title: string; url: string; source: string; age: string | null; text: string };
 export type News = { retrieved: string; lines: NewsLine[]; articles: NewsArticle[] };
+
+/** What the report is doing while it is built (the first lookup takes 20 to 30 seconds). Shown by the loading screen and the investor room. */
+export const RESEARCH_STEPS = ["Finding the company's filings", "Reading the financial statements", "Reading the annual report for plans and R&D", "Reading the latest news and checking the share price"];
+export const STEP_SECONDS = 4.5;

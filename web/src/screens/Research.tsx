@@ -1,12 +1,17 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ErrorBox, Skeleton, Spark } from "../components/bits";
-import { researchHref, go } from "../route";
+import { demoMode, researchHref, go, type ResearchView } from "../route";
 import { EvidencePanel, Future, Lenses, Verdict, Worth } from "./ResearchAnalysis";
+import { CompanySearch, SearchOptions } from "../components/CompanySearch";
+import { InvestorStage } from "../components/InvestorStage";
+import { ResearchingRoom } from "../components/ResearchingRoom";
+import { recallPicked } from "../recent";
+import ProView from "./ResearchPro";
 import {
-  TONE, fmtValue, longDate, money, multiple, pctOf, year,
+  RESEARCH_STEPS, STEP_SECONDS, TONE, fmtValue, longDate, money, multiple, pctOf, year,
   type Candidate, type Figure, type Flag, type News, type Report, type SearchResult, type Section,
 } from "../research";
 
@@ -16,8 +21,8 @@ const j = async <T,>(url: string): Promise<T> => {
   return r.json();
 };
 
-export default function Research({ cik }: { cik?: string }) {
-  return cik ? <ReportPage cik={cik} /> : <Landing />;
+export default function Research({ cik, view = "report" }: { cik?: string; view?: ResearchView }) {
+  return cik ? <ReportPage cik={cik} view={view} /> : <Landing />;
 }
 
 /* ───────────────────────── landing: one question, one box ───────────────────────── */
@@ -26,10 +31,6 @@ const EXAMPLES = ["Tesla", "Apple", "Coca-Cola", "Nvidia", "Walmart"];
 
 function Landing() {
   const [q, setQ] = useState("");
-  const [debounced, setDebounced] = useState("");
-  useEffect(() => { const t = setTimeout(() => setDebounced(q.trim()), 220); return () => clearTimeout(t); }, [q]);
-  const s = useQuery({ queryKey: ["rsearch", debounced], enabled: debounced.length >= 2, queryFn: () => j<SearchResult>(`/api/research/search?q=${encodeURIComponent(debounced)}`) });
-  const pick = (c: Candidate) => go(researchHref(c.cik));
 
   return (
     <div className="grid gap-10">
@@ -41,27 +42,8 @@ function Landing() {
           </p>
         </div>
 
-        <div className="max-w-2xl relative">
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} aria-label="Company name or ticker"
-            onKeyDown={(e) => { if (e.key === "Enter" && s.data?.results[0]) pick(s.data.results[0]); }}
-            placeholder="Company name or ticker, for example Tesla or TSLA"
-            className="card w-full px-5 py-4 text-lg outline-none" style={{ color: "var(--text)", borderColor: "var(--blue)" }} />
-          {debounced.length >= 2 && (
-            <div className="card absolute left-0 right-0 mt-2 z-20 overflow-hidden" role="listbox" style={{ boxShadow: "0 12px 40px rgba(0,0,0,.25)" }}>
-              {s.isLoading && <div className="p-4 mute text-sm">Searching the SEC company list…</div>}
-              {s.isError && <div className="p-4 text-sm" style={{ color: "var(--red)" }}>Could not reach the search. Is the API running?</div>}
-              {s.data?.results.map((c) => (
-                <button key={c.cik} role="option" aria-selected={false} onClick={() => pick(c)}
-                  className="w-full text-left px-5 py-3 flex items-center justify-between gap-3 cursor-pointer bg-transparent border-0"
-                  style={{ color: "var(--text)", borderBottom: "1px solid var(--line)" }}>
-                  <span><span className="font-semibold">{c.name}</span> <span className="num mute text-sm">{c.ticker}</span></span>
-                  <span className="chip">{c.exchange ?? "US"} · United States</span>
-                </button>
-              ))}
-              {s.data && s.data.results.length === 0 && <div className="p-4 text-sm">{s.data.message}</div>}
-            </div>
-          )}
-        </div>
+        <CompanySearch q={q} onQ={setQ} autoFocus />
+        <SearchOptions />
 
         <div className="flex items-center gap-2 flex-wrap text-sm">
           <span className="mute">Try</span>
@@ -70,11 +52,12 @@ function Landing() {
         <p className="mute text-xs m-0">Covers companies listed in the United States (NYSE and Nasdaq). London and European listings are coming.</p>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {[
           ["1", "It reads the filings", "Every figure comes from the company's own 10-K and 10-Q reports filed with the SEC, worked out by code, not guessed by an AI."],
           ["2", "It asks the investor's questions", "Is the business growing? Does profit turn into cash? Is the balance sheet safe? What is it investing in, and what does that earn?"],
           ["3", "It shows its working", "Each number lists the filing it came from. What the company says about its plans is quoted word for word, with a link to the page."],
+          ["4", "You can question the investors", "The investor panel gives six investors' readings side by side. Ask any one of them why, and they answer from their own checks."],
         ].map(([n, h, t]) => (
           <div key={n} className="card p-5 grid gap-2 content-start">
             <span className="num inline-grid place-items-center w-7 h-7 rounded-full text-sm" style={{ background: "var(--blue)", color: "#fff" }}>{n}</span>
@@ -85,7 +68,7 @@ function Landing() {
       </section>
 
       <p className="text-sm mute m-0">
-        Want to know how accurate the AI analysts have been? <a href="#/past" className="underline underline-offset-4">See the past test</a> and the <a href="#/mubit" className="underline underline-offset-4">track record</a>.
+        Want to know how accurate the AI analysts have been? See the <a href="#/mubit" className="underline underline-offset-4">track record</a>.
       </p>
     </div>
   );
@@ -93,11 +76,11 @@ function Landing() {
 
 /* ───────────────────────── the report ───────────────────────── */
 
-const STEPS = ["Finding the company's filings", "Reading the financial statements", "Reading the annual report for plans and R&D", "Reading the latest news and checking the share price"];
+const STEPS = RESEARCH_STEPS;
 
 function Loading({ name }: { name?: string }) {
   const [i, setI] = useState(0);
-  useEffect(() => { const t = setInterval(() => setI((x) => Math.min(x + 1, STEPS.length - 1)), 4500); return () => clearInterval(t); }, []);
+  useEffect(() => { const t = setInterval(() => setI((x) => Math.min(x + 1, STEPS.length - 1)), STEP_SECONDS * 1000); return () => clearInterval(t); }, []);
   return (
     <div className="card p-8 grid gap-4" role="status">
       <h1 className="text-2xl font-bold m-0">Researching {name ?? "the company"}…</h1>
@@ -115,10 +98,22 @@ function Loading({ name }: { name?: string }) {
   );
 }
 
-function ReportPage({ cik }: { cik: string }) {
+const TABS: { id: ResearchView; label: string; hint: string }[] = [
+  { id: "report", label: "Report", hint: "The written report in plain English" },
+  { id: "investors", label: "Investor panel", hint: "Six investors read it, and you can question each one" },
+  { id: "pro", label: "Professional", hint: "The same numbers as dense tables, with sources and CSV" },
+];
+
+function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
+  // ?demo=1 (presenter mode) always means the investor panel, wherever the link points.
+  const view: ResearchView = asked === "report" && demoMode() ? "investors" : asked;
   const [copied, setCopied] = useState(false);
   const q = useQuery({ queryKey: ["report", cik], queryFn: () => j<Report>(`/api/research/company/${cik}`), staleTime: 10 * 60_000, retry: 0 });
-  if (q.isLoading) return <Loading />;
+  const waited = useRef(false);               // the investors were shown researching, so the readings continue from there
+  if (q.isLoading) {
+    if (view === "investors") { waited.current = true; return <ResearchingRoom cik={cik} plain={(name) => <Loading name={name} />} />; }
+    return <Loading name={recallPicked(cik)?.name} />;
+  }
   if (q.isError || !q.data) return <div className="grid gap-3"><ErrorBox msg={String(q.error ?? "Could not build the report.")} onRetry={() => q.refetch()} /><a className="btn ghost justify-self-start no-underline" href="#/">← Search again</a></div>;
   const r = q.data, c = r.company;
 
@@ -154,6 +149,17 @@ function ReportPage({ cik }: { cik: string }) {
         </div>
       </header>
 
+      <nav aria-label="Views of this report" className="flex gap-1 p-1 rounded-xl justify-self-start flex-wrap" style={{ background: "var(--panel2)", border: "1px solid var(--line)" }}>
+        {TABS.map((t) => (
+          <a key={t.id} href={researchHref(cik, t.id)} title={t.hint} aria-current={view === t.id ? "page" : undefined}
+            className="px-4 py-1.5 rounded-lg text-sm font-medium no-underline"
+            style={view === t.id ? { background: "var(--panel)", color: "var(--text)", boxShadow: "0 0 0 1px var(--line)" } : { color: "var(--mute)" }}>{t.label}</a>
+        ))}
+      </nav>
+
+      {view === "investors" && <InvestorStage r={r} fromLoading={waited.current} />}
+      {view === "pro" && <ProView r={r} />}
+      {view === "report" && (<>
       {r.analysis && <Verdict a={r.analysis} name={c.name} />}
       <Summary r={r} />
       {r.news && <NewsBlock n={r.news} />}
@@ -181,6 +187,8 @@ function ReportPage({ cik }: { cik: string }) {
           </div>
         </section>
       )}
+
+      </>)}
 
       <footer className="grid gap-2 text-xs mute">
         {(r.notes ?? []).map((n) => <p key={n} className="m-0">Note: {n}</p>)}

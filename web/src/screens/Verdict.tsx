@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { api, pct, type AgentView, type MubitState } from "../api/client";
 import { ErrorBox, Skeleton, Spark, StubChip } from "../components/bits";
-import { mubitHref } from "../route";
+import { jumpTo, mubitHref } from "../route";
 import {
   AGENTS, HEADLINE, METRICS, SIGNAL, bottomLine, certainty, humanize, longDate, metricLabel, metricValue, plainAnswer,
 } from "../plain";
@@ -44,7 +44,7 @@ export default function Verdict({ id }: { id: string }) {
             {a.committee.map((v) => {
               const p = plainAnswer(v.agent, v.answer), S = SIGNAL[p.signal];
               return (
-                <a key={v.agent} href={`#card-${v.agent}`} className="rounded-xl p-3 no-underline grid gap-1"
+                <a key={v.agent} href={`#card-${v.agent}`} onClick={jumpTo(`card-${v.agent}`)} className="rounded-xl p-3 no-underline grid gap-1"
                   style={{ background: `color-mix(in srgb, ${S.color} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${S.color} 35%, var(--line))`, color: "var(--text)" }}>
                   <span className="text-xs mute">{AGENTS[v.agent]?.topic ?? v.agent} · {v.investor}</span>
                   <span className="font-semibold">{p.text}</span>

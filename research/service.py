@@ -10,7 +10,7 @@ from ingest.sec import SecClient
 
 from concurrent.futures import ThreadPoolExecutor
 
-from . import live, market, narrative, resolve, text, web
+from . import chat, live, market, narrative, resolve, text, web
 from .report import build_report
 
 REPORT_TTL_S = 1800
@@ -41,6 +41,15 @@ class ResearchService:
         found = resolve.search(q, self.listings())
         return {"query": q, "results": [c.as_dict() for c in found],
                 "message": None if found else NOT_FOUND.format(q=q.strip())}
+
+    # ---- one-on-one chat with an investor lens ------------------------------------------------------------------
+    def chat(self, cik: int, lens_key: str, question: str, history: list[dict] | None = None) -> dict | None:
+        """Answer a reader's question about one lens of this company's report; None if the report or lens does not exist."""
+        report = self.report(int(cik))
+        lens = next((l for l in (report.get("analysis") or {}).get("lenses", []) if l["key"] == lens_key), None)
+        if not report.get("supported") or lens is None:
+            return None
+        return chat.answer(self._gw(), report, lens, question, history)
 
     # ---- report ----------------------------------------------------------------------------------------------
     def _gw(self):
