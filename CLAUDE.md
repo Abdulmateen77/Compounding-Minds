@@ -1,6 +1,6 @@
 # CLAUDE.md: Compounding Minds
 
-Project context for Claude Code. Read this first, then `README.md` (full spec) and `TASKS.md` (team split).
+Project context for Claude Code. Read this first, then `README.md` (full spec), `ARCHITECTURE.md` (agent pattern: parallel fan-out/fan-in committee, shared Postgres state, external-verifier reflection loop) and `TASKS.md` (team split).
 
 ## What this is
 

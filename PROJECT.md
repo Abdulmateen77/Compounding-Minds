@@ -1,6 +1,6 @@
 # Compounding Minds: Project Definition
 
-Overview document: what it is, who it is for, and how it is built. Detailed contracts and schemas live in [README.md](README.md). Rules for Claude Code live in [CLAUDE.md](CLAUDE.md).
+Overview document: what it is, who it is for, and how it is built. Agent pattern and data flow: [ARCHITECTURE.md](ARCHITECTURE.md). Detailed contracts and schemas live in [README.md](README.md). Rules for Claude Code live in [CLAUDE.md](CLAUDE.md).
 
 ---
 

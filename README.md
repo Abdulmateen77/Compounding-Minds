@@ -3,7 +3,7 @@
 A team of AI analysts that grades itself against reality and compounds from every mistake.
 
 Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026). Code freeze **Sun 25 Oct 10:00**.
-Companion files: [PROJECT.md](PROJECT.md) (overview), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
+Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITECTURE.md) (agent pattern and flow), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
 
 ---
 
