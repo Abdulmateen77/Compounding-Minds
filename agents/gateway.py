@@ -59,6 +59,8 @@ class MubitRequest:
     purpose: str
     request_id: str | None
     model: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
 
 
 class MubitGateway(LLMGateway):
@@ -99,8 +101,11 @@ class MubitGateway(LLMGateway):
             params["metadata"] = {"user_id": str(kw["session_id"])[:200]}
         raw = self.client.messages.with_raw_response.create(**params)
         msg = raw.parse()
+        usage = getattr(msg, "usage", None)
         self.requests.append(MubitRequest(agent, kw.get("purpose", "call"),
-                                          raw.headers.get("x-middleware-request-id"), self.model))
+                                          raw.headers.get("x-middleware-request-id"), self.model,
+                                          getattr(usage, "input_tokens", None),
+                                          getattr(usage, "output_tokens", None)))
         return "".join(getattr(b, "text", "") for b in msg.content)
 
 

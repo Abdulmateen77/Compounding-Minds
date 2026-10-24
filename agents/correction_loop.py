@@ -132,6 +132,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--as-of", default="2019-06-30", type=date.fromisoformat)
     ap.add_argument("--next", default="2019-09-30", type=date.fromisoformat, dest="next_as_of")
     ap.add_argument("--live", action="store_true", help="use MubitGateway + MubitUpdater instead of the offline pieces")
+    ap.add_argument("--no-cache", action="store_true", help="with --live: skip the reply cache and always call Mubit")
     ap.add_argument("--memory-dir", help="fallback updater memory (default: a fresh temp dir, so every run starts at v0)")
     ap.add_argument("--json", help="also write the full loop result as JSON (e.g. for the dashboard)")
     args = ap.parse_args(argv)
@@ -142,6 +143,9 @@ def main(argv: list[str] | None = None) -> int:
         from .gateway import MubitGateway, MubitUpdater
         load_dotenv(find_dotenv(usecwd=True))
         gateway = MubitGateway()
+        if not args.no_cache:
+            from .cache import CachingGateway
+            gateway = CachingGateway(gateway)  # same prompt twice = free, and replays are identical
         updater = MubitUpdater(args.memory_dir or tempfile.mkdtemp(prefix="cm-mubit-memory-"), model=gateway.model)
         outcome_fn = demo_reality  # swap for the real grader once Person A's rules land
         note = (f"LIVE LLM via Mubit ({gateway.model}). Metrics and the outcome rule are STUBS, "

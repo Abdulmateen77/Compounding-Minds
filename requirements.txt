@@ -1,0 +1,5 @@
+pydantic>=2.6
+pytest>=8
+python-dotenv>=1.0
+# added when their owners need them:
+# psycopg[binary]  fastapi  edgartools  fredapi  pandas  mcp  streamlit
