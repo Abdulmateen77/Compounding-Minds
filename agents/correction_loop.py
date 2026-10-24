@@ -136,12 +136,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--json", help="also write the full loop result as JSON (e.g. for the dashboard)")
     args = ap.parse_args(argv)
 
+    from .offline import demo_reality
     if args.live:
+        from dotenv import find_dotenv, load_dotenv
         from .gateway import MubitGateway, MubitUpdater
-        gateway, updater, outcome_fn, note = MubitGateway(), MubitUpdater(), None, ""
+        load_dotenv(find_dotenv(usecwd=True))
+        gateway = MubitGateway()
+        updater = MubitUpdater(args.memory_dir or tempfile.mkdtemp(prefix="cm-mubit-memory-"), model=gateway.model)
+        outcome_fn = demo_reality  # swap for the real grader once Person A's rules land
+        note = (f"LIVE LLM via Mubit ({gateway.model}). Metrics and the outcome rule are STUBS, "
+                "so the grades are not real results.")
     else:
         from .gateway import ScriptedGateway
-        from .offline import demo_reality, scripted_llm
+        from .offline import scripted_llm
         gateway, outcome_fn = ScriptedGateway(scripted_llm), demo_reality
         updater = FakeModelUpdater(args.memory_dir or tempfile.mkdtemp(prefix="cm-memory-"))
         note = ("OFFLINE DEMO: stub metrics, scripted LLM, stub outcome rule, FALLBACK updater "
@@ -150,10 +157,14 @@ def main(argv: list[str] | None = None) -> int:
     res = run_correction_loop(args.agent, args.company, args.as_of, args.next_as_of, gateway, updater,
                               outcome_fn=outcome_fn)
     print_report(res, note)
+    for r in getattr(gateway, "requests", []):
+        print(f"   mubit {r.request_id}  {r.purpose:<10} {r.agent}")
     if args.json:
         from pathlib import Path
         Path(args.json).parent.mkdir(parents=True, exist_ok=True)
-        Path(args.json).write_text(json.dumps({"offline_demo": not args.live, **res.to_dict()}, indent=2))
+        reqs = [vars(r) for r in getattr(gateway, "requests", [])]
+        Path(args.json).write_text(json.dumps({"offline_demo": not args.live, **res.to_dict(),
+                                               "mubit_requests": reqs}, indent=2))
         print(f"wrote {args.json}")
     return 0
 

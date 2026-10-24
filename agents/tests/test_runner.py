@@ -65,4 +65,6 @@ def test_correction_changes_model_version_and_prompt(tmp_path):
     assert ref.fallback and upd.get_model_version("fundamentals") == "fallback/fundamentals-v1"
     m = get_metrics_stub("anon_001", "fundamentals", date(2019, 9, 30))
     msgs = build_messages("fundamentals", "anon_001", date(2019, 9, 30), m, upd.lessons("fundamentals"))
-    assert "capex_to_revenue rises" in msgs[0]["content"]
+    assert "capex_to_revenue rises" in msgs[1]["content"]
+    # lessons live in the user message so the system prompt (Mubit's task key) never changes
+    assert msgs[0]["content"] == build_messages("fundamentals", "anon_001", date(2019, 9, 30), m, [])[0]["content"]

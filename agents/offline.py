@@ -53,7 +53,7 @@ def _analyst(agent: str, messages: list[dict]) -> str:
     principles = ["buffett.01"]
 
     # Learned behaviour: apply any capex lesson found in LESSONS FROM PAST MISTAKES.
-    memory = system.split("LESSONS FROM PAST MISTAKES", 1)[-1]
+    memory = user.split("LESSONS FROM PAST MISTAKES", 1)[-1].split("Company:", 1)[0]
     hit = _CAPEX_LESSON.search(memory)
     if hit and answer == "yes" and m["capex_to_revenue"] >= float(hit.group(1)):
         answer, prob = "no", 0.7

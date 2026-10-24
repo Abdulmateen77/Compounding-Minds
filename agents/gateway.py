@@ -1,8 +1,8 @@
 """LLMGateway + ModelUpdater: our code depends on these interfaces, not on Mubit's API (README 10).
 
-OPEN (ask at Mubit office hours): exact update endpoint and payload, update latency,
-per-agent isolation, rate limits, how version ids are exposed. Do NOT guess endpoints:
-`MubitGateway`/`MubitUpdater` are deliberately unimplemented until confirmed.
+MubitGateway follows docs.mubit.ai (Anthropic-compatible proxy). MubitUpdater documents a
+gap: Mubit has no public corrections/outcomes endpoint, so lessons are applied in-prompt and
+linked to Mubit request ids. Ask Mubit whether an outcome or rating API exists.
 """
 from __future__ import annotations
 
@@ -47,48 +47,127 @@ class ModelUpdater(ABC):
     def status(self, ref: UpdateRef) -> UpdateStatus: ...
 
 
+DEFAULT_BASE_URL = "https://api.mubit.ai"
+DEFAULT_MODEL = "claude-haiku-4-5"  # served by the Mubit starter credit; set MUBIT_MODEL to change
+
+
+@dataclass(frozen=True)
+class MubitRequest:
+    """One call that went through Mubit. `request_id` (mreq_...) finds it in Mubit's console."""
+
+    agent: str
+    purpose: str
+    request_id: str | None
+    model: str
+
+
 class MubitGateway(LLMGateway):
-    def __init__(self, base_url: str | None = None, api_key: str | None = None):
-        self.base_url = base_url or os.environ.get("MUBIT_BASE_URL", "")
-        self.api_key = api_key or os.environ.get("MUBIT_API_KEY", "")
+    """Every LLM call goes through Mubit's Anthropic-compatible proxy.
 
-    def complete(self, agent, messages, **kw):
-        raise NotImplementedError("Confirm Mubit's LLM endpoint at office hours, then implement here.")
-
-
-class MubitUpdater(ModelUpdater):
-    def submit_corrections(self, agent, corrections):
-        raise NotImplementedError("Confirm Mubit's update API at office hours.")
-
-    def get_model_version(self, agent):
-        raise NotImplementedError
-
-    def status(self, ref):
-        raise NotImplementedError
-
-
-class FakeModelUpdater(ModelUpdater):
-    """FALLBACK ONLY. Appends lessons to a per-agent memory file; label it in the UI if used.
-
-    The memory text is what `agents.runner` injects into the prompt, so the demo loop
-    still shows lesson -> new version -> changed behaviour.
+    Per docs.mubit.ai ("Connect with the Anthropic SDK", "API reference"): base URL
+    {host}/anthropic, the Mubit key in place of the provider key, model ids unchanged.
+    Mubit records each call and returns its id in the `x-middleware-request-id` header.
+    Mubit groups calls into tasks by system prompt + model, so each agent (and the
+    reflection and synthesizer prompts) is its own task as long as its system prompt is stable.
     """
 
-    def __init__(self, memory_dir: Path | str = "agents/memory"):
+    def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None,
+                 max_tokens: int = 1024, client=None):
+        host = (base_url or os.environ.get("MUBIT_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
+        self.model = model or os.environ.get("MUBIT_MODEL") or DEFAULT_MODEL
+        self.max_tokens = max_tokens
+        if client is None:
+            key = api_key or os.environ.get("MUBIT_API_KEY")
+            if not key:
+                raise RuntimeError("MUBIT_API_KEY is not set; put it in .env (gitignored)")
+            from anthropic import Anthropic
+            client = Anthropic(base_url=f"{host}/anthropic", api_key=key, max_retries=2, timeout=120)
+        self.client = client
+        self.requests: list[MubitRequest] = []
+
+    @property
+    def last_request_id(self) -> str | None:
+        return self.requests[-1].request_id if self.requests else None
+
+    def complete(self, agent, messages, **kw):
+        system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+        convo = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "system"]
+        params = {"model": self.model, "max_tokens": kw.get("max_tokens", self.max_tokens),
+                  "system": system, "messages": convo}
+        if kw.get("session_id"):
+            # On Anthropic, metadata.user_id is the one field Mubit reads as the session.
+            params["metadata"] = {"user_id": str(kw["session_id"])[:200]}
+        raw = self.client.messages.with_raw_response.create(**params)
+        msg = raw.parse()
+        self.requests.append(MubitRequest(agent, kw.get("purpose", "call"),
+                                          raw.headers.get("x-middleware-request-id"), self.model))
+        return "".join(getattr(b, "text", "") for b in msg.content)
+
+
+class LessonMemory:
+    """Per-agent lesson file. The runner puts these lessons into the agent's prompt."""
+
+    def __init__(self, memory_dir: Path | str):
         self.dir = Path(memory_dir)
         self.dir.mkdir(parents=True, exist_ok=True)
 
     def _mem(self, agent: str) -> Path:
         return self.dir / f"{agent}.jsonl"
 
-    def lessons(self, agent: str) -> list[str]:
+    def _rows(self, agent: str) -> list[dict]:
         p = self._mem(agent)
-        return [json.loads(l)["lesson"] for l in p.read_text().splitlines()] if p.exists() else []
+        return [json.loads(l) for l in p.read_text().splitlines()] if p.exists() else []
 
-    def submit_corrections(self, agent, corrections):
+    def lessons(self, agent: str) -> list[str]:
+        return [r["lesson"] for r in self._rows(agent)]
+
+    def _append(self, agent: str, corrections: list[Correction]) -> list[str]:
+        """Store lessons; return the Mubit request ids of the reflection calls that wrote them."""
+        ids = []
         with self._mem(agent).open("a") as f:
             for c in corrections:
-                f.write(json.dumps({"correction_id": c.correction_id, "lesson": c.lesson}) + "\n")
+                rid = c.inputs_snapshot.get("mubit_request_id")
+                ids += [rid] if rid else []
+                f.write(json.dumps({"correction_id": c.correction_id, "lesson": c.lesson,
+                                    "mubit_request_id": rid}) + "\n")
+        return ids
+
+
+class MubitUpdater(LessonMemory, ModelUpdater):
+    """Corrections -> versioned lessons in the agent's prompt, with Mubit provenance.
+
+    GAP (checked docs.mubit.ai, Oct 2026): Mubit has no public endpoint for corrections,
+    outcomes or ratings, and an adapter can't be called by model id. Mubit learns on its
+    side by training per-task adapters from the calls it records (see its console:
+    Tasks, Try models). So here a correction becomes a lesson that the next call through
+    Mubit uses, and the update ref is the Mubit request id of the reflection call that
+    wrote the lesson. If Mubit exposes an outcome API, call it from submit_corrections.
+    """
+
+    def __init__(self, memory_dir: Path | str = "agents/memory/mubit", model: str | None = None):
+        super().__init__(memory_dir)
+        self.model = model or os.environ.get("MUBIT_MODEL") or DEFAULT_MODEL
+
+    def submit_corrections(self, agent, corrections):
+        ids = self._append(agent, corrections)
+        ref = ",".join(ids) or f"lessons:{agent}:{len(self.lessons(agent))}"
+        return UpdateRef(agent, ref, fallback=False)
+
+    def get_model_version(self, agent):
+        return f"mubit:{self.model}+{agent}-lessons-v{len(self.lessons(agent))}"
+
+    def status(self, ref):
+        return UpdateStatus("applied", self.get_model_version(ref.agent))
+
+
+class FakeModelUpdater(LessonMemory, ModelUpdater):
+    """FALLBACK ONLY (offline, no Mubit). Same lesson memory; label it in the UI if used."""
+
+    def __init__(self, memory_dir: Path | str = "agents/memory"):
+        super().__init__(memory_dir)
+
+    def submit_corrections(self, agent, corrections):
+        self._append(agent, corrections)
         return UpdateRef(agent, f"fake:{agent}:{len(self.lessons(agent))}", fallback=True)
 
     def get_model_version(self, agent):

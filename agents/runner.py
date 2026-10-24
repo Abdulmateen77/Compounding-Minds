@@ -47,11 +47,15 @@ def build_messages(agent: str, company_id: str, as_of: date, metrics: dict, less
     mask = lambda s: mask_dates(str(s), as_of)  # noqa: E731
     lines = [f"- {mask(m['name'])} = {m['value']} {mask(m['unit'])}" for m in metrics["metrics"]]
     memory = "\n".join(f"- {mask(l)}" for l in lessons) or "- (none yet)"
+    # The system prompt must stay identical across calls: Mubit groups calls into one task
+    # by their instructions, so anything that changes (lessons, company, metrics) goes in
+    # the user message.
     system = (
         f"You are the {spec.agent} analyst following {spec.investor.title()}'s principles.\n\n"
-        f"PRINCIPLES\n{load_principles(spec.investor)}\n\nLESSONS FROM PAST MISTAKES\n{memory}\n\n{OUTPUT_SHAPE}"
+        f"PRINCIPLES\n{load_principles(spec.investor)}\n\n{OUTPUT_SHAPE}"
     )
     user = (
+        f"LESSONS FROM PAST MISTAKES (apply them)\n{memory}\n\n"
         f"Company: {company_id}\nQuestion ({spec.question_id}): {spec.question}\n"
         f"Allowed answers: {', '.join(spec.answers)}\nHorizon: {spec.horizon}\n"
         f"as_of: Q0 (latest reported quarter; calendar dates are hidden)\nMETRICS\n" + "\n".join(lines)
@@ -96,7 +100,9 @@ def run_agent(agent: str, company_id: str, as_of: date, metrics: dict, gateway: 
     model = updater.get_model_version(agent)
     lessons = lessons if lessons is not None else getattr(updater, "lessons", lambda a: [])(agent)
     messages = build_messages(agent, company_id, as_of, metrics, lessons)
-    raw = gateway.complete(agent, messages)
+    # Mubit session: one per agent, company and quarter (metadata only, the model never sees it).
+    session = f"{agent}:{company_id}:{as_of.isoformat()}"
+    raw = gateway.complete(agent, messages, session_id=session)
     try:
         return _parse(raw, agent, company_id, as_of, run_id, metrics, model)
     except (ValueError, ValidationError, json.JSONDecodeError) as err:
@@ -105,7 +111,7 @@ def run_agent(agent: str, company_id: str, as_of: date, metrics: dict, gateway: 
     repair = messages + [{"role": "assistant", "content": raw},
                          {"role": "user", "content": f"That reply was invalid ({problem}). Return only the corrected JSON object."}]
     try:
-        return _parse(gateway.complete(agent, repair), agent, company_id, as_of, run_id, metrics, model)
+        return _parse(gateway.complete(agent, repair, session_id=session), agent, company_id, as_of, run_id, metrics, model)
     except (ValueError, ValidationError, json.JSONDecodeError) as err2:
         log.error("DROPPED call %s %s %s: %s", agent, company_id, as_of, err2)
         return None

@@ -120,22 +120,32 @@ def _parse_reflection(raw: str, item: GradedCall, known_principles: set[str]) ->
     )
 
 
+def _with_request_id(c: Correction, gateway: LLMGateway) -> Correction:
+    """Link the correction to the Mubit request that wrote its lesson (MubitGateway only)."""
+    rid = getattr(gateway, "last_request_id", None)
+    if rid:
+        c.inputs_snapshot["mubit_request_id"] = rid
+    return c
+
+
 def reflect(item: GradedCall, gateway: LLMGateway) -> Correction | None:
     """One reflection call, one repair retry, then drop and log (same policy as the runner)."""
     if item.grade.correct is not False:
         return None
     known = principle_ids(SPECS[item.call.agent].investor)
     messages = build_reflection_messages(item)
-    raw = gateway.complete(item.call.agent, messages, purpose="reflection")
+    session = f"reflection:{item.call.call_id}"
+    raw = gateway.complete(item.call.agent, messages, purpose="reflection", session_id=session)
     try:
-        return _parse_reflection(raw, item, known)
+        return _with_request_id(_parse_reflection(raw, item, known), gateway)
     except (ValueError, ValidationError, json.JSONDecodeError) as err:
         problem = str(err)
         log.warning("reflection repair retry for call %s: %s", item.call.call_id, problem)
     repair = messages + [{"role": "assistant", "content": raw},
                          {"role": "user", "content": f"That reply was invalid ({problem}). Return only the corrected JSON object."}]
     try:
-        return _parse_reflection(gateway.complete(item.call.agent, repair, purpose="reflection"), item, known)
+        fixed = gateway.complete(item.call.agent, repair, purpose="reflection", session_id=session)
+        return _with_request_id(_parse_reflection(fixed, item, known), gateway)
     except (ValueError, ValidationError, json.JSONDecodeError) as err2:
         log.error("DROPPED reflection for call %s: %s", item.call.call_id, err2)
         return None

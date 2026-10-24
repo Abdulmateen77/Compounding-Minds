@@ -43,7 +43,7 @@ def test_prompt_never_shows_as_of_date_or_year():
     assert not has_calendar_year(user)
     assert "2019-06-30" not in system + user
     assert "revenue_Q-2 = 2019.0 usd_m since Y-2" in user  # value kept, name/unit masked
-    assert "In Y0 capex_to_revenue rose after Q-1." in system
+    assert "In Y0 capex_to_revenue rose after Q-1." in user
 
 
 def test_evidence_as_of_is_stamped_by_runner(tmp_path):
