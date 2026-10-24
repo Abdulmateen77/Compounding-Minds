@@ -34,7 +34,8 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-DEFAULT_CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "raw" / "sec"
+ROOT = Path(__file__).resolve().parent.parent
+DEFAULT_CACHE_DIR = ROOT / "data" / "raw" / "sec"
 DEFAULT_RATE = 8.0  # requests per second; SEC's limit is 10
 MAX_ATTEMPTS = 5
 
@@ -88,6 +89,15 @@ def _load_env_agent() -> str | None:
     return os.environ.get("SEC_USER_AGENT")
 
 
+def raw_root() -> Path:
+    """Raw cache root: `RAW_CACHE_DIR` (relative = from the repo root), else data/raw. SEC files go in <root>/sec."""
+    env = os.environ.get("RAW_CACHE_DIR")
+    if not env:
+        return DEFAULT_CACHE_DIR.parent
+    p = Path(env).expanduser()
+    return p if p.is_absolute() else ROOT / p
+
+
 class RateLimiter:
     """Spaces calls at least 1/rate seconds apart, safe to share between threads."""
 
@@ -118,7 +128,7 @@ class SecClient:
         # offline needs no network, so it needs no User-Agent either
         self.user_agent = None if offline and not user_agent else check_user_agent(
             user_agent or _load_env_agent())
-        self.dir = Path(cache_dir) if cache_dir else DEFAULT_CACHE_DIR
+        self.dir = Path(cache_dir) if cache_dir else raw_root() / "sec"
         self.offline, self.refresh, self.timeout = offline, refresh, timeout
         self._limiter = RateLimiter(min(rate, 10.0), sleep=sleep)
         self._open = opener or urllib.request.urlopen

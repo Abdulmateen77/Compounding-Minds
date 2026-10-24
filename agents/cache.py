@@ -17,6 +17,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import threading
 import time
 from pathlib import Path
 from typing import Callable
@@ -84,7 +85,7 @@ class CachingGateway(LLMGateway):
         self.last_request_id = getattr(self.inner, "last_request_id", None)
         entry = {"key": key, "agent": agent, "model": self.model, "text": text,
                  "mubit_request_id": self.last_request_id, "saved_at": int(time.time())}
-        tmp = path.with_suffix(f".{os.getpid()}.tmp")
+        tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")  # replay threads share a pid
         tmp.write_text(json.dumps(entry, ensure_ascii=False))
         tmp.replace(path)  # atomic: a crash never leaves a half-written reply
         return text

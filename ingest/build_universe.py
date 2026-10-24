@@ -26,6 +26,11 @@ from pathlib import Path
 
 SEED = 20251025
 OUT = Path(__file__).parent / "universe.json"
+# Tickers whose SEC ticker now points at a new registrant. CIK_OVERRIDES pins the CIK to use (else ingest
+# resolves it from company_tickers.json); PRIOR_CIKS lists older registrants whose filings load under the same id.
+CIK_OVERRIDES = {"XOM": 34088,    # ticker now maps to ExxonMobil Holdings (2026); history is under the old CIK
+                 "DIS": 1744489}  # TWDC Enterprises 18 (2019 Fox deal): filings from 2019-05
+PRIOR_CIKS = {"DIS": [1001039]}   # old Walt Disney Co: filings 2009 to 2019-02
 SHORT_HISTORY = {"PLTR"}  # first 10-Q was for Q3 2020: metrics exist only from about 2022
 
 # ticker, name, sector, covid_group, held_out
@@ -104,7 +109,8 @@ def build() -> dict:
             "covid_group": g,
             "held_out": h,
             "short_history": t in SHORT_HISTORY,
-            "cik": None,  # filled by ingest from SEC company_tickers.json
+            "cik": CIK_OVERRIDES.get(t),  # None: filled by ingest from SEC company_tickers.json
+            **({"prior_ciks": PRIOR_CIKS[t]} if t in PRIOR_CIKS else {}),
         }
         for i, (t, n, s, g, h) in enumerate(rows)
     ]

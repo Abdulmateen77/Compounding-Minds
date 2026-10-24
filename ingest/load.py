@@ -97,6 +97,9 @@ def load(tickers: list[str] | None, sec: SecClient, *, concept_map: dict[str, Co
          stooq: StooqClient | None = None, filing_text: bool = False,
          universe_file: Path | None = UNIVERSE_FILE) -> Dataset:
     ds = Dataset()
+    # A company that re-registered under a new CIK (Disney 2019, Exxon 2026) keeps its older filings under
+    # the old CIK. `prior_ciks` in the universe file loads those under the same company_id.
+    prior = {str(m["ticker"]).upper(): m.get("prior_ciks") or [] for m in read_universe(universe_file)}
     for c in resolve_universe(sec, tickers, universe_file):
         cid = c["company_id"]
         if c.pop("_unresolved", False):
@@ -120,6 +123,15 @@ def load(tickers: list[str] | None, sec: SecClient, *, concept_map: dict[str, Co
             ds.events += events
         except (NotFound, CacheMiss, SecError) as e:
             ds.gap(cid, f"submissions: {e}")
+        for old in prior.get(c["ticker"], []):
+            try:
+                ds.facts += parse_companyfacts(cid, sec.companyfacts(old), concept_map)
+                events = extract_events(cid, sec.all_submission_filings(old), cik=pad_cik(old))
+                if filing_text:
+                    tag_going_concern(events, _text_reader(sec))
+                ds.events += events
+            except (NotFound, CacheMiss, SecError) as e:
+                ds.gap(cid, f"prior CIK {old}: {e}")
         if stooq:
             try:
                 ds.prices += [{"company_id": cid, **p} for p in stooq.prices(c["ticker"])]

@@ -14,7 +14,7 @@ from datetime import date
 
 from schemas import Event, Fact
 from store import queries
-from store.concepts import CONCEPTS
+from store.concepts import COMPOSITES, CONCEPTS
 
 from .quarters import Q, discrete_quarters, instants
 
@@ -58,40 +58,32 @@ class Context:
         return self._facts[concept]
 
     def has(self, concept: str) -> bool:
-        """True if the company has EVER reported this concept (visible at as_of)."""
-        return bool(self.facts(concept))
+        """True if the company has EVER reported this concept (visible at as_of), or all its components."""
+        if self.facts(concept):
+            return True
+        parts = COMPOSITES.get(concept)
+        return bool(parts) and all(self.facts(p) for p in parts)
 
     def quarters(self, concept: str) -> dict[date, Q]:
         if concept not in self._quarters:
             fs = self.facts(concept)
-            q = instants(fs) if CONCEPTS[concept].kind == "instant" else discrete_quarters(fs)
-            if concept == "operating_income":
-                q = {**self._derived_operating_income(), **q}   # a directly tagged quarter always wins
-            self._quarters[concept] = dict(sorted(q.items()))
+            direct = (instants(fs) if CONCEPTS[concept].kind == "instant" else discrete_quarters(fs))
+            self._quarters[concept] = {**self._from_components(concept), **direct}  # a reported value wins
         return self._quarters[concept]
 
-    def _derived_operating_income(self) -> dict[date, Q]:
-        """Operating income for filers that never tag it (most pharma and energy names, Nike, Nucor).
-
-        First choice: revenue minus total costs and expenses. Second: pre-tax income plus interest
-        expense, which is EBIT. Both are approximations of the reported figure, used only where the
-        company has no operating-income line of its own."""
+    def _from_components(self, concept: str) -> dict[date, Q]:
+        """Quarters built by adding a concept's components (SPEC section 1b). Only quarters where EVERY
+        component has a value; the sum is available from the latest of its parts' filing dates."""
+        parts = COMPOSITES.get(concept)
+        if not parts:
+            return {}
+        series = [self.quarters(p) for p in parts]
         out: dict[date, Q] = {}
-        rev, costs = self.quarters("revenue"), discrete_quarters(self.facts("costs_and_expenses"))
-        for end in sorted(set(rev) & set(costs)):
-            r, c = rev[end], costs[end]
-            out[end] = Q(end, r.value - c.value, r.accessions | c.accessions, max(r.available, c.available))
-        pretax = discrete_quarters(self.facts("pretax_income"))
-        interest = discrete_quarters(self.facts("interest_expense"))
-        never_paid_interest = not self.has("interest_expense")
-        for end, p in sorted(pretax.items()):
-            if end in out:
-                continue
-            if end in interest:
-                i = interest[end]
-                out[end] = Q(end, p.value + i.value, p.accessions | i.accessions, max(p.available, i.available))
-            elif never_paid_interest:
-                out[end] = Q(end, p.value, p.accessions, p.available)
+        for end in set(series[0]).intersection(*series[1:]):
+            qs = [s[end] for s in series]
+            starts = [q.start for q in qs if q.start is not None]
+            out[end] = Q(end, sum(q.value for q in qs), frozenset().union(*(q.accessions for q in qs)),
+                         max(q.available for q in qs), min(starts) if starts else None)
         return out
 
     def events(self) -> list[Event]:

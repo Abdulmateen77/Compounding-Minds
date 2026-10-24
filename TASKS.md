@@ -53,37 +53,20 @@ What the merge found, and what was done. 499 tests pass on the merged branch (4 
 
 Held-out reporting: B's dashboard reads B's `heldout_report.json` (segments `all_companies`, `seen_companies`, `unseen_companies`). Hermes's `quality/` writes a different format with an extra time slice; it feeds `quality.md` and the README results section, not the dashboard.
 
-## 0c. First real data (Sat 24 Oct evening)
+## 1. Where we are now (Sat 24 Oct, ~19:00)
 
-Keys are in `.env` and verified (`python -m store.envcheck --ping`: SEC, FRED, Mubit all answer). B's downloader loaded all 50
-companies in 55 seconds: **95,556 facts, 23,421 filing events, 29,182 macro rows** in the development Postgres.
-
-| Result on real data | Detail |
-|---|---|
-| Metrics engine works on real Apple filings | Plausible numbers (operating margin 25%, FCF margin 23%, ROIC 31%); a quarter that had not been filed by `as_of` is correctly invisible; prompt leak check clean |
-| Usable bundles (of 50 companies), 2018 to 2023 | Risk 47 to 50, Scenarios 47 to 50, Fundamentals 28 (early 2018) rising to 38 to 46 |
-| Fixed because of real data | Operating income fallback, total-debt concept, extra depreciation / dividend / capex / revenue tags, 52-week calendars, a FRED request that was rejected (market series must not ask for vintages), ExxonMobil replaced by Chevron. Details in `metrics/SPEC.md` section 1b |
-| Not fixable from tags | Costco CF 2016 to 2019 and Nvidia FY2019 capex are absent from the SEC data; Disney and Palantir have short histories |
-| Still to do | The going-concern text pass (`python -m ingest load --filing-text`, downloads 10-K and 10-Q text), so `going_concern_hits` is real rather than 0 |
-
-## 1. Where we are now (Sat 24 Oct, ~15:00)
-
-Read from the repo. 74 tests pass. Nothing runs on real data yet: every agent runs on three hand-written stub files.
+Checked against the repo and the local Postgres. 531 tests pass (4 skip). Postgres holds the 50-company universe: 97,591 facts and 23,788 events. `.env` has `USE_STUBS=0` and `USE_FAKE_UPDATER=0`. `MUBIT_BASE_URL` is empty in `.env`.
 
 | Area | State | Owner |
 |---|---|---|
-| `agents/`: runner, specs for Fundamentals, Risk and Scenarios, masking, reflection, Mubit gateway | Built | A |
-| `principles/`: all four investor files | Exist, need a content review | A |
-| `schemas/`: call, grade, correction models | Built | Shared |
-| `store/schema.sql`, `store/queries.py` (date gate, in-memory backend), leakage test, stub metrics | Built. Postgres backend is a TODO | A |
-| `agents/synthesizer.py`, `correction_loop.py`, `cache.py`, `mubit_batch.py`, `offline.py` | Built | B |
-| `grader/`: Brier scoring, `grade()`, Risk going-concern rule (via Sapling) | Built. Fundamentals and Scenarios rules are stubs | B |
-| `video/`: Remotion showcase clip | Built | Shared |
-| `ingest/` | Empty | B |
-| `metrics/`, `tools/` | Empty | A |
-| `eval/` | Empty | A |
-| `dashboard/`, `memos/` | Empty | B |
-| Replay orchestrator (`grader/replay.py`) | Not started | B |
+| `ingest/` | Built and loaded: universe, facts, events (50 companies) | B |
+| `store/`: schema, date gate, Postgres backend, leakage test | Built | A |
+| `metrics/`, `tools/` | Built (engine, quarters, composites, MCP tools) | A |
+| `agents/`, `principles/`, `schemas/` | Built. Citations in `principles/SOURCES.md` still to verify | A / Shared |
+| `grader/` and `grader/replay.py` | Built. Replay has uncommitted work in progress (parallel workers) | B |
+| `eval/`, `quality/`, `dashboard/`, `api/`, `web/` | Built. Run on stub data so far | A / B |
+| **Real held-out result (`heldout.json`, handoff 9)** | **Not produced.** `data/eval_preview/` is stub output marked NOT RESULTS | A / B |
+| **Mubit corrections-to-update path** | **Open.** No public endpoint known (`data/mubit_docs/`); ask at office hours. The labelled fallback updater is the plan B | A |
 
 ---
 
@@ -191,53 +174,53 @@ Moat and Valuation metric sets and agents, cross-examination round, `screener/`,
 ## 4. Person B: ingestion, grading, orchestration and output
 
 ### B1. Ingestion (`ingest/`)
-- [ ] SEC fetcher: User-Agent with name and email, under about 10 requests a second, every raw response cached to disk before parsing
-- [ ] Pull `companyfacts`, `submissions` and filing text for the universe
-- [ ] FRED and ALFRED macro with vintage dates. Prices from Stooq (context only)
-- [ ] Parse into A's schema using A's concept map. `filed_date` on every row. A restatement is a new row, never an overwrite
-- [ ] Event extractor: 8-K item codes, going-concern passages for the risk rule
-- [ ] 5 companies loaded **(handoff 3, Sat 19:00)**, then all 50 **(handoff 6, Sat 23:00)**
-- [ ] Ingest QA report. The whole load must re-run from the raw cache with no network
+- [x] SEC fetcher: User-Agent with name and email, under about 10 requests a second, every raw response cached to disk before parsing
+- [x] Pull `companyfacts`, `submissions` and filing text for the universe
+- [~] FRED and ALFRED macro with vintage dates. Prices from Stooq (context only) (Stooq: code built, no prices downloaded; nothing reads prices)
+- [x] Parse into A's schema using A's concept map. `filed_date` on every row. A restatement is a new row, never an overwrite
+- [x] Event extractor: 8-K item codes, going-concern passages for the risk rule
+- [x] 5 companies loaded **(handoff 3, Sat 19:00)**, then all 50 **(handoff 6, Sat 23:00)**
+- [x] Ingest QA report. The whole load must re-run from the raw cache with no network. `python -m ingest load` writes `qa_report.txt`/`.json`; `--raw-dir` reloads offline
 - [ ] Stretch: 8-K Exhibit 99.1 and FOMC pages through Firecrawl (dated pages only, no numbers); Live today fetch
 
 ### B2. Grading (`grader/`)
 - [x] Brier scoring (binary and multiclass), `grade()`, Risk going-concern check through Sapling with a cache
-- [ ] Risk: auditor change (8-K item 4.01) and dividend-cut (25% or more) checks
-- [ ] Fundamentals rule: FCF margin and operating margin both up in the next reported quarter
-- [ ] Scenarios rule: bucket from actual revenue growth. Thresholds in `grader/config.py`, tuned on the train window only
-- [ ] One fixture per `question_id`, including a restatement case. `unresolvable` is excluded and logged **(handoff 8, Sat 23:00)**
-- [ ] `grader/corrections.py`: pick the misses (cap N per agent per quarter, default 10, highest confidence first) and assign `error_type`
-- [ ] Align the docs with the Sapling exception: [ARCHITECTURE.md](ARCHITECTURE.md), [PROJECT.md](PROJECT.md) and the diagrams still say "no LLM"
-- [ ] Stretch: `grader/calibration.py` track record
+- [x] Risk: auditor change (8-K item 4.01) and dividend-cut (25% or more) checks
+- [x] Fundamentals rule: FCF margin and operating margin both up in the next reported quarter
+- [x] Scenarios rule: bucket from actual revenue growth. Thresholds in `grader/config.py`, tuned on the train window only
+- [x] One fixture per `question_id`, including a restatement case. `unresolvable` is excluded and logged **(handoff 8, Sat 23:00)**
+- [x] `grader/corrections.py`: pick the misses (cap N per agent per quarter, default 10, highest confidence first) and assign `error_type`
+- [x] Align the docs with the Sapling exception: [ARCHITECTURE.md](ARCHITECTURE.md), [PROJECT.md](PROJECT.md) and the diagrams still say "no LLM"
+- [x] Stretch: `grader/calibration.py` track record
 
 ### B3. Orchestration
 - [x] Correction loop CLI and an offline demo that runs without Mubit
-- [ ] `grader/replay.py`: quarter loop 2018Q1 to 2024Q4. Set `as_of`, call A's `run_agent` for every company and agent, store calls, grade only calls whose filing is now visible, make corrections, call `ModelUpdater`, snapshot
-- [ ] `runs` table with train and held-out kinds. Learning from train-window corrections only
-- [ ] Deterministic replay: temperature 0, response cache keyed by prompt hash **and model version** (a Mubit update changes the model, so old cache entries stop matching)
-- [ ] Full replay run offline before the demo, results stored
-- [ ] Rough cost and time estimate for the full run, done before starting it
+- [x] `grader/replay.py`: quarter loop 2018Q1 to 2024Q4. Set `as_of`, call A's `run_agent` for every company and agent, store calls, grade only calls whose filing is now visible, make corrections, call `ModelUpdater`, snapshot
+- [x] `runs` table with train and held-out kinds. Learning from train-window corrections only
+- [x] Deterministic replay: temperature 0, response cache keyed by prompt hash **and model version** (a Mubit update changes the model, so old cache entries stop matching)
+- [~] Full replay run offline before the demo, results stored. Real run `--tag final` into `data/runs_final` in progress (started Sat 19:06, about 90 min, about $7.55 on haiku-5-5: `python -m grader.estimate`)
+- [x] Rough cost and time estimate for the full run, done before starting it
 
 ### B4. Synthesis
 - [x] Synthesizer exists
-- [ ] Weights from each agent's trailing accuracy, computed in Python from `grades`. The LLM only writes the rationale
-- [ ] Calibrated confidence for the committee verdict, graded as a composite of the underlying outcomes
-- [ ] Tests for the weighting
+- [x] Weights from each agent's trailing accuracy, computed in Python from `grades`. The LLM only writes the rationale
+- [x] Calibrated confidence for the committee verdict, graded as a composite of the underlying outcomes
+- [x] Tests for the weighting
 
 ### B5. Final output
-- [ ] Final report per company and quarter: verdict, each agent's reasoning, a metric table rendered by Python with source accessions
-- [ ] Name reveal at render time, only for the demo company
-- [ ] Stretch: memo (`memos/`). The LLM writes prose around `{{metric:name}}` placeholders that Python fills. A number not from the metrics engine is rejected
+- [x] Final report per company and quarter: verdict, each agent's reasoning, a metric table rendered by Python with source accessions. `python -m memos.report --runs data/runs_final --company anon_007 --quarter 2019Q2 [--metrics postgres] [--reveal]`
+- [x] Name reveal at render time, only for the demo company
+- [x] Stretch: memo (`memos/`). The LLM writes prose around `{{metric:name}}` placeholders that Python fills. A number not from the metrics engine is rejected
 
 ### B6. Dashboard (`dashboard/`, Streamlit, reads Postgres only)
-- [ ] Controls: company list (anonymous IDs with sector, plus a search box), quarter slider, Play, Step, speed, Learned vs Frozen toggle
-- [ ] Committee table with evidence drawer
-- [ ] Right or wrong results after Step
-- [ ] Correction spotlight: call, reality, lesson, Mubit update, model version before and after. Labelled "fallback" if the fake updater was used
-- [ ] Accuracy curves, learned vs frozen, COVID window shaded
-- [ ] Run live loop button for one company and quarter
-- [ ] Held-out panel reading A's `eval/out/heldout.json`
-- [ ] Disclaimer footer on every view
+- [x] Controls: company list (anonymous IDs with sector, plus a search box), quarter slider, Play, Step, speed, Learned vs Frozen toggle
+- [x] Committee table with evidence drawer
+- [x] Right or wrong results after Step
+- [x] Correction spotlight: call, reality, lesson, Mubit update, model version before and after. Labelled "fallback" if the fake updater was used
+- [x] Accuracy curves, learned vs frozen, COVID window shaded
+- [x] Run live loop button for one company and quarter
+- [x] Held-out panel reading `eval/reports/heldout_report.json` (B's, written by `python -m eval.run --live`)
+- [x] Disclaimer footer on every view
 - [ ] Stretch: Live today tab, watchlist, memo view, track record. See [user-journey.html](user-journey.html)
 
 ---
