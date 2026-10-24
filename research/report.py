@@ -15,6 +15,8 @@ from typing import Callable
 from metrics import fundamentals, risk, scenarios
 from metrics.context import Context, Result, combine
 
+from .analysis import analyse
+
 HISTORY_POINTS = 7          # year-spaced points, six years: the oldest only feeds the first growth figure
 
 
@@ -236,7 +238,7 @@ def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, sha
     ]
     all_figs = [f for s in sections for f in s["figures"]]
     toned = [f for f in all_figs if f["tone"]]
-    return {
+    out = {
         "supported": True, "company": profile, "as_of": as_of.isoformat(),
         "data_through": ends[-1].isoformat(), "points": [e.isoformat() for e in ends],
         "scorecard": [f for f in all_figs if f["key"] in ("revenue_growth", "operating_margin", "fcf_margin", "debt_to_ebitda", "roic", "current_ratio")],
@@ -245,6 +247,8 @@ def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, sha
         "plans": None if plans is None else plans.as_dict(), "notes": notes,
         "missing": [f["label"] for f in all_figs if f["value"] is None],
     }
+    out["analysis"] = analyse(out)
+    return out
 
 
 def _roic(ctx: Context, b: Base) -> Result | None:

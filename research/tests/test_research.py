@@ -163,3 +163,9 @@ def test_market_value_and_multiples_use_the_figures_in_the_report():
 def test_report_is_json_serialisable():
     F.install(F.build_facts())
     json.dumps(build_report("anon_001", AFTER, PROFILE))
+
+
+def test_sec_capital_names_are_made_readable_but_acronyms_survive():
+    assert resolve.pretty_name("COCA COLA CO") == "Coca Cola Co"
+    assert resolve.pretty_name("IBM CORP", "IBM") == "IBM Corp" and resolve.pretty_name("AMD INC", "AMD") == "AMD Inc"
+    assert resolve.pretty_name("Tesla, Inc.") == "Tesla, Inc."

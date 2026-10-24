@@ -33,13 +33,27 @@ def _norm(s: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", s).strip()
 
 
+def pretty_name(name: str, ticker: str = "") -> str:
+    """The SEC lists names in capitals ("COCA COLA CO"). Title-case them; short consonant-only words stay as written
+    (HP) and a word that is the ticker (IBM, AMD) stay as written."""
+    name = name.strip()
+    if not name.isupper():
+        return name
+    words = []
+    for w in name.split():
+        core = re.sub(r"[^A-Za-z]", "", w)
+        keep = core and (core == ticker.upper() or (not re.search(r"[AEIOUY]", core) and len(core) <= 4))
+        words.append(w if keep else w.capitalize())
+    return " ".join(words)
+
+
 def load_listings(sec: SecClient) -> list[Candidate]:
     raw = sec.get_json(EXCHANGE_URL)
     fields = raw["fields"]
     out = []
     for row in raw["data"]:
         d = dict(zip(fields, row))
-        out.append(Candidate(int(d["cik"]), str(d["name"]).strip(), str(d["ticker"]).upper(), d.get("exchange")))
+        out.append(Candidate(int(d["cik"]), pretty_name(str(d["name"]), str(d["ticker"])), str(d["ticker"]).upper(), d.get("exchange")))
     return out
 
 

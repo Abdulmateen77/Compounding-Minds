@@ -24,8 +24,19 @@ export type Report = {
   scorecard?: Figure[]; tally?: { good: number; watch: number; warn: number };
   sections?: Section[]; risk_flags?: Flag[];
   economy?: { key: string; label: string; meaning: string; unit: string; value: number }[];
-  market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[];
+  market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[]; analysis?: Analysis;
 };
+export type Check = { id: string; principle: string; source: string; check: string; result: "pass" | "partial" | "fail" | "unknown"; shown: string };
+export type Lens = { key: string; name: string; question: string; fit: number | null; word: string; checks: Check[] };
+export type Scenario = { name: string; start_growth: number; value_per_share: number | null; fcf_path: number[]; revenue_path: number[] | null };
+export type Valuation = {
+  available: boolean; reason?: string; normalised_fcf?: number; discount_rate?: number; long_run_growth?: number; years?: number;
+  scenarios?: Scenario[]; sensitivity?: { rate: number; values: (number | null)[] }[]; price?: number; implied_growth?: number | null;
+  price_vs_base?: number | null; position?: string; position_text?: string;
+};
+export type Future = { scenarios: { name: string; start_growth: number; value_per_share: number | null; revenue: Record<string, number | null>; fcf: Record<string, number | null> }[] };
+export type Overall = { key: string; tone: "good" | "watch" | "warn"; headline: string; why: string };
+export type Analysis = { valuation: Valuation; lenses: Lens[]; overall: Overall; future: Future | null };
 export type Candidate = { cik: number; name: string; ticker: string; exchange: string | null; market: string };
 export type SearchResult = { query: string; results: Candidate[]; message: string | null };
 
