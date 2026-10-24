@@ -83,6 +83,9 @@ class ResearchService:
             shares = None
         report = build_report(c.company_id, today, profile, quote=quote, shares=shares, plans=plans)
         report["news"] = news
+        report["latest_filing"] = c.latest_filing
+        report["facts_through"] = c.facts_through
+        report["checked_at"] = time.strftime("%Y-%m-%d")
         if gw is not None and report.get("supported"):
             figs = [str(round(f["value"] * 100, 1)) for sec in report["sections"] for f in sec["figures"] if f["value"] is not None and f["unit"] == "pct"]
             narrative.attach(gw, report["analysis"], profile["name"], figs, [l["text"] for l in (news or {}).get("lines", [])])
