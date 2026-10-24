@@ -3,7 +3,7 @@
 A team of AI analysts that grades itself against reality and compounds from every mistake.
 
 Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026). Code freeze **Sun 25 Oct 10:00**.
-Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITECTURE.md) (agent pattern and flow), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
+Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITECTURE.md) (agent pattern and flow), [system-map.html](system-map.html) (layered system architecture diagram), [architecture.html](architecture.html) (one quarter in time order, data pipeline, agent anatomy, learning loop), [user-journey.html](user-journey.html) (user inputs, outputs and dashboard screens) and [DATA_ARCHITECTURE.md](DATA_ARCHITECTURE.md) (same flow as Mermaid), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
 
 ---
 
