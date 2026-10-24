@@ -1,15 +1,16 @@
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { api, pct, type Correction, type TrackRecord } from "../api/client";
 import { ErrorBox, Skeleton, StubChip } from "../components/bits";
 import { go, mubitHref } from "../route";
 
-const AGENTS = ["fundamentals", "valuation", "risk", "scenarios"] as const;
+const AGENTS = ["fundamentals", "risk", "scenarios"] as const; // the MVP committee; Valuation is a stretch agent
 const ROLE: Record<string, string> = { fundamentals: "Fundamentals", valuation: "Valuation", risk: "Risk", scenarios: "Scenarios" };
 const last = (x: number[]) => (x.length ? x[x.length - 1] : null);
 const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : null);
 
 export default function Mubit({ agent }: { agent?: string }) {
+  const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const qs = useQueries({ queries: AGENTS.map((a) => ({ queryKey: ["track", a], queryFn: () => api.trackRecord(a) })) });
   const loading = qs.some((q) => q.isLoading);
   const data = qs.map((q) => q.data).filter((d): d is TrackRecord => !!d);
@@ -29,7 +30,7 @@ export default function Mubit({ agent }: { agent?: string }) {
       <div>
         <div className="flex items-center gap-3 flex-wrap">
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">Mubit: how the analysts learn</h1>
-          <StubChip />
+          {health.data?.stub !== false && <StubChip />}
         </div>
         <p className="mute mt-2 mb-0 max-w-2xl">Every wrong call becomes a correction, and Mubit turns corrections into a new model version. Each analyst here is compared with a frozen twin that never updates.{asOf && <> Figures run to <span className="num">{asOf}</span>.</>}</p>
       </div>
