@@ -409,13 +409,15 @@ flowchart TB
 
 | Diagram section | Owner |
 |---|---|
-| 2. Ingest, store, gate | A |
-| 3. Orchestrator and replay | A (agent dispatch shared with B) |
-| 4-5. Agents, principles, adapters | B |
-| 6. Grader and correction selection | A |
-| 6. Reflection prompt, ModelUpdater, Mubit | B |
-| 7. Dashboard | A |
-| Held-out eval and baselines | B |
+| 2. Ingest (fetch, cache, parse) | B |
+| 2. Schema, concept map, store gate | A |
+| 3. Orchestrator and replay | B |
+| 4-5. Agents, principles, adapters | A |
+| 6. Grader and correction selection | B |
+| 6. Reflection prompt wording, Mubit client | A |
+| 6. ModelUpdater calls, correction loop | B |
+| 7. Dashboard | B |
+| Held-out eval and baselines | A |
 
 See [TASKS.md](TASKS.md) for the hour-by-hour split.
 

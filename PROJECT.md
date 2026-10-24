@@ -161,15 +161,15 @@ Rules: SEC `User-Agent` with name and email, under about 10 requests per second,
 
 | Directory | Contents | Owner |
 |---|---|---|
-| `ingest/` | SEC, FRED, price fetchers, `universe.json`, raw cache | A |
+| `ingest/` | SEC, FRED, price fetchers, raw cache, parsers (`universe.json` is A's) | B |
 | `store/` | `schema.sql`, `queries.py` (point-in-time gate), stubs, tests | A |
 | `metrics/` | One module per agent's metric set | A |
 | `tools/` | MCP servers | A |
-| `grader/` | `rules.py`, `grade.py`, `corrections.py`, `replay.py`, `calibration.py` | A |
-| `dashboard/` | Streamlit app | A |
-| `agents/` | Runner, adapters, one module per agent, synthesizer | B |
-| `principles/` | `buffett.md`, `graham.md`, `munger.md`, `dalio.md` | B |
-| `eval/` | Held-out split, baselines, report generation | B |
+| `grader/` | `rules.py`, `grade.py`, `corrections.py`, `replay.py`, `calibration.py` | B |
+| `dashboard/` | Streamlit app | B |
+| `agents/` | Runner, adapters, one module per agent (A). `synthesizer.py`, `correction_loop.py`, `cache.py`, `mubit_batch.py`, `offline.py` (B) | A and B |
+| `principles/` | `buffett.md`, `graham.md`, `munger.md`, `dalio.md` | A |
+| `eval/` | Held-out split, frozen twins, baselines, report generation | A |
 | `memos/` (stretch) | Memo assembly, placeholder renderer, number check | B |
 | `screener/` (stretch) | Watchlist flags and ranking | A |
 | `schemas/` | Shared Pydantic models | Shared |
