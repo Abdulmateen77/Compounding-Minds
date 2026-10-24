@@ -144,3 +144,27 @@ def test_bad_reply_raises_and_is_not_cached(tmp_path):
     with pytest.raises(SaplingError):
         client.verify("p", "e", "c")
     assert list(tmp_path.iterdir()) == []
+
+
+def test_loader_reads_text_ref_as_ingest_stores_it(tmp_path, monkeypatch):
+    """ingest stores text_ref as <cik>/<accession>/<doc>.htm under the raw SEC cache; data/filings/ never
+    existed, so before this every going-concern check came back unresolvable."""
+    monkeypatch.setenv("RAW_CACHE_DIR", str(tmp_path))
+    doc = tmp_path / "sec" / "www.sec.gov" / "Archives" / "edgar" / "data" / "40545" / "000004054518000032"
+    doc.mkdir(parents=True)
+    (doc / "ge10q.htm").write_text(f"<html><body><p>{CLEAN}</p></body></html>")
+    text = risk.file_text_loader()(queries.Event(**ev("10-Q", date(2019, 8, 1), "q1",
+                                                      text_ref="40545/000004054518000032/ge10q.htm")))
+    assert text is not None and "<" not in text and "well funded" in text
+
+
+def test_sapling_down_marks_that_filing_unresolvable_without_crashing(tmp_path, texts):
+    class Down(SaplingClient):
+        def verify(self, *a):
+            raise SaplingError("Sapling request failed: timed out")
+    queries.set_backend(InMemoryBackend(events=[ev("10-K", date(2020, 2, 20), "k1", text_ref="gc")]))
+    outcome, info = resolve_distress(make_call(), sapling=Down(cache_dir=tmp_path),
+                                     load_text=lambda e: texts.get(e.text_ref))
+    queries.set_backend(InMemoryBackend())
+    assert outcome == "unresolvable"
+    assert "Sapling unavailable" in info["components"]["going_concern"]["filings"][0]["reason"]

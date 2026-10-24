@@ -120,6 +120,16 @@ def track_record(agent: str, as_of: str | None = Query(None), s: Service = Depen
         raise HTTPException(422, "as_of must be YYYY-MM-DD")
 
 
+@app.get("/api/heldout")
+def heldout():
+    """The held-out report (eval/reports/heldout_report.json, else the stub preview with its banner), as written."""
+    from dashboard.data import ROOT, find_heldout_report
+    path, report, why = find_heldout_report()
+    if report is None:
+        raise HTTPException(404, f"no held-out report yet ({why})")
+    return {"path": str(path.relative_to(ROOT)), "report": report}
+
+
 # Built front end (npm run build in web/). Absent in dev, where Vite serves the UI and proxies /api.
 if DIST.is_dir():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
