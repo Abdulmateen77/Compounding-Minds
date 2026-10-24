@@ -3,8 +3,7 @@
 The call is "yes" if, in the 12 months after as_of, any of these happen:
   * auditor change: an 8-K with item 4.01                       -> pure Python
   * going-concern language in a 10-K / 10-Q                     -> keyword filter + Sapling
-  * dividend cut of at least 25%                                -> NOT here yet: pass it in
-                                                                   `extra_checks` (owner A)
+  * dividend cut of at least 25%                                -> pure Python on store facts
 
 Why Sapling for going concern: "going concern" and "substantial doubt" appear in plenty of
 healthy filings (risk factors, accounting policy notes, "no substantial doubt exists"), so a
@@ -25,8 +24,9 @@ from typing import Callable
 from schemas import AgentCall, Event
 from store import queries
 
-from .config import (GOING_CONCERN_KEYWORDS, GOING_CONCERN_MAX_EVIDENCE_CHARS,
+from .config import (DIVIDEND_CUT_THRESHOLD, GOING_CONCERN_KEYWORDS, GOING_CONCERN_MAX_EVIDENCE_CHARS,
                      GOING_CONCERN_SNIPPET_CHARS, RISK_TEXT_FORMS, SAPLING_MIN_PROB_WHEN_UNSURE)
+from .facts import Quarter, discrete_quarters, ttm
 from .sapling import LABELS, SaplingClient, Verdict
 
 QUESTION_ID = "distress_event_12m"
@@ -105,6 +105,49 @@ def check_auditor_change(events: list[Event]) -> tuple[str, dict]:
     return "no", {}
 
 
+DIVIDEND_CONCEPTS = ("dividends_paid", "dividends_per_share")  # cash paid first, per-share as cross-check
+
+
+def check_dividend_cut(company_id: str, as_of: date, end: date) -> tuple[str, dict]:
+    """yes if TTM dividends fell >= DIVIDEND_CUT_THRESHOLD year over year at any quarter whose
+    figures were filed in (as_of, end]. Visibility: facts are read at `end` through the store
+    gate; a derived quarter counts from the later filing date of its inputs (Q4 = 10-K date).
+
+    non-payer (no positive dividends before the window)   -> no
+    payer but no comparable year-over-year pair in window -> unresolvable (data not filed yet,
+        or the payer stopped and XBRL simply omits the fact: we do not guess either way)
+    """
+    pairs_seen = False
+    for concept in DIVIDEND_CONCEPTS:
+        qs = discrete_quarters(queries.get_facts(company_id, concept, end))
+        if not qs:
+            continue
+        for q in qs:
+            if not (as_of < q.visible <= end):
+                continue
+            now, then = ttm(qs, q.period_end), _year_before(qs, q)
+            if now is None or then is None or then.value <= 0:
+                continue
+            pairs_seen = True
+            if now.value <= (1 - DIVIDEND_CUT_THRESHOLD) * then.value:
+                return "yes", {"concept": concept, "quarter": str(q.period_end), "ttm_now": now.value,
+                               "ttm_year_before": then.value, "change": now.value / then.value - 1,
+                               "accessions": sorted(set(now.accessions) | set(then.accessions)),
+                               "filed": str(q.visible)}
+        if pairs_seen:
+            return "no", {"concept": concept}
+    paid_before = any(q.value > 0 for c in DIVIDEND_CONCEPTS
+                      for q in discrete_quarters(queries.get_facts(company_id, c, as_of)))
+    if paid_before:
+        return "unresolvable", {"reason": "dividend payer but no comparable year-over-year pair filed in the window"}
+    return "no", {"reason": "no dividends paid before the window"}
+
+
+def _year_before(qs: list[Quarter], q: Quarter) -> Quarter | None:
+    prior = [x for x in qs if 350 <= (q.period_end - x.period_end).days <= 380]
+    return ttm(qs, prior[0].period_end) if prior else None
+
+
 def check_going_concern(events: list[Event], sapling: SaplingClient,
                         load_text: TextLoader) -> tuple[str, dict]:
     filings = [e for e in events if e.form in RISK_TEXT_FORMS]
@@ -131,6 +174,10 @@ def check_going_concern(events: list[Event], sapling: SaplingClient,
     return ("unresolvable" if unresolved else "no"), {"filings": per_filing}
 
 
+_METRIC = {"auditor_change": "auditor_changes_5y", "going_concern": "going_concern_hits",
+           "dividend_cut": "dividend_cut_history_5y"}
+
+
 def resolve_distress(call: AgentCall, sapling: SaplingClient | None = None,
                      load_text: TextLoader | None = None,
                      extra_checks: dict[str, Check] | None = None) -> tuple[str, dict]:
@@ -145,6 +192,7 @@ def resolve_distress(call: AgentCall, sapling: SaplingClient | None = None,
     if components["auditor_change"][0] != "yes":  # skip Sapling when the answer is already yes
         components["going_concern"] = check_going_concern(events, sapling or SaplingClient(),
                                                           load_text or file_text_loader())
+    components["dividend_cut"] = check_dividend_cut(call.company_id, call.as_of, end)
     for name, fn in (extra_checks or {}).items():
         components[name] = fn(call, end)
 
@@ -153,5 +201,6 @@ def resolve_distress(call: AgentCall, sapling: SaplingClient | None = None,
     info = {"rule": QUESTION_ID, "resolution_date": str(end),
             "window": [str(call.as_of + timedelta(days=1)), str(end)],
             "components": {k: {"result": r, **d} for k, (r, d) in components.items()},
-            "unchecked": [] if "dividend_cut" in components else ["dividend_cut"]}
+            "decisive_metrics": [_METRIC[k] for k, (r, _) in components.items() if r == "yes"]
+            or list(_METRIC.values())}
     return outcome, info

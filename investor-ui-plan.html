@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Investor UI Plan</title>
+<style>
+:root{--bg:#0b0f17;--panel:#121826;--line:#243049;--text:#e6ebf5;--mute:#8d99b3;--blue:#3b82f6;--green:#22c55e;--amber:#f59e0b;--red:#ef4444;--purple:#a855f7}
+@media (prefers-color-scheme:light){:root{--bg:#f6f7fb;--panel:#fff;--line:#d9deea;--text:#141a28;--mute:#5d6882}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif}
+.wrap{max-width:1040px;margin:0 auto;padding:32px 16px 64px}
+h1{font-size:28px;margin:0 0 4px}
+h2{font-size:13px;letter-spacing:.09em;text-transform:uppercase;color:var(--mute);margin:44px 0 14px}
+.sub{color:var(--mute);margin:0 0 8px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,1fr)}.g3{grid-template-columns:repeat(3,1fr)}.g5{grid-template-columns:repeat(5,1fr)}
+@media(max-width:760px){.g2,.g3,.g5{grid-template-columns:1fr}}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--mute)}
+.tag.b{color:var(--blue);border-color:var(--blue)}.tag.g{color:var(--green);border-color:var(--green)}.tag.a{color:var(--amber);border-color:var(--amber)}.tag.p{color:var(--purple);border-color:var(--purple)}
+.arch{display:grid;grid-template-columns:1fr 36px 1fr 36px 1fr;align-items:stretch;gap:0}
+.arch .arrow{display:flex;align-items:center;justify-content:center;color:var(--mute);font-size:20px}
+@media(max-width:760px){.arch{grid-template-columns:1fr}.arch .arrow{transform:rotate(90deg);height:28px}}
+.card h3{margin:0 0 6px;font-size:15px}
+.card ul{margin:6px 0 0;padding-left:18px;color:var(--mute);font-size:13.5px}
+.card p{margin:4px 0 0;color:var(--mute);font-size:13.5px}
+.flow{display:flex;gap:8px;flex-wrap:wrap}
+.step{flex:1 1 140px;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel);position:relative}
+.step b{display:block;font-size:12px;color:var(--blue);margin-bottom:2px}
+.step span{font-size:13px;color:var(--mute)}
+.verdict{display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.ring{width:84px;height:84px;border-radius:50%;background:conic-gradient(var(--green) 0 74%,var(--line) 74% 100%);display:grid;place-items:center}
+.ring i{width:62px;height:62px;border-radius:50%;background:var(--panel);display:grid;place-items:center;font-style:normal;font-weight:700}
+.bar{display:flex;height:12px;border-radius:99px;overflow:hidden;width:100%;max-width:340px}
+.bar span:nth-child(1){background:var(--green);flex:3}.bar span:nth-child(2){background:var(--amber);flex:1}.bar span:nth-child(3){background:var(--red);flex:1}
+.mock{border:1px dashed var(--line);border-radius:12px;padding:14px;background:var(--bg)}
+.timeline{display:grid;gap:8px}
+.row{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel)}
+.row .n{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;background:var(--blue);color:#fff;font-weight:700;font-size:13px}
+.row.cut .n{background:var(--line);color:var(--mute)}
+.row small{color:var(--mute);display:block}
+.ask td,.ask th{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);font-size:13.5px;vertical-align:top}
+.ask table{width:100%;border-collapse:collapse}
+.ask th{color:var(--mute);font-weight:600;font-size:12px}
+.foot{margin-top:40px;color:var(--mute);font-size:12.5px;border-top:1px solid var(--line);padding-top:14px}
+code{background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:0 5px;font-size:12.5px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <span class="tag b">Person B &rarr; Person A</span> <span class="tag a">Freeze Sun 25 Oct 10:00</span>
+  <h1>Investor UI: React on FastAPI</h1>
+  <p class="sub">Pick a company, watch the committee work, get an evidence-based verdict. New dirs <code>api/</code> and <code>web/</code> only. No existing file is edited.</p>
+
+  <h2>1. How it fits together</h2>
+  <div class="arch">
+    <div class="card"><span class="tag p">New</span><h3>web/ &middot; React</h3>
+      <ul><li>Vite, TypeScript, Tailwind</li><li>Framer Motion, Recharts</li><li>Types generated from OpenAPI</li></ul></div>
+    <div class="arrow">&harr;</div>
+    <div class="card"><span class="tag p">New</span><h3>api/ &middot; FastAPI</h3>
+      <ul><li>REST + SSE event stream</li><li>Assembles one <code>Assessment</code> JSON</li><li>Demo mode replays stored runs</li></ul></div>
+    <div class="arrow">&larr;</div>
+    <div class="card"><span class="tag g">Existing</span><h3>Our engine</h3>
+      <ul><li><code>store/queries.py</code> (A)</li><li><code>agents/</code> runner, cross_exam, synthesizer</li><li><code>dashboard/data.py</code>, <code>data/runs</code></li></ul></div>
+  </div>
+  <p class="sub" style="margin-top:10px">Streamlit stays as the judge-facing replay/eval view. This is the investor-facing one.</p>
+
+  <h2>2. What the investor sees</h2>
+  <div class="flow">
+    <div class="step"><b>1 &middot; Select</b><span>Search a company, pick as-of date</span></div>
+    <div class="step"><b>2 &middot; Ingest</b><span>Filings and metrics stage ticks through</span></div>
+    <div class="step"><b>3 &middot; Committee</b><span>Buffett, Graham, Munger, Dalio each make a call</span></div>
+    <div class="step"><b>4 &middot; Cross-exam</b><span>Agents revise confidence after seeing peers</span></div>
+    <div class="step"><b>5 &middot; Verdict</b><span>Label, confidence, evidence, risks</span></div>
+  </div>
+
+  <h2>3. Verdict screen (sketch)</h2>
+  <div class="mock grid g2">
+    <div class="card">
+      <div class="verdict">
+        <div class="ring"><i>74%</i></div>
+        <div>
+          <span class="tag g">Investable on evidence</span>
+          <div style="font-size:13px;color:var(--mute);margin:6px 0">Committee: 3 for &middot; 1 neutral &middot; 1 against</div>
+          <div class="bar"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <p style="margin-top:10px">Labels: <b>Investable</b> / <b>Watch</b> / <b>Not investable</b> on evidence. Not a buy/sell call.</p>
+    </div>
+    <div class="grid" style="gap:8px">
+      <div class="card"><h3>Buffett &middot; Fundamentals</h3><p>FCF and margins improve next quarter: yes (0.71). Evidence chips link to filing accessions.</p></div>
+      <div class="card"><h3>Munger &middot; Risk</h3><p>Distress flags in 12 months: low. Dissent shown if the committee splits.</p></div>
+      <div class="card"><h3>Mubit &middot; what it learned</h3><p>Call &rarr; outcome &rarr; lesson &rarr; model version v3 &rarr; v4, per agent.</p></div>
+    </div>
+  </div>
+
+  <h2>4. API contract</h2>
+  <div class="grid g3">
+    <div class="card"><h3><code>GET /companies</code></h3><p>Universe from <code>universe.json</code>, names mapped at render time only.</p></div>
+    <div class="card"><h3><code>POST /assessments</code></h3><p>Start a run or replay. Streams stages and agent calls over SSE.</p></div>
+    <div class="card"><h3><code>GET /assessments/{id}</code></h3><p>Final JSON: committee, evidence, metrics, risks, scenarios, Mubit.</p></div>
+    <div class="card"><h3><code>GET /agents/{a}/track-record</code></h3><p>Accuracy, Brier, model version, latest correction.</p></div>
+    <div class="card"><h3><code>GET /health</code></h3><p>Data source in use and the stub/NOT RESULTS flag.</p></div>
+    <div class="card"><h3>Rules kept</h3><p>No LLM numbers, point-in-time, no live calls in demo, anonymized prompts, disclaimer on every screen.</p></div>
+  </div>
+
+  <h2>5. Build order</h2>
+  <div class="timeline">
+    <div class="row"><span class="n">1</span><div>API skeleton, <code>/companies</code>, <code>/health</code><small>uvicorn serves the stub universe</small></div><span class="tag g">must</span></div>
+    <div class="row"><span class="n">2</span><div>Replay engine + <code>Assessment</code> assembler<small>one company streams end to end</small></div><span class="tag g">must</span></div>
+    <div class="row"><span class="n">3</span><div>Web scaffold, Select and Run screens<small>click a company, watch stages tick</small></div><span class="tag g">must</span></div>
+    <div class="row"><span class="n">4</span><div>Verdict screen<small>hero, committee cards, evidence chips</small></div><span class="tag g">must</span></div>
+    <div class="row"><span class="n">5</span><div>Mubit panel + track-record endpoint<small>correction story per agent</small></div><span class="tag g">must</span></div>
+    <div class="row cut"><span class="n">6</span><div>Polish: motion, responsive, empty/error states<small>90-second walkthrough</small></div><span class="tag a">cut first-last</span></div>
+    <div class="row cut"><span class="n">7</span><div>Demo hardening: one-command offline start, backup recording<small>FastAPI serves the static build</small></div><span class="tag a">cut</span></div>
+    <div class="row cut"><span class="n">8</span><div>Live mode behind <code>LIVE=1</code><small>real runner for one cached company</small></div><span class="tag a">stretch</span></div>
+  </div>
+
+  <h2>6. What B needs from A</h2>
+  <div class="card ask">
+    <table>
+      <tr><th>Need</th><th>Why</th><th>When</th></tr>
+      <tr><td><code>ingest/universe.json</code> (about 50 companies, anon IDs, sector, held-out flag)</td><td>Fills the company picker</td><td>Already on the handoff list, Sat 17:00</td></tr>
+      <tr><td>Real <code>get_metrics</code> (and Postgres backend in <code>store/queries.py</code>)</td><td>Metric cards and sparklines on real values</td><td>Sat 21:00</td></tr>
+      <tr><td>Stable <code>AgentCall</code> shape incl. evidence with accessions</td><td>Evidence chips link to filings</td><td>Confirm now</td></tr>
+      <tr><td>Agree: if the UI needs a new read in A's files, B requests it, does not edit it</td><td>Keeps ownership clean</td><td>Confirm now</td></tr>
+    </table>
+  </div>
+
+  <div class="foot">Research tool, not financial advice. Until real runs exist, every screen carries the NOT RESULTS banner. Full plan: INVESTOR_UI_PLAN.md.</div>
+</div>
+</body>
+</html>

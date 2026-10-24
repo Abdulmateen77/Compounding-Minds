@@ -27,7 +27,7 @@ It is a research-support and QA loop for analysts. It is not an autonomous fund,
 2. **Computes** metrics (FCF, margins, leverage, coverage, growth distributions) in Python, each traceable to filings.
 3. **Asks agents** to make fixed-format calls from the metrics and their investor's principles.
 4. **Synthesizes** the calls into a committee verdict with calibrated confidence.
-5. **Grades** each call against later filings (pure Python, no LLM).
+5. **Grades** each call against later filings (Python rules; the only model in the grader is Mubit's Sapling verifier, which judges going-concern text for the Risk check).
 6. **Generates corrections** for wrong calls, with a lesson written by a reflection LLM call.
 7. **Updates** each agent through Mubit.
 8. **Replays** 2018 to 2024 quarter by quarter, showing accuracy climbing, the 2020 crash, and recovery.
@@ -209,7 +209,7 @@ Python computes all numbers. Each metric returns `{name, value, unit, as_of, inp
 | Moat | Gross margin level and std-dev, R&D and SG&A intensity |
 
 ### 6.4 Reality grader
-Pure Python, no LLM. Resolves each `question_id` using rules in `grader/rules.py` against filings with `filed_date` after `as_of`. Computes Brier score (binary and multiclass). Logs `unresolvable` cases and excludes them from accuracy.
+Python rules, with one exception: the Risk going-concern check sends keyword passages to Mubit's Sapling verifier (cached in `data/sapling_cache/`, replayed offline). Auditor change (8-K 4.01), dividend cut (>=25% fall in TTM dividends) and every other question are pure Python. Resolves each `question_id` using rules in `grader/rules.py` against filings with `filed_date` after `as_of`. Computes Brier score (binary and multiclass). Logs `unresolvable` cases (filing not yet visible, missing concept) and excludes them from accuracy. Restated facts are graded on the value known on the resolution date. Every grade carries a `resolution_date`.
 
 ### 6.5 Correction loop
 For each wrong call, emit a `Correction` with error type (`overconfident`, `missed_regime`, `wrong_signal`, `ignored_metric`) and a lesson from a reflection LLM call through Mubit. Cap at N corrections per agent per quarter (default 10), prioritised by confidence of the wrong call. `ModelUpdater.submit_corrections` sends them to Mubit, and the new model version is stamped into later calls.

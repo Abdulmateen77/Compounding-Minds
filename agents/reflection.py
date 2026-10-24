@@ -72,7 +72,7 @@ def build_reflection_messages(item: GradedCall) -> list[dict]:
         f"{REFLECTION_TAG}\nYou review mistakes made by the {spec.agent} analyst, which follows "
         f"{spec.investor.title()}'s principles. Diagnose why the call was wrong using only the inputs "
         f"the analyst had, then write one reusable rule that would have prevented it.\n\n"
-        f"PRINCIPLES\n{load_principles(spec.investor)}\n\n{REFLECTION_SHAPE}"
+        f"PRINCIPLES\n{load_principles(spec.principles_file)}\n\n{REFLECTION_SHAPE}"
     )
     # No company id and no as_of date: the lesson must generalise, not memorise.
     user = (
@@ -132,7 +132,7 @@ def reflect(item: GradedCall, gateway: LLMGateway) -> Correction | None:
     """One reflection call, one repair retry, then drop and log (same policy as the runner)."""
     if item.grade.correct is not False:
         return None
-    known = principle_ids(SPECS[item.call.agent].investor)
+    known = principle_ids(SPECS[item.call.agent].principles_file)
     messages = build_reflection_messages(item)
     session = f"reflection:{item.call.call_id}"
     raw = gateway.complete(item.call.agent, messages, purpose="reflection", session_id=session)

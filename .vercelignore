@@ -1,0 +1,13 @@
+# Deploy with the CLI (`vercel --prod`); the CLI reads this instead of .gitignore, so data/runs ships.
+.git
+.venv
+.env
+**/__pycache__
+.pytest_cache
+node_modules
+web/node_modules
+web/dist
+video
+data/llm_cache
+data/mubit_docs
+agents/memory

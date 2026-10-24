@@ -18,6 +18,7 @@ from grader.grade import stub_outcome
 from schemas import AgentCall
 from store.stubs import get_metrics_stub
 
+from .cross_exam import CROSS_TAG
 from .reflection import REFLECTION_TAG
 from .specs import SPECS
 from .synthesizer import SYNTH_TAG
@@ -39,12 +40,10 @@ def _analyst(agent: str, messages: list[dict]) -> str:
         return _risk(m, spec)
     if agent == "scenarios":
         return _scenarios(m, spec)
-    if agent != "fundamentals":  # minimal generic answer for stretch agents
-        name, value = next(iter(m.items()))
-        return json.dumps({
-            "claim": {"type": spec.claim_type, "question_id": spec.question_id, "answer": spec.answers[0], "probability": 0.55},
-            "confidence": 0.55, "reasoning": [f"{name} is {value}"],
-            "evidence": [{"metric": name, "value": value}], "principles_used": []})
+    if agent == "valuation":
+        return _valuation(m, spec)
+    if agent == "moat":
+        return _moat(m, spec)
 
     # Naive v0 behaviour: FCF margin rising -> say yes.
     answer, prob = ("yes", 0.8) if m["fcf_margin_qoq_change"] > 0 else ("no", 0.7)
@@ -92,6 +91,26 @@ def _scenarios(m: dict[str, float], spec) -> str:
                    cited, ["dalio.04", "dalio.05"])
 
 
+def _valuation(m: dict[str, float], spec) -> str:
+    gap = m["implied_growth_reverse_dcf"] - m["revenue_cagr_5y"]
+    answer, prob = ("yes", 0.65) if gap > 0.02 else ("no", 0.6)          # graham.04
+    if m["revenue_cagr_dispersion_5y"] > 0.05:
+        prob = 0.55                                                      # graham.06
+    cited = {k: m[k] for k in ("implied_growth_reverse_dcf", "revenue_cagr_5y", "revenue_cagr_dispersion_5y")}
+    return _answer(spec, answer, prob, ["implied_growth_reverse_dcf compared with revenue_cagr_5y"],
+                   cited, ["graham.02", "graham.04", "graham.06"])
+
+
+def _moat(m: dict[str, float], spec) -> str:
+    holds = m["gross_margin_std_4q"] < 0.015 and m["gross_margin_trend_8q"] >= -0.002   # moat.01, moat.03
+    answer, prob = ("yes", 0.7) if holds else ("no", 0.65)
+    if m["gross_margin_std_4q"] > 0.02:
+        prob = 0.55                                                                    # moat.06
+    cited = {k: m[k] for k in ("gross_margin_std_4q", "gross_margin_trend_8q")}
+    return _answer(spec, answer, prob, ["gross_margin_std_4q and gross_margin_trend_8q set the call"],
+                   cited, ["moat.01", "moat.03", "moat.06"])
+
+
 def _synth_rationale(messages: list[dict]) -> str:
     rows = [l[2:] for l in messages[1]["content"].splitlines() if l.startswith("- ")]
     return json.dumps({"reasoning": [r.split(". Reasons:")[0] for r in rows][:5]})
@@ -112,7 +131,41 @@ def _reflection(messages: list[dict]) -> str:
                        "principle_refs": []})
 
 
+_OWN_PROB = re.compile(r"YOUR CALL \(\w+\): (\w+) at (\d+(?:\.\d+)?)")
+
+
+def _cross_exam(messages: list[dict]) -> str:
+    """Stand-in: soften by 0.05 when any peer is confident (> 0.7), else keep the probability."""
+    user = messages[1]["content"]
+    _, prob = _OWN_PROB.search(user).groups()
+    peer_probs = [float(x) for x in re.findall(r" at (\d+(?:\.\d+)?)\. Evidence", user.split("PEER CALLS", 1)[1])]
+    p = float(prob)
+    if any(x > 0.7 for x in peer_probs):
+        return json.dumps({"probability": round(p - 0.05, 2), "challenge": "A confident peer cites different metrics, so soften slightly."})
+    return json.dumps({"probability": p, "challenge": "No peer evidence contradicts mine."})
+
+
+def _memo(messages: list[dict]) -> str:
+    """Stand-in drafter: prose that uses placeholders only, never a digit."""
+    user = messages[1]["content"]
+    agents = re.findall(r"^- (\w+): answered", user, re.M)
+    risk = "{{call:risk.answer}} at {{call:risk.probability}}" if "risk" in agents else "not assessed"
+    first = re.search(r"\{\{(metric:[a-z_]+\.[a-z0-9_]+)\}\}", user)
+    return json.dumps({
+        "summary": "The committee view is {{verdict}} with {{verdict.confidence}} confidence, built from "
+                   + ", ".join(agents) + " analysts.",
+        "views": "The analysts are listed above with the metrics each one cited.",
+        "risks": f"The risk analyst answered {risk} on a distress event within twelve months.",
+        "change": ("A move in {{" + first.group(1) + "}} would change the view." if first
+                   else "New filings would change the view."),
+    })
+
+
 def scripted_llm(agent: str, messages: list[dict]) -> str:
+    if messages[0]["content"].startswith("ANALYST MEMO DRAFTER"):
+        return _memo(messages)
+    if messages[0]["content"].startswith(CROSS_TAG):
+        return _cross_exam(messages)
     if messages[0]["content"].startswith(REFLECTION_TAG):
         return _reflection(messages)
     if messages[0]["content"].startswith(SYNTH_TAG):

@@ -7,7 +7,7 @@ Wrap any gateway:   gw = CachingGateway(MubitGateway())
 * replay_only=True -> a miss raises CacheMiss: the demo can prove it makes no live calls
 * refresh=True     -> ignore saved replies and call live again (overwrites them)
 
-The key covers the model, the agent, the messages and any option that changes the reply
+The key covers the model, the model version (if a version_fn is given), the agent, the messages and any option that changes the reply
 (max_tokens, ...). It ignores `session_id` and `purpose`, which are only labels for Mubit.
 A cached reply keeps the Mubit request id of the call that produced it, so lessons stay
 traceable in Mubit's console. Failed calls are never cached.
@@ -19,6 +19,7 @@ import json
 import os
 import time
 from pathlib import Path
+from typing import Callable
 
 from .gateway import LLMGateway
 
@@ -32,7 +33,11 @@ class CacheMiss(RuntimeError):
 
 class CachingGateway(LLMGateway):
     def __init__(self, inner: LLMGateway, cache_dir: Path | str | None = None,
-                 replay_only: bool = False, refresh: bool = False):
+                 replay_only: bool = False, refresh: bool = False,
+                 version_fn: Callable[[str], str] | None = None):
+        # version_fn(agent) -> the agent's current model version (e.g. updater.get_model_version).
+        # It is part of the key, so a model update makes every older entry stop matching.
+        self.version_fn = version_fn
         self.inner = inner
         self.dir = Path(cache_dir) if cache_dir else DEFAULT_CACHE_DIR
         self.dir.mkdir(parents=True, exist_ok=True)
@@ -53,6 +58,8 @@ class CachingGateway(LLMGateway):
     def key_for(self, agent: str, messages: list[dict], **kw) -> str:
         payload = {"v": 1, "model": self.model, "agent": agent, "messages": messages,
                    "params": {k: v for k, v in sorted(kw.items()) if k not in _LABEL_ONLY}}
+        if self.version_fn is not None:  # absent unless used, so existing keys stay valid
+            payload["model_version"] = self.version_fn(agent)
         blob = json.dumps(payload, sort_keys=True, ensure_ascii=False, default=str)
         return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
