@@ -4,7 +4,8 @@ The dashboard never calls live APIs (CLAUDE.md rule 5). It reads the tables the 
 eval write (agents/run_store.py) from one of two places with the same row shapes:
 
     postgres            DATABASE_URL, tables from store/schema.sql + schemas/run_extras.sql
-    <directory>         offline JSONL tables, e.g. data/runs from `python -m eval.run --save data/runs`
+    <directory>         offline JSONL tables, e.g. data/runs from `python -m eval.run --save data/runs`,
+                        or data/runs_final from `python -m grader.replay` (readable while it still runs)
 
 Everything here is plain pandas so it can be tested without Streamlit.
 """
@@ -14,7 +15,7 @@ import json
 import os
 import re
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
@@ -25,6 +26,7 @@ from schemas import AgentCall, Grade
 
 ROOT = Path(__file__).resolve().parent.parent
 DEFAULT_JSONL_DIR = ROOT / "data" / "runs"
+UNIVERSE_FILE = ROOT / "ingest" / "universe.json"
 
 AGENTS = ("fundamentals", "risk", "scenarios", "valuation", "moat")
 INVESTOR = {"fundamentals": "Buffett", "moat": "Buffett (moat)", "valuation": "Graham",
@@ -63,27 +65,90 @@ class Bundle:
         return self.calls.empty
 
     def provenance(self) -> dict:
-        """The most recent run's provenance block (offline_demo, real_results, metrics, llm)."""
+        """The most recent run's provenance block (offline_demo, real_results, metrics, llm).
+
+        eval.run writes the block itself. grader.replay runs carry `updater_fallback` instead, so
+        for those it is derived: real only when no fallback updater was used and every learned call
+        went through Mubit. The replay does not record which metrics backend it used.
+        """
         if self.runs.empty:
             return {}
         cfg = self.runs.sort_values("started_at").iloc[-1]["config"] or {}
-        return cfg.get("provenance", {}) or {}
+        if cfg.get("provenance"):
+            return cfg["provenance"]
+        if "updater_fallback" not in cfg:
+            return {}
+        fallback = self.uses_fallback_updater()
+        learned = self.calls.loc[self.calls["arm"] == "learned", "model"].astype(str)
+        mubit = bool(len(learned)) and bool(learned.str.startswith("mubit:").all())
+        return {"real_results": mubit and not fallback, "offline_demo": fallback,
+                "llm": "mubit" if mubit else "scripted", "metrics": "not recorded by replay",
+                "outcome_rule": "stub" if fallback else "grader.rules"}
 
     def uses_fallback_updater(self) -> bool:
         """True when lessons were applied by the FakeModelUpdater, not Mubit (README 10: label it)."""
         refs = self.corrections.get("mubit_ref", pd.Series(dtype=str)).dropna().astype(str)
         models = self.calls.get("model", pd.Series(dtype=str)).astype(str)
-        return bool(refs.str.startswith("fake:").any() or models.str.startswith("fallback/").any())
+        flagged = any(bool((c or {}).get("updater_fallback")) for c in self.runs["config"])
+        return bool(flagged or refs.str.startswith("fake:").any() or models.str.startswith("fallback/").any())
+
+    def held_out_companies(self) -> set[str]:
+        """Companies never learned from: eval.run puts them under config.split, grader.replay at the top."""
+        for cfg in self.runs["config"]:
+            cfg = cfg or {}
+            held = cfg.get("held_out_companies") or (cfg.get("split") or {}).get("held_out_companies")
+            if held:
+                return set(held)
+        return set()
+
+    def held_out_window(self) -> tuple[date, date] | None:
+        """The held-out quarters: eval.run's split window, else the quarters after grader.replay's train_end."""
+        for cfg in self.runs["config"]:
+            win = ((cfg or {}).get("split") or {}).get("held_out_window")
+            if win:
+                return date.fromisoformat(str(win[0])), date.fromisoformat(str(win[1]))
+        for cfg in self.runs["config"]:
+            end = (cfg or {}).get("train_end")
+            if end and not self.calls.empty:
+                start, last = date.fromisoformat(end) + timedelta(days=1), max(self.calls["as_of"])
+                return (start, last) if last >= start else None
+        return None
+
+    def progress(self) -> dict:
+        """How far a replay has got. One still writing has calls in quarters that have no snapshot yet."""
+        call_qs = sorted(set(self.calls["as_of"]))
+        snap_qs = set(self.snapshots["as_of"])
+        partial = [q for q in call_qs if q not in snap_qs]
+        return {"quarters_with_calls": len(call_qs), "quarters_complete": len(snap_qs),
+                "last_complete": max(snap_qs) if snap_qs else None, "partial_quarters": partial,
+                "in_progress": bool(partial)}
 
 
 # ---- loading -----------------------------------------------------------------
 
 def _read_jsonl(directory: Path) -> dict[str, list[dict]]:
+    """One list of rows per table. A replay still running can leave a half-written last line: skip it."""
     out = {}
     for t in TABLES:
         p = directory / f"{t}.jsonl"
-        out[t] = [json.loads(line) for line in p.read_text().splitlines() if line.strip()] if p.exists() else []
+        rows = []
+        for line in p.read_text().splitlines() if p.exists() else []:
+            if not line.strip():
+                continue
+            try:
+                rows.append(json.loads(line))
+            except ValueError:
+                continue
+        out[t] = rows
     return out
+
+
+def source_stamp(source: str) -> float:
+    """Latest change to a JSONL source (0 for Postgres): a cache key that picks up a running replay's rows."""
+    if source == "postgres":
+        return 0.0
+    ps = [Path(source) / f"{t}.jsonl" for t in TABLES]
+    return max((p.stat().st_mtime for p in ps if p.exists()), default=0.0)
 
 
 def _read_postgres(dsn: str) -> dict[str, list[dict]]:
@@ -103,7 +168,9 @@ def resolve_source(requested: str | None = None) -> str:
     """'postgres' when asked for (or DATABASE_URL is reachable), otherwise the JSONL directory."""
     requested = requested or os.environ.get("DASHBOARD_SOURCE")
     if requested:
-        return requested
+        if requested == "postgres" or Path(requested).is_absolute() or Path(requested).exists():
+            return requested
+        return str(ROOT / requested)  # data/runs_final works from any working directory
     dsn = os.environ.get("DATABASE_URL")
     if dsn:
         try:
@@ -124,7 +191,10 @@ def load(source: str) -> Bundle:
 
 
 def _load_companies(source: str) -> pd.DataFrame:
-    """company_id + sector from the companies table (Postgres) or companies.jsonl; empty if absent."""
+    """company_id + sector from the companies table (Postgres) or companies.jsonl, else ingest/universe.json.
+
+    Only the anonymous id and the sector come out of here: names and tickers stay out of the view.
+    """
     cols = ["company_id", "sector"]
     try:
         if source == "postgres":
@@ -137,7 +207,21 @@ def _load_companies(source: str) -> pd.DataFrame:
         else:
             p = Path(source) / "companies.jsonl"
             rows = [json.loads(x) for x in p.read_text().splitlines() if x.strip()] if p.exists() else []
-        return pd.DataFrame(rows, columns=cols)
+        if rows:
+            return pd.DataFrame(rows, columns=cols)
+    except Exception:
+        pass
+    return universe_sectors()
+
+
+def universe_sectors(path: Path | None = None) -> pd.DataFrame:
+    """company_id + sector from ingest/universe.json (empty if unreadable)."""
+    cols = ["company_id", "sector"]
+    try:
+        raw = json.loads(Path(path or UNIVERSE_FILE).read_text())
+        rows = raw.get("companies", []) if isinstance(raw, dict) else raw
+        return pd.DataFrame([{"company_id": r["company_id"], "sector": r.get("sector")}
+                             for r in rows if r.get("company_id")], columns=cols)
     except Exception:
         return pd.DataFrame(columns=cols)
 
@@ -160,11 +244,12 @@ def build_bundle(source: str, raw: dict[str, list[dict]]) -> Bundle:
     corrections = pd.DataFrame(raw.get("corrections", []),
                                columns=["correction_id", "call_id", "agent", "summary", "payload",
                                         "mubit_ref", "applied_at"])
-    if not corrections.empty:
-        corrections["error_type"] = corrections["payload"].map(lambda p: p.get("error_type"))
-        corrections["principle_refs"] = corrections["payload"].map(lambda p: p.get("principle_refs", []))
-        corrections["as_of"] = pd.to_datetime(corrections["payload"].map(lambda p: p.get("as_of"))).dt.date
-        corrections["company_id"] = corrections["payload"].map(lambda p: p.get("company_id"))
+    # Always present, so a replay that has not made its first correction yet has the same columns.
+    pl = corrections["payload"].map(lambda p: p or {})
+    corrections["error_type"] = pl.map(lambda p: p.get("error_type"))
+    corrections["principle_refs"] = pl.map(lambda p: p.get("principle_refs", []))
+    corrections["as_of"] = pd.to_datetime(pl.map(lambda p: p.get("as_of"))).dt.date
+    corrections["company_id"] = pl.map(lambda p: p.get("company_id"))
 
     snapshots = pd.DataFrame(raw.get("snapshots", []),
                              columns=["run_id", "agent", "variant", "as_of", "n_calls", "n_correct", "accuracy", "brier", "model"])
@@ -188,11 +273,11 @@ def _flatten_call(row: dict) -> dict:
 
 
 def arm_for_model(model: str) -> str:
-    """The frozen twin stamps its model as 'frozen:<base>+<agent>-v0'; frontier as 'frontier:'."""
-    if model.startswith("frozen:"):
-        return "frozen"
-    if model.startswith("frontier:"):
-        return "frontier"
+    """The frozen twin stamps its model as 'frozen:<base>+<agent>-v0'; frontier as 'frontier:';
+    grader.replay's no-LLM baseline as 'baseline:naive'. Everything else is the learned arm."""
+    for arm in ("frozen", "frontier", "baseline"):
+        if model.startswith(f"{arm}:"):
+            return arm
     return "learned"
 
 
@@ -257,7 +342,9 @@ def company_table(b: Bundle) -> pd.DataFrame:
     ids = pd.DataFrame({"company_id": sorted(b.calls["company_id"].unique())})
     t = ids.merge(b.companies.drop_duplicates("company_id"), on="company_id", how="left")
     t["sector"] = t["sector"].fillna("unknown")
-    t["label"] = t["company_id"] + " · " + t["sector"]
+    held = b.held_out_companies()
+    t["held_out"] = t["company_id"].isin(held)
+    t["label"] = t["company_id"] + " · " + t["sector"] + t["held_out"].map({True: " · held out", False: ""})
     return t
 
 
@@ -421,13 +508,18 @@ def model_version_at(b: Bundle, agent: str, as_of: date) -> str | None:
 
 
 def heldout_table(report: dict, agent: str, segment: str) -> pd.DataFrame:
-    seg = report["agents"][agent]["segments"].get(segment)
+    """Rows per arm for one agent and segment. A report with flat per-arm stats (`arms`, as
+    eval/heldout_json.py writes from a replay) has no segments, so it counts as all companies."""
+    info = report["agents"][agent]
+    seg = (info.get("segments") or {}).get(segment) if "segments" in info else \
+        (info.get("arms") if segment == "all_companies" else None)
     if not seg:
         return pd.DataFrame()
     rows = []
-    for arm in ("frozen", "learned", "frontier"):
+    for arm in ("frozen", "learned", "frontier", "baseline"):
         if seg.get(arm):
-            rows.append({"arm": arm, "n": seg[arm]["n"], "accuracy": seg[arm]["accuracy"], "brier": seg[arm]["brier"]})
+            rows.append({"arm": "baseline: naive" if arm == "baseline" else arm, "n": seg[arm]["n"],
+                         "accuracy": seg[arm]["accuracy"], "brier": seg[arm]["brier"]})
     for name, v in (seg.get("baselines") or {}).items():
         rows.append({"arm": f"baseline: {name}", "n": v["n"], "accuracy": v["accuracy"], "brier": v["brier"]})
     return pd.DataFrame(rows)

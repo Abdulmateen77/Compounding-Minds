@@ -1,6 +1,9 @@
 """python -m ingest load [--tickers AAPL MSFT] [--offline] [--fred] [--stooq] [--filing-text]
-                         [--out data/processed] [--postgres [URL]] [--refresh]
+                         [--out data/processed] [--postgres [URL]] [--refresh] [--raw-dir data/raw]
 python -m ingest report [--in data/processed]
+
+`load` writes the QA report next to the rows: <out>/qa_report.txt (readable) and <out>/qa_report.json.
+`--offline` reloads everything from the raw cache: SEC and FRED misses raise instead of fetching.
 """
 from __future__ import annotations
 
@@ -8,6 +11,7 @@ import argparse
 import json
 import os
 import sys
+from pathlib import Path
 
 from .load import PROCESSED, load, read_jsonl, write_jsonl, write_postgres, write_runs_companies
 from .macro import FredClient, StooqClient
@@ -30,6 +34,7 @@ def main(argv=None) -> int:
     l.add_argument("--postgres", nargs="?", const=os.environ.get("DATABASE_URL", ""), default=None)
     l.add_argument("--runs-dir", help="also write companies.jsonl here for the dashboard/API (e.g. data/runs)")
     l.add_argument("--json", action="store_true", help="print the QA report as JSON")
+    l.add_argument("--raw-dir", help="raw cache root (default RAW_CACHE_DIR or data/raw); SEC files under <dir>/sec")
     r = sub.add_parser("report")
     r.add_argument("--in", dest="inp", default=str(PROCESSED))
     a = ap.parse_args(argv)
@@ -38,13 +43,15 @@ def main(argv=None) -> int:
         print(format_report(qa_report(read_jsonl(a.inp))))
         return 0
     try:
-        sec = SecClient(offline=a.offline, refresh=a.refresh)
+        raw = Path(a.raw_dir) if a.raw_dir else None
+        sec = SecClient(offline=a.offline, refresh=a.refresh, **({"cache_dir": raw / "sec"} if raw else {}))
     except SecError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
     try:
-        ds = load(a.tickers, sec, fred=FredClient(offline=a.offline) if a.fred else None, series=a.series,
-                  stooq=StooqClient(offline=a.offline) if a.stooq else None, filing_text=a.filing_text)
+        ds = load(a.tickers, sec, fred=FredClient(cache_dir=raw, offline=a.offline) if a.fred else None,
+                  series=a.series, stooq=StooqClient(cache_dir=raw, offline=a.offline) if a.stooq else None,
+                  filing_text=a.filing_text)
     except SecError as e:
         print(f"error: {e}", file=sys.stderr)
         return 2
@@ -54,8 +61,11 @@ def main(argv=None) -> int:
     if a.postgres:
         write_postgres(ds, a.postgres)
     rep = qa_report(ds)
-    print(json.dumps(rep, indent=1, default=str) if a.json else format_report(rep))
-    print(f"\nnetwork fetches: {sec.fetches}, cache hits: {sec.hits}; wrote {a.out}")
+    text = format_report(rep)
+    Path(a.out, "qa_report.txt").write_text(text + f"\n\nnetwork fetches: {sec.fetches}, cache hits: {sec.hits}\n")
+    Path(a.out, "qa_report.json").write_text(json.dumps(rep, indent=1, default=str))
+    print(json.dumps(rep, indent=1, default=str) if a.json else text)
+    print(f"\nnetwork fetches: {sec.fetches}, cache hits: {sec.hits}; wrote {a.out} (QA report: qa_report.txt)")
     return 0 if rep["totals"]["ok"] == rep["totals"]["companies"] else 1
 
 

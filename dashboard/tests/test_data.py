@@ -114,6 +114,63 @@ def test_heldout_report_missing_and_bad(tmp_path):
     assert D.find_heldout_report([bad, good])[1] == {"agents": {}}
 
 
+def test_replay_shape_arms_provenance_and_held_out():
+    from dashboard.tests.fixtures import replay_tables
+    b = D.build_bundle("t", replay_tables(partial=False))
+    assert D.arm_for_model("baseline:naive") == "baseline"
+    assert set(b.calls["arm"]) == {"learned", "frozen", "baseline"}
+    prov = b.provenance()
+    assert prov["real_results"] and prov["llm"] == "mubit" and not b.uses_fallback_updater()
+    assert b.held_out_companies() == {"anon_002"}
+    assert b.held_out_window() is None  # train_end 2018-09-30 is after the last quarter
+    # the committee and the spotlight read the learned arm only, never the baseline's calls
+    res = D.committee(b, "anon_001", date(2018, 6, 30), "learned")
+    assert list(res["rows"]["model"]) == ["mubit:claude-haiku-5-5+fundamentals-lessons-v1"]
+    s = D.correction_story(b, "k1")
+    assert s["after"]["model"].endswith("-lessons-v1") and not D.is_fallback("lessons:fundamentals:1")
+
+
+def test_replay_fallback_is_flagged():
+    from dashboard.tests.fixtures import replay_tables
+    b = D.build_bundle("t", replay_tables(partial=False, fallback=True))
+    assert b.uses_fallback_updater() and not b.provenance()["real_results"]
+
+
+def test_replay_in_progress_reads_partial_files(tmp_path, monkeypatch):
+    from dashboard.tests.fixtures import write_replay_run
+    src = write_replay_run(tmp_path / "runs_final")
+    b = D.load(str(src))  # calls.jsonl ends in a half-written line
+    assert len(b.calls) == 3 * 2 * 2 + 3
+    p = b.progress()
+    assert p["in_progress"] and p["partial_quarters"] == [date(2018, 9, 30)]
+    assert p["last_complete"] == date(2018, 6, 30) and p["quarters_complete"] == 2
+    for cfg in b.runs["config"]:
+        cfg["train_end"] = "2018-03-31"
+    assert b.held_out_window() == (date(2018, 4, 1), date(2018, 9, 30))  # shaded on the curves
+    # no companies table in a replay dir: sectors come from ingest/universe.json, ids only
+    t = D.company_table(b)
+    assert (t["sector"] != "unknown").all() and set(t.columns) == {"company_id", "sector", "held_out", "label"}
+    assert D.source_stamp(str(src)) > 0 and D.source_stamp("postgres") == 0
+    c = D.accuracy_curves(b, date(2018, 9, 30))
+    assert set(c["variant"]) == {"learned", "frozen", "baseline"}
+
+
+def test_resolve_source_relative_to_repo(monkeypatch, tmp_path):
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setenv("DASHBOARD_SOURCE", "data/runs_final")
+    assert D.resolve_source() == str(D.ROOT / "data" / "runs_final")
+    assert D.resolve_source("postgres") == "postgres"
+
+
+def test_heldout_table_reads_flat_arm_report():
+    rep = {"agents": {"risk": {"arms": {"learned": {"n": 10, "accuracy": 0.8, "brier": 0.1},
+                                        "frozen": {"n": 10, "accuracy": 0.7, "brier": 0.2},
+                                        "baseline": {"n": 10, "accuracy": 0.6, "brier": 0.4}}}}}
+    t = D.heldout_table(rep, "risk", "all_companies")
+    assert list(t["arm"]) == ["frozen", "learned", "baseline: naive"]
+    assert D.heldout_table(rep, "risk", "unseen_companies").empty
+
+
 def test_run_live_loop_is_offline_and_fallback():
     res = D.run_live_loop("fundamentals", "anon_001", date(2019, 6, 30), date(2019, 9, 30))
     assert res["offline_demo"] and res["before"]["agent"] == "fundamentals"

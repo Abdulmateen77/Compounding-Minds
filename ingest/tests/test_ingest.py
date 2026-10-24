@@ -210,3 +210,34 @@ def test_cli_load_offline_rerun(tmp_path, monkeypatch, capsys):
     assert rc == 1  # most concepts missing in the tiny fixture -> flagged as a gap
     assert (tmp_path / "o" / "facts.jsonl").is_file()
     assert main(["report", "--in", str(tmp_path / "o")]) == 0
+
+
+def test_raw_cache_dir_env_moves_both_caches(tmp_path, monkeypatch):
+    monkeypatch.setenv("RAW_CACHE_DIR", str(tmp_path / "elsewhere"))
+    assert SecClient(offline=True).dir == tmp_path / "elsewhere" / "sec"
+    assert FredClient(offline=True).dir == tmp_path / "elsewhere"
+    monkeypatch.delenv("RAW_CACHE_DIR")
+    assert SecClient(offline=True).dir.parts[-2:] == ("raw", "sec")
+
+
+def test_cli_full_reload_from_raw_dir_with_the_network_cut_writes_the_qa_report(tmp_path, monkeypatch, capsys):
+    raw = tmp_path / "raw"
+    load(["ACME"], SecClient(user_agent=UA, cache_dir=raw / "sec", opener=fx.FakeNet(fx.sec_routes()),
+                             sleep=lambda s: None), universe_file=None)          # warm the SEC cache
+    (raw / "fred").mkdir()
+    (raw / "fred" / "CPI.json").write_text(json.dumps(fx.alfred()))
+    import urllib.request
+
+    def no_network(*a, **k):
+        raise AssertionError("the offline reload touched the network")
+    monkeypatch.setattr(urllib.request, "urlopen", no_network)
+    monkeypatch.delenv("SEC_USER_AGENT", raising=False)
+    monkeypatch.delenv("FRED_API_KEY", raising=False)
+    out = tmp_path / "o"
+    main(["load", "--tickers", "ACME", "--offline", "--raw-dir", str(raw), "--fred", "--series", "CPI",
+          "--out", str(out)])
+    assert "network fetches: 0" in capsys.readouterr().out
+    report = (out / "qa_report.txt").read_text()
+    assert report.startswith("Ingest QA:") and "network fetches: 0" in report and "macro series: CPI" in report
+    assert json.loads((out / "qa_report.json").read_text())["totals"]["companies"] == 1
+    assert read_jsonl(out).macro and read_jsonl(out).facts

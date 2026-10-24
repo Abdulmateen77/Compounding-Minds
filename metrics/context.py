@@ -14,7 +14,7 @@ from datetime import date
 
 from schemas import Event, Fact
 from store import queries
-from store.concepts import CONCEPTS
+from store.concepts import COMPOSITES, CONCEPTS
 
 from .quarters import Q, discrete_quarters, instants
 
@@ -57,15 +57,33 @@ class Context:
         return self._facts[concept]
 
     def has(self, concept: str) -> bool:
-        """True if the company has EVER reported this concept (visible at as_of)."""
-        return bool(self.facts(concept))
+        """True if the company has EVER reported this concept (visible at as_of), or all its components."""
+        if self.facts(concept):
+            return True
+        parts = COMPOSITES.get(concept)
+        return bool(parts) and all(self.facts(p) for p in parts)
 
     def quarters(self, concept: str) -> dict[date, Q]:
         if concept not in self._quarters:
             fs = self.facts(concept)
-            self._quarters[concept] = (instants(fs) if CONCEPTS[concept].kind == "instant"
-                                       else discrete_quarters(fs))
+            direct = (instants(fs) if CONCEPTS[concept].kind == "instant" else discrete_quarters(fs))
+            self._quarters[concept] = {**self._from_components(concept), **direct}  # a reported value wins
         return self._quarters[concept]
+
+    def _from_components(self, concept: str) -> dict[date, Q]:
+        """Quarters built by adding a concept's components (SPEC section 1b). Only quarters where EVERY
+        component has a value; the sum is available from the latest of its parts' filing dates."""
+        parts = COMPOSITES.get(concept)
+        if not parts:
+            return {}
+        series = [self.quarters(p) for p in parts]
+        out: dict[date, Q] = {}
+        for end in set(series[0]).intersection(*series[1:]):
+            qs = [s[end] for s in series]
+            starts = [q.start for q in qs if q.start is not None]
+            out[end] = Q(end, sum(q.value for q in qs), frozenset().union(*(q.accessions for q in qs)),
+                         max(q.available for q in qs), min(starts) if starts else None)
+        return out
 
     def events(self) -> list[Event]:
         if self._events is None:
