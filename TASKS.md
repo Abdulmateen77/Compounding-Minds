@@ -71,8 +71,28 @@ Interfaces that do not change without telling the other person: `get_facts`, `ge
 
 ## 3. Person A: content, data and agents
 
+### Phases (work through these in order)
+
+| Phase | Goal | Due | Handoff | Status |
+|---|---|---|---|---|
+| **1. Contract** | Universe, concept map, final schema, metric spec, principles checked against the metrics | Sat 17:00 | 1, 2 | Done in code. Citations still to verify |
+| **2. Real store** | Postgres backend for the date gate, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | Not started. Needs B's first 5 companies (handoff 3) |
+| **3. Metrics and tools** | The 22 metrics computed from real facts, `get_metrics` real, MCP tools | Sat 22:00 | 5 | Spec written (`metrics/SPEC.md`), code not started |
+| **4. Agents on real data** | Run the 3 MVP agents on real metrics, tune prompts, measure JSON validity and evidence match | Sun 01:00 | | Not started |
+| **5. Evaluation** | Frozen twins, baselines, held-out run, quality report with critique | Sun 05:00 | 9 | Not started |
+| **6. Content and freeze** | Copy, demo script, README results, backup video | Sun 08:00 | | Not started |
+
+Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as handoff 3 (5 companies in Postgres) lands: until then, build the Postgres backend against the in-memory gate tests so it is ready to run.
+
+**Phase 1 delivered**
+- `ingest/universe.json`: 50 companies, anon IDs from a seeded shuffle, 10 held out, COVID groups. Built by `ingest/build_universe.py`, validated by `ingest/universe.py`, tested.
+- `store/concepts.py`: the XBRL concept map (22 concepts, tag fallbacks, which are cumulative in a 10-Q), macro series, and the inputs each of the 22 metrics needs. `resolve_concept` merges tags per period and keeps restated rows.
+- `store/schema.sql`: idempotent-load keys, `held_out` and `covid_group` on companies, going-concern count on events, macro vintage index, a `snapshots` table for the dashboard. Parsed with a real Postgres parser in a test.
+- `metrics/SPEC.md`: the formula for every metric, how quarters are derived from filings, and what happens when data is missing.
+- `principles/`: Graham expanded to 6 rules; `buffett.05` no longer cites a metric the Fundamentals agent is never shown; `principles/SOURCES.md` lists every citation still to verify; `agents/tests/test_principles_contract.py` keeps rules and metrics in sync.
+
 ### A1. Content production
-- [ ] Review the four `principles/*.md` files: 5 to 10 checkable rules each, own words, each with an ID, a metric to check it with, and a source. No long quotes. **Sat 18:00**
+- [~] Review the four `principles/*.md` files. Format, count and metric names are now tested. **Still to do: check each citation against the source (see `principles/SOURCES.md`)**
 - [ ] Final question wording for each agent (the six `question_id`s in README 7.1)
 - [ ] Prompt templates per agent: anonymous ID, relative quarters (Q-8 to Q0), no names or dates
 - [ ] Reflection (lesson) prompt tuned on real misses: cites a principle or a metric, never a company name (starting point exists in `agents/reflection.py`)
@@ -81,10 +101,11 @@ Interfaces that do not change without telling the other person: `get_facts`, `ge
 - [ ] README results section, written after the held-out run
 
 ### A2. Data sources pipeline and structuring
-- [ ] Source spec: which XBRL concepts feed each metric, with fallbacks. Drop rule for companies that do not map cleanly
-- [ ] `ingest/universe.json`: about 50 US companies, a few COVID losers and winners, about 10 held out, `anon_001` to `anon_050`, sector from SIC **(handoff 1)**
-- [ ] Concept map file **(handoff 2)**
-- [ ] Finalise `store/schema.sql`: keys, indexes, `filed_date NOT NULL`, `vintage_date NOT NULL` for macro **(handoff 2)**
+- [x] Source spec: which XBRL concepts feed each metric, with fallbacks. Drop rule for companies that do not map cleanly is in `metrics/SPEC.md` (3 or more missing metrics)
+- [x] `ingest/universe.json`: 50 US companies, COVID losers and winners, 10 held out, `anon_001` to `anon_050` **(handoff 1)**. Sector is hand-assigned; SIC comes from B's ingest
+- [x] Concept map `store/concepts.py` **(handoff 2)**
+- [x] Final `store/schema.sql`: keys, indexes, `filed_date NOT NULL`, `vintage_date NOT NULL` for macro, `snapshots` table **(handoff 2)**
+- [x] `metrics/SPEC.md`: formulas for all 22 metrics and the quarter-derivation rules
 - [x] Date gate in `store/queries.py` with an in-memory backend, and `store/tests/test_leakage.py`
 - [ ] **Postgres backend** for the gate. Latest row per (concept, period_end) with `filed_date <= as_of`. Leakage test on real rows **(handoff 4)**
 - [ ] `metrics/` engine for Fundamentals, Risk and Scenarios. Each metric returns name, value, unit, as_of and the filing accessions **(handoff 5)**

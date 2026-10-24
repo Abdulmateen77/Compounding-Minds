@@ -1,10 +1,9 @@
-# Graham principles (own words, DRAFT, stretch agent: verify each citation before the demo)
+# Graham principles (own words, DRAFT, stretch agent: citations still to verify, see SOURCES.md)
 Format: id | rule | how to check with metrics | source
 
-graham.01 | Price must leave a cushion against being wrong | margin_of_safety_proxy above zero, larger is safer | The Intelligent Investor, ch. 20 (margin of safety)
-graham.02 | Do not pay for growth the business has not delivered | implied_growth_reverse_dcf vs revenue_cagr_5y | The Intelligent Investor, ch. 11 and ch. 14 (on growth stocks and defensive selection)
-graham.03 | Earnings that are steady across years matter more than the latest year | revenue_cagr_5y and revenue_cagr_dispersion_5y | The Intelligent Investor, ch. 14
-graham.04 | When the market implies much more growth than the record shows, expect disappointment | implied_growth_reverse_dcf above revenue_cagr_5y by more than about 0.03 leans yes | Security Analysis, on projecting past trends with caution
-graham.05 | A thin owner earnings yield leaves little room for error | owner_earnings_yield below about 0.04 | The Intelligent Investor, ch. 14 (earnings yield for the defensive investor)
-graham.06 | An erratic record makes any projection less reliable, so lower confidence either way | revenue_cagr_dispersion_5y high means probability near 0.55 | Security Analysis, on stability of earnings
-graham.07 | A good company is not the same as a good price | judge implied_growth_reverse_dcf, not business quality alone | The Intelligent Investor, ch. 20
+graham.01 | Price must leave a cushion against being wrong | reverse_dcf_implied_growth well below revenue_growth_mean_5y | The Intelligent Investor, ch. 20 (margin of safety)
+graham.02 | Do not pay for growth the business has not delivered | reverse_dcf_implied_growth vs revenue_growth_mean_5y | The Intelligent Investor, ch. 11 and ch. 14 (on growth stocks and defensive selection)
+graham.03 | Earnings that are steady across years matter more than the latest year | revenue_growth_std_5y low, operating_margin stable | The Intelligent Investor, ch. 14 (earnings stability)
+graham.04 | Judge value on earnings averaged over a cycle, not on a peak year | revenue_growth_mean_5y vs revenue_growth_yoy | The Intelligent Investor, ch. 14 (multi-year average earnings)
+graham.05 | A defensive holding should have a strong balance sheet | debt_to_ebitda low, current_ratio above 2 | The Intelligent Investor, ch. 14 (financial condition criteria)
+graham.06 | An unbroken dividend record is evidence of stability | dividend_cut_history_5y equal to 0 | The Intelligent Investor, ch. 14 (dividend record)
