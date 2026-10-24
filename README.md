@@ -7,6 +7,37 @@ Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITEC
 
 ---
 
+## 0. The product: research any listed company, today
+
+Type a company name or ticker. The app finds it (US exchanges today; London and Europe are next), reads its SEC filings and
+builds a report: growth, profit, cash, balance sheet, reinvestment and R&D, risk checks, what the company says about its own
+plans, price and market multiples. Then it reads the same evidence through four investors' habits of mind (Buffett, Munger,
+Graham, Dalio), values the business under three stated growth cases, shows what the share price assumes, sketches ten-year
+scenarios, and gives one overall reading with the reasons.
+
+How it stays honest:
+- **Python computes every figure** and each one names the SEC filings it came from. Models only write words: a paragraph per
+  investor, checked so it cannot use a number the checks did not produce, and a choice among verbatim sentences from the 10-K.
+- **The investor lenses are the checklists in `principles/`**, turned into checks with their verified sources (`principles/SOURCES.md`).
+- **The valuation is a plain cash-flow calculation with its assumptions on the page**, including the reverse question
+  "what growth does today's price assume?". It is not a price target.
+- **The overall reading describes the evidence and the price. It is not personal advice** and never predicts a share price.
+- **The back-test (`python -m research.backtest`)** runs the Buffett and Munger checks at every quarter 2018-2023 for the 50 companies
+  through the date gate and compares them with what happened over the next year. It is the evidence that the checks mean something
+  (or the honest report that they do not): see the results section.
+
+- **News comes from Firecrawl (`research/web.py`) and is words only.** Each summary line points at one article and may only use numbers that article contains; no financial figure ever comes from the web. It is fetched for today's report only (never for the past replay or back-test), cached for twelve hours (each search costs two credits), and the section is simply absent if Firecrawl is unavailable. Uses `FIRECRAWL_API_KEY` or the stored `firecrawl login`.
+
+Code: `research/` (`resolve`, `live`, `report`, `analysis`, `valuation`, `dividends`, `text`, `web`, `narrative`, `market`, `service`, `backtest`),
+API `GET /api/research/search` and `/api/research/company/{cik}`, web screen `web/src/screens/Research.tsx`.
+Not covered yet: non-US listings, and banks and insurers only partly (several measures do not apply to them).
+
+The original replay (sections 1 to 15 below) is the evidence base for the learning loop and the Mubit story. Two places the pivot
+changes the original non-goals: the app now reads live filings (no longer "historical and cached" only), and it shows a valuation
+range with assumptions. It still gives no price target and no buy or sell instruction.
+
+---
+
 ## 1. Concept
 
 Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t`, it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings actually reported. Wrong calls become **corrections**. **Mubit** turns corrections into per-agent model updates, so the next round is better.
@@ -375,6 +406,16 @@ Prevents the demo from just showing overfitting.
 - Report accuracy and Brier on held-out for: (a) frozen agents, (b) learned agents, (c) baselines.
 - Held-out results are generated once, before freeze, and shown as a single slide/panel. No tuning against them.
 - Stretch: frontier-model comparison (same questions, a larger model with no learning), shown as a bar next to ours.
+
+**Results: the investor checks, back-tested (Sat 24 Oct).** `python -m research.backtest` runs the Buffett and Munger checks of the research report at every quarter from 2018Q1 to 2023Q4 for the 50 companies, through the date gate, and compares them with what happened over the next twelve months (1,184 company-quarters; no model, repeatable; summary in `research/evidence.json`, shown in the app).
+
+| Check | Passes most | Middle | Passes few | Rank correlation (all / one window per year / held-out companies) |
+|---|---|---|---|---|
+| Munger fit vs an auditor change or dividend cut within a year (share of cases) | 2.1% | 4.5% | 12.9% | -0.13 / -0.13 / -0.21 (held-out: 60 cases, 5 in the low group, not distinguishable from chance) |
+| Buffett fit vs free-cash-flow margin a year later (median) | 14.4% | 11.1% | 4.4% | +0.28 / +0.32 / +0.27 |
+| Buffett fit vs revenue growth over the next year (median) | 5.6% | 5.2% | 5.9% | -0.03 / +0.01 / -0.05 |
+
+Read honestly: Munger's failure checks point the right way but only modestly. An earlier run showed 3% against 45% and a correlation of -0.27; that was an artefact, because both the check and the outcome mistook the timing of dividend payments (a payment slipping over a quarter-end) for a cut. With a cut required to last two quarters on both sides it shrank to 2% against 13%. Buffett's quality checks predict that cash margins persist (partly because the check measures cash margin), and say nothing about sales growth. Quarterly windows overlap, so the p-values overstate certainty; the one-window-per-year column is the cleaner read. Not tested: Graham, Lynch, Dalio and Jhunjhunwala (they need historical prices we do not hold), and no check tests whether a share price rose.
 
 **Status (harness built, results pending).** `eval/` implements the split, the frozen twin (`agents/frozen.py`), both baselines, the frontier-model arm (`--frontier-model`), accuracy curves (`--curves`) and the report. Run `python -m eval.run` for an offline preview (stub metrics, scripted LLM, stamped NOT RESULTS, written to `data/eval_preview/`). `python -m eval.run --live` is a dry run that prints the call count; `--live --yes` spends real Mubit calls. `--save postgres` (or `--save <dir>` for JSONL) stores runs, calls, grades, corrections, snapshots and the report for the dashboard (`agents/run_store.py`, extra tables in `schemas/run_extras.sql`). The official report goes to `eval/reports/` only for runs on real inputs and is never overwritten without `--force`. It needs Person A's real `get_metrics` and the fundamentals and scenarios grader rules first (`eval/metrics_source.py` is the one switch). Results section: none yet, by design.
 

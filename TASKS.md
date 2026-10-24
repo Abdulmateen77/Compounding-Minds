@@ -53,6 +53,51 @@ What the merge found, and what was done. 499 tests pass on the merged branch (4 
 
 Held-out reporting: B's dashboard reads B's `heldout_report.json` (segments `all_companies`, `seen_companies`, `unseen_companies`). Hermes's `quality/` writes a different format with an extra time slice; it feeds `quality.md` and the README results section, not the dashboard.
 
+## 0c. First real data (Sat 24 Oct, ~19:00)
+
+Keys are in `.env` and verified (`python -m store.envcheck --ping`: SEC, FRED, Mubit all answer). B's downloader loaded all 50
+companies in 55 seconds: **95,556 facts, 23,421 filing events, 29,182 macro rows** in the development Postgres.
+
+| Result on real data | Detail |
+|---|---|
+| Metrics engine works on real Apple filings | Plausible numbers (operating margin 25%, FCF margin 23%, ROIC 31%); a quarter that had not been filed by `as_of` is correctly invisible; prompt leak check clean |
+| Usable bundles (of 50 companies), 2018 to 2023 | Risk 47 to 50, Scenarios 47 to 50, Fundamentals 28 (early 2018) rising to 38 to 46 |
+| Fixed because of real data | Operating income fallback, total-debt concept, extra depreciation / dividend / capex / revenue tags, 52-week calendars, a FRED request that was rejected (market series must not ask for vintages), ExxonMobil replaced by Chevron. Details in `metrics/SPEC.md` section 1b |
+| Not fixable from tags | Costco CF 2016 to 2019 and Nvidia FY2019 capex are absent from the SEC data; Disney and Palantir have short histories |
+| Still to do | The going-concern text pass (`python -m ingest load --filing-text`, downloads 10-K and 10-Q text), so `going_concern_hits` is real rather than 0 |
+
+## 0d. First live replay (Sat 24 Oct, ~21:30)
+
+4 companies, Fundamentals and Scenarios, the four 2019 quarters plus 4 settle quarters, real Mubit calls (`claude-haiku-5-5`).
+
+| Finding | Fix |
+|---|---|
+| **Replies were cut off mid-JSON** (a third of them, mostly Scenarios, which cites 8 metrics). The model "thinks" first and the thinking counts against `max_tokens`, so the cap of 1024 left about 300 tokens for the answer | `agents/gateway.py`: thinking off by default (`MUBIT_THINKING=1` turns it on), cap raised to 2048, and a reply that still stops at `max_tokens` is retried once with double and then raises, so a cut-off reply is never returned or cached. Cache key bumped to v2 so the old cut-off replies are not reused. Dropped calls fell from 14 to 4 |
+| **Too slow:** 526 s for 82 calls (about 6 s each, one at a time). The full replay is about 8,400 analyst calls, which would take about 15 hours | `grader/replay.py --workers N` (or `REPLAY_WORKERS`) runs the model calls of one quarter side by side. Metrics and bookkeeping stay sequential and in order, so the result is identical to a sequential run (a test proves it). **73 s with 8 workers, 7 times faster** |
+| **30 of 82 grades unresolvable**, all Fundamentals: the grader kept its own copy of the quarter logic and knew nothing of derived operating income or 52-week calendars | `grader/facts.py` now reads quarters from `metrics.context.Context`, the same code the agent's numbers come from. Re-grading the same calls: unresolvable 30 to 2 |
+| The learned arm's lessons | Specific, cite our metrics and principles (for example `dalio.04`), no company names or years; the prompt leak guard never fired |
+
+Full-replay estimate from this trial: about 1.3 calls per second with 8 workers, so about 8,400 analyst calls take roughly 2 hours (about 1 hour at 16 workers, if Mubit allows it), plus reflections. Cost depends on the Mubit credit: each call is about 700 tokens in and 700 out.
+
+## 0e. The pivot: research any listed company (Sat 24 Oct, evening) : owner A
+
+The product is now a report on any US-listed company as it stands today (README section 0). Built by A in `research/`, with the API routes and the Research screen it needs (B's `api/main.py` and `web/`: B, please read them before editing).
+
+| Piece | State |
+|---|---|
+| Search by name or ticker, market shown | Done (US only). A search that finds nothing says London and Europe are not covered |
+| Report: growth, profit, cash, balance sheet, R&D, risk, plans in the company's own words, price and multiples | Done; every figure names its filings; approximations marked |
+| Six investor lenses from the books in `principles/guides/` | Done; each check cites its source; only Buffett and Munger are back-tested, and the page says so |
+| Valuation range, what the price assumes, ten-year scenarios, overall reading | Done; assumptions on the page; not a price target, not advice |
+| Back-test of the Buffett and Munger checks | Done: Munger's failure checks point the right way but modestly (13% vs 2%; an earlier 45% vs 3% was an artefact of dividend timing, fixed); Buffett's predict cash margin (typical 14% vs 4%), not sales growth |
+| Demo script and judge Q&A | `docs/DEMO.md`; replay numbers to fill in |
+| Not done | UK and European listings; banks and insurers only partly covered; price checks not back-tested (no historical prices) |
+
+Notes for B:
+- `main` fails on every Fundamentals call until `person-a/env-and-checks` is merged: an earlier GitHub merge dropped the `total_debt` concept that `metrics/fundamentals.py` reads, and left `anon_026` named Chevron with Exxon's CIK. Both are fixed on the branch.
+- `agents/cache.py` now writes UTF-8: on Windows a reply containing a character such as "≈" crashed the replay.
+- The replay agents' prompt files (`principles/<investor>.md`) are unchanged on purpose: the demo replays from a cache keyed on the prompt.
+
 ## 1. Where we are now (Sat 24 Oct, ~19:00)
 
 Checked against the repo and the local Postgres. 531 tests pass (4 skip). Postgres holds the 50-company universe: 97,591 facts and 23,788 events. `.env` has `USE_STUBS=0` and `USE_FAKE_UPDATER=0`. `MUBIT_BASE_URL` is empty in `.env`.

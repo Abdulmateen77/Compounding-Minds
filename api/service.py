@@ -123,7 +123,10 @@ class Service:
             p = r["payload"]
             ans, prob = p["claim"]["answer"], p["claim"]["probability"]
             d = D.direction(r["agent"], ans)
+            outcome, correct, resolved_on = _settled(r)
             views.append(M.AgentView(
+                outcome=outcome, correct=correct, resolved_on=resolved_on,
+                what_happened=_what_happened(r["agent"], outcome, r.get("grade_evidence")),
                 agent=r["agent"], investor=D.INVESTOR.get(r["agent"], r["agent"]),
                 question=D.QUESTION.get(r["agent"], p["claim"]["question_id"]),
                 answer=ans, probability=prob, confidence=p["confidence"],
@@ -271,6 +274,46 @@ class Service:
             calls_graded=0 if row is None else int(row["calls"]), corrections_applied=len(corr),
             last_correction=self._correction(corr.iloc[-1]) if len(corr) else None,
             fallback_updater=b.uses_fallback_updater())
+
+
+def _settled(r: pd.Series) -> tuple[str | None, bool | None, str | None]:
+    """(outcome, correct, resolved_on) when the grader settled the call, else Nones."""
+    outcome = r.get("outcome")
+    if outcome is None or pd.isna(outcome) or outcome == "unresolvable":
+        return None, None, None
+    correct = r.get("correct")
+    rd = r.get("resolution_date")
+    return (str(outcome), None if correct is None or pd.isna(correct) else bool(correct),
+            None if rd is None or pd.isna(rd) else str(pd.Timestamp(rd).date()))
+
+
+def _p(x: float) -> str:
+    return f"{x * 100:.1f}%"
+
+
+def _what_happened(agent: str, outcome: str | None, evidence) -> str | None:
+    """One plain sentence from the grader's own evidence. Every number in it was computed by the grader."""
+    if outcome is None:
+        return None
+    info = next((e for e in (evidence or []) if isinstance(e, dict)), {})
+    if agent == "fundamentals":
+        q0, q1 = info.get("q0") or {}, info.get("q1") or {}
+        if "fcf_margin_ttm" in q0 and "fcf_margin_ttm" in q1 and "operating_margin" in q0 and "operating_margin" in q1:
+            return (f"Free-cash-flow margin went {_p(q0['fcf_margin_ttm'])} → {_p(q1['fcf_margin_ttm'])} and operating "
+                    f"margin {_p(q0['operating_margin'])} → {_p(q1['operating_margin'])}: "
+                    + ("both improved." if outcome == "yes" else "they did not both improve."))
+        return "Both margins improved." if outcome == "yes" else "Margins did not both improve."
+    if agent == "scenarios":
+        g = info.get("revenue_growth")
+        band = {"bear": "shrank (bear: below 0%)", "base": "grew modestly (base: 0 to 10%)",
+                "bull": "grew strongly (bull: 10% or more)"}.get(outcome, outcome)
+        return f"Revenue over the next four quarters {band}" + (f", at {g * 100:+.1f}%." if g is not None else ".")
+    if agent == "risk":
+        if outcome == "no":
+            return "No distress event in the next 12 months: no dividend cut, auditor change or going-concern warning."
+        hit = [k.replace("_", " ") for k, v in (info.get("components") or {}).items() if v.get("result") == "yes"]
+        return f"A distress event happened within 12 months: {', '.join(hit) or 'see filings'}."
+    return f"Outcome: {outcome}."
 
 
 def _revised_from(p: dict) -> float | None:

@@ -32,7 +32,8 @@ CONCEPTS: dict[str, Concept] = {c.key: c for c in [
     # ---- income statement: 10-Qs report discrete 3-month facts, so no derivation needed
     _c("revenue", ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax",
                    "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet",
-                   "SalesRevenueGoodsNet"]),     # JNJ tagged its revenue this way until 2016
+                   "SalesRevenueGoodsNet",       # JNJ tagged its revenue this way until 2016
+                   "RevenuesNetOfInterestExpense"]),   # banks (JPMorgan): total net revenue
     _c("cost_of_revenue", ["CostOfRevenue", "CostOfGoodsAndServicesSold", "CostOfGoodsSold"]),
     _c("gross_profit", ["GrossProfit"], note="if missing: revenue - cost_of_revenue, decided in metrics/"),
     _c("operating_income", ["OperatingIncomeLoss"],
@@ -53,14 +54,17 @@ CONCEPTS: dict[str, Concept] = {c.key: c for c in [
     # ---- cash flow: 10-Qs report year-to-date (3, 6, 9 months), Q4 = full year - 9 months
     _c("op_cash_flow", ["NetCashProvidedByUsedInOperatingActivities",
                         "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"], cum=True),  # COST, 2013 to 2019
-    _c("capex", ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets"], cum=True,
+    _c("capex", ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets",
+                 "PaymentsToAcquireOtherPropertyPlantAndEquipment"], cum=True,
        note="reported as a positive outflow; FCF = op_cash_flow - capex"),
     _c("depreciation_amortization", ["DepreciationDepletionAndAmortization", "DepreciationAndAmortization",
-                                     "DepreciationAmortizationAndAccretionNet"], cum=True),
+                                     "DepreciationAmortizationAndAccretionNet", "DepreciationAmortizationAndOther"],
+       cum=True),
     _c("depreciation", ["Depreciation"], cum=True,
        note="component: depreciation_amortization = depreciation + amortization_intangibles when a filer reports no total"),
     _c("amortization_intangibles", ["AmortizationOfIntangibleAssets"], cum=True, note="component: see depreciation"),
-    _c("dividends_paid", ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock"], cum=True),
+    _c("dividends_paid", ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"],
+       cum=True),
     _c("dividends_per_share", ["CommonStockDividendsPerShareDeclared", "CommonStockDividendsPerShareCashPaid"],
        unit="USD/shares", note="cross-check for dividend cuts; not every filer tags it"),
     # ---- balance sheet: point-in-time (instant) values
@@ -71,10 +75,16 @@ CONCEPTS: dict[str, Concept] = {c.key: c for c in [
                 "CashCashEquivalentsRestrictedCashAndRestrictedCashEquivalents"], kind="instant"),
     _c("equity", ["StockholdersEquity", "StockholdersEquityIncludingPortionAttributableToNoncontrollingInterest"],
        kind="instant"),
-    _c("long_term_debt", ["LongTermDebtNoncurrent", "LongTermDebt", "LongTermDebtAndCapitalLeaseObligations"],
-       kind="instant",
-       note="LongTermDebt may already include the current part: check before adding short_term_debt"),
-    _c("short_term_debt", ["DebtCurrent", "ShortTermBorrowings", "LongTermDebtCurrent"], kind="instant"),
+    # Debt is tagged three ways. `total_debt` (current + non-current in one figure) is used when reported;
+    # otherwise the two parts are added.
+    _c("total_debt", ["DebtLongtermAndShorttermCombinedAmount",
+                      "LongTermDebtAndCapitalLeaseObligationsIncludingCurrentMaturities", "LongTermDebt"],
+       kind="instant", note="includes the current part: never add short_term_debt on top"),
+    _c("long_term_debt", ["LongTermDebtNoncurrent", "LongTermDebtAndCapitalLeaseObligations"], kind="instant",
+       note="the non-current part only"),
+    _c("short_term_debt", ["DebtCurrent", "ShortTermBorrowings", "LongTermDebtCurrent",
+                           "LongTermDebtAndCapitalLeaseObligationsCurrent", "CommercialPaper"], kind="instant",
+       note="the current part: current maturities plus short-term borrowings"),
 ]}
 
 # Concepts a filer may report only as parts. Where a quarter has no directly reported value, the metrics

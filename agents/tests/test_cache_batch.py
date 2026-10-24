@@ -143,3 +143,19 @@ def test_cli_live_refuses_over_the_cap(tmp_path, monkeypatch, capsys):
     monkeypatch.delenv("MUBIT_API_KEY", raising=False)
     assert main(["--per-agent", "30", "--yes", "--max-calls", "10", "--cache-dir", str(tmp_path)]) == 2
     assert "refusing" in capsys.readouterr().out
+
+
+def test_a_reply_with_non_ascii_text_is_cached_as_utf8(tmp_path):
+    from agents.cache import CachingGateway
+
+    class Inner:
+        model = "m"
+        last_request_id = None
+
+        def complete(self, agent, messages, **kw):
+            return 'margin ≈ 0.25 – “flat”'
+
+    gw = CachingGateway(Inner(), tmp_path)
+    msgs = [{"role": "user", "content": "x"}]
+    assert gw.complete("fundamentals", msgs) == 'margin ≈ 0.25 – “flat”'
+    assert gw.complete("fundamentals", msgs) == 'margin ≈ 0.25 – “flat”' and gw.hits == 1

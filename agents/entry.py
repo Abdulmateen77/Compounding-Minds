@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date
@@ -77,6 +78,7 @@ def attempt_bundle(agent: str, company_id: str, as_of: date, bundle: dict, gatew
 # How often each outcome has happened through `replay_runner` in this process. The replay can print
 # it at the end: a high "dropped" or any "blocked" is worth looking at before trusting the run.
 OUTCOMES: Counter = Counter()
+_lock = threading.Lock()   # the replay may call replay_runner from several threads
 
 
 def replay_runner(agent: str, company_id: str, as_of: date, *, metrics: dict, gateway: LLMGateway,
@@ -88,7 +90,8 @@ def replay_runner(agent: str, company_id: str, as_of: date, *, metrics: dict, ga
     Lessons come from the updater, so a learned arm (lessons) and a frozen arm (none) really differ.
     """
     a = attempt_bundle(agent, company_id, as_of, metrics, gateway, updater, run_id=run_id)
-    OUTCOMES[a.status] += 1
+    with _lock:
+        OUTCOMES[a.status] += 1
     return a.call
 
 

@@ -254,8 +254,8 @@
     },
     {
       "company_id": "anon_026",
-      "ticker": "CVX",
-      "name": "Chevron",
+      "ticker": "XOM",
+      "name": "Exxon Mobil",
       "sector": "Energy",
       "covid_group": "hit",
       "held_out": false,

@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 /** Hash routes so every page is linkable: #/, #/assess/<company>/<asOf>[/run], #/mubit[/<agent>]. */
 export type Route =
   | { name: "home" }
+  | { name: "past" }
+  | { name: "research"; cik: string }
   | { name: "run"; id: string }
   | { name: "verdict"; id: string }
   | { name: "mubit"; agent?: string };
@@ -13,6 +15,8 @@ export function parseHash(hash: string): Route {
     const id = `${p[1]}_${p[2]}`;
     return p[3] === "run" ? { name: "run", id } : { name: "verdict", id };
   }
+  if (p[0] === "research" && /^\d+$/.test(p[1] ?? "")) return { name: "research", cik: p[1] };
+  if (p[0] === "past") return { name: "past" };
   if (p[0] === "mubit") return { name: "mubit", agent: p[1] };
   return { name: "home" };
 }
@@ -23,6 +27,7 @@ export function assessHref(id: string, run = false) {
   return `#/assess/${encodeURIComponent(id.slice(0, i))}/${encodeURIComponent(id.slice(i + 1))}${run ? "/run" : ""}`;
 }
 export const mubitHref = (agent?: string) => (agent ? `#/mubit/${encodeURIComponent(agent)}` : "#/mubit");
+export const researchHref = (cik: number | string) => `#/research/${cik}`;
 export const go = (href: string) => { window.location.hash = href; };
 
 export function useRoute(): Route {

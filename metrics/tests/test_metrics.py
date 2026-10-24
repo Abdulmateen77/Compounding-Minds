@@ -96,22 +96,9 @@ def test_debt_parts_are_added_when_there_is_no_total_and_a_missing_part_counts_a
     close(metric(get_metrics("anon_001", "fundamentals", AFTER), "debt_to_ebitda"), 100 / (ttm(opinc, 23) + 20))
 
 
-def test_operating_income_is_derived_from_revenue_minus_costs_when_it_is_not_tagged():
+def test_untagged_operating_income_is_missing_rather_than_approximated():
     F.install(F.build_facts(operating_income=None, costs_and_expenses=lambda i: rev(i) - opinc(i)))
-    b = get_metrics("anon_001", "fundamentals", AFTER)
-    close(metric(b, "operating_margin"), ttm(opinc, 23) / ttm(rev, 23))
-    assert metric(b, "roic") is not None and metric(b, "debt_to_ebitda") is not None
-
-
-def test_operating_income_is_derived_from_pretax_plus_interest_as_the_last_resort():
-    # pre-tax is opinc - 2 and interest is 2, so EBIT = pre-tax + interest = the original operating income
-    F.install(F.build_facts(operating_income=None))
-    close(metric(get_metrics("anon_001", "fundamentals", AFTER), "operating_margin"), ttm(opinc, 23) / ttm(rev, 23))
-
-
-def test_a_company_that_never_paid_interest_uses_pretax_as_ebit():
-    F.install(F.build_facts(operating_income=None, interest_expense=None, pretax_income=lambda i: 20 + i))
-    close(metric(get_metrics("anon_001", "fundamentals", AFTER), "operating_margin"), ttm(opinc, 23) / ttm(rev, 23))
+    assert metric(get_metrics("anon_001", "fundamentals", AFTER), "operating_margin") is None
 
 
 def test_a_directly_tagged_operating_income_beats_the_derived_one():

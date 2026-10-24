@@ -130,6 +130,44 @@ def heldout():
     return {"path": str(path.relative_to(ROOT)), "report": report}
 
 
+# ---- research on any listed company, as it stands today (research/) ----------------------------------------------
+_research = None
+
+
+def research_service():
+    """Built on first use: it opens the SEC client, which needs SEC_USER_AGENT."""
+    global _research
+    if _research is None:
+        from research.service import ResearchService
+        _research = ResearchService()
+    return _research
+
+
+@app.get("/api/research/search")
+def research_search(q: str = Query("", max_length=80)):
+    try:
+        return research_service().search(q)
+    except Exception as e:
+        raise HTTPException(502, f"Could not search the SEC company list: {e}")
+
+
+@app.get("/api/research/evidence")
+def research_evidence():
+    """The back-test summary: how the investor checks did against what happened next (research/backtest.py)."""
+    from research.backtest import EVIDENCE
+    if not EVIDENCE.exists():
+        raise HTTPException(404, "no back-test summary yet: run python -m research.backtest --write-evidence")
+    return json.loads(EVIDENCE.read_text(encoding="utf-8"))
+
+
+@app.get("/api/research/company/{cik}")
+def research_company(cik: int, refresh: bool = False):
+    try:
+        return research_service().report(cik, force=refresh)
+    except Exception as e:
+        raise HTTPException(502, f"Could not build the report: {e}")
+
+
 # Built front end (npm run build in web/). Absent in dev, where Vite serves the UI and proxies /api.
 if DIST.is_dir():
     app.mount("/assets", StaticFiles(directory=DIST / "assets"), name="assets")
