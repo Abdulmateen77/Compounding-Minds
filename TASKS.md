@@ -54,12 +54,12 @@ Neither side should wait on the other. These handoffs have times. Anything late 
 
 | # | From | To | Deliverable | Due |
 |---|---|---|---|---|
-| 1 | A | B | `ingest/universe.json` (62 companies, anon IDs, sector, 12 held out) | Sat 17:00 |
+| 1 | A | B | `ingest/universe.json` (50 companies, anon IDs, sector, 10 held out) | Sat 17:00 |
 | 2 | A | B | Final `store/schema.sql` and the XBRL concept map (concept, fallbacks, unit) | Sat 17:00 |
 | 3 | B | A | Raw SEC data cached and parsed into Postgres for 5 companies | Sat 19:00 |
 | 4 | A | B | Postgres backend in `store/queries.py`, leakage test passing on real rows | Sat 21:00 |
 | 5 | A | B | `get_metrics(company, agent, as_of)` real for Fundamentals, Risk and Scenarios | Sat 22:00 |
-| 6 | B | A | All 62 companies and macro loaded, ingest QA report | Sat 23:00 |
+| 6 | B | A | All 50 companies and macro loaded, ingest QA report | Sat 23:00 |
 | 7 | A | B | `run_agent(company_id, as_of) -> AgentCall` (the runner entry point the replay calls) | Sat 20:00 |
 | 8 | B | A | `grade(call) -> Grade` with real rules for all three MVP questions | Sat 23:00 |
 | 9 | A | B | Held-out results as `eval/out/heldout.json` (frozen vs learned vs baselines) | Sun 05:00 |
@@ -96,7 +96,7 @@ Interfaces that do not change without telling the other person: `get_facts`, `ge
 Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as handoff 3 (5 companies in Postgres) lands: until then, build the Postgres backend against the in-memory gate tests so it is ready to run.
 
 **Phase 1 delivered**
-- `ingest/universe.json`: 62 companies (the first 50 plus Tesla, Nvidia, Palantir and nine more tech names), anon IDs from a seeded shuffle, 12 held out, COVID groups. Palantir is flagged `short_history` (first filing 2020). Built by `ingest/build_universe.py`, validated by `ingest/universe.py`, tested.
+- `ingest/universe.json`: 50 companies (Tesla, Nvidia, Palantir, AMD, Meta and Amazon added, and low-value names such as Kohl's, Chevron, 3M, Freeport, NextEra and PepsiCo dropped to keep it short), anon IDs from a seeded shuffle, 10 held out, COVID groups. Palantir is flagged `short_history` (first filing 2020). Built by `ingest/build_universe.py`, validated by `ingest/universe.py`, tested.
 - `store/concepts.py`: the XBRL concept map (22 concepts, tag fallbacks, which are cumulative in a 10-Q), macro series, and the inputs each of the 22 metrics needs. `resolve_concept` merges tags per period and keeps restated rows.
 - `store/schema.sql`: idempotent-load keys, `held_out` and `covid_group` on companies, going-concern count on events, macro vintage index, a `snapshots` table for the dashboard. Parsed with a real Postgres parser in a test.
 - `metrics/SPEC.md`: the formula for every metric, how quarters are derived from filings, and what happens when data is missing.
@@ -113,7 +113,7 @@ Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as han
 
 ### A2. Data sources pipeline and structuring
 - [x] Source spec: which XBRL concepts feed each metric, with fallbacks. Drop rule for companies that do not map cleanly is in `metrics/SPEC.md` (3 or more missing metrics)
-- [x] `ingest/universe.json`: 62 US companies, COVID losers and winners, 12 held out, `anon_001` to `anon_062` **(handoff 1)**. Sector is hand-assigned; SIC comes from B's ingest
+- [x] `ingest/universe.json`: 50 US companies, COVID losers and winners, 10 held out, `anon_001` to `anon_050` **(handoff 1)**. Sector is hand-assigned; SIC comes from B's ingest
 - [x] Concept map `store/concepts.py` **(handoff 2)**
 - [x] Final `store/schema.sql`: keys, indexes, `filed_date NOT NULL`, `vintage_date NOT NULL` for macro, `snapshots` table **(handoff 2)**
 - [x] `metrics/SPEC.md`: formulas for all 22 metrics and the quarter-derivation rules

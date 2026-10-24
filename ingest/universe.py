@@ -7,8 +7,8 @@ import re
 from pathlib import Path
 
 PATH = Path(__file__).parent / "universe.json"
-SIZE = 62
-HELD_OUT = 12
+SIZE = 50
+HELD_OUT = 10
 _ID = re.compile(r"^anon_\d{3}$")
 COVID_GROUPS = ("hit", "resilient", "mixed")
 # Not supported by the metric set: their statements do not have FCF, gross margin or
