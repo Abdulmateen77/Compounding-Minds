@@ -95,6 +95,74 @@ Python 3.11, FastAPI, PostgreSQL, `edgartools`, `fredapi`, `pandas`, MCP Python 
 
 SEC rules: `User-Agent` header with a name and email, stay under ~10 requests/second, cache raw responses on disk before parsing.
 
+### 4.1b Data sources by need
+
+Access details change. Verify each at build time.
+
+**Core (MVP)**
+| Source | Gives us | Point-in-time field | Cost |
+|---|---|---|---|
+| SEC XBRL `companyfacts` / `frames` | Revenue, cash flow, margins, debt, dividends, R&D expense | `filed` on every fact | Free |
+| SEC `submissions` | Filing list, 8-K item codes (4.01 auditor change), SIC code | Filing date | Free |
+| SEC `company_tickers.json` | CIK and ticker map | None | Free |
+| SEC filing documents (`edgartools`) | 10-K and 10-Q text: risk factors, going concern, MD&A, R&D section | Filing date | Free |
+| EDGAR full-text search | Going-concern and risk phrases | Filing date | Free |
+| FRED + ALFRED | GDP, unemployment, yield curve, credit spreads | ALFRED vintage date | Free key |
+| Tiingo or Stooq | Prices, context only | Trading date | Free tier |
+
+**Latest affairs and events (cheap additions, stretch)**
+| Source | Gives us | Point-in-time field | Notes |
+|---|---|---|---|
+| 8-K Exhibit 99.1 | Earnings releases, guidance, deals | Filing date | Best option: dated, official, free |
+| FOMC / Federal Reserve statements | Rate decisions, macro tone for Scenarios | Publication date | Small and clean |
+| Wayback Machine snapshots | Historical company IR pages | Snapshot date | Proxy for "known then" |
+| Company IR pages (live) | Press releases | Publication date, often unreliable | Pages are removed or edited; use only if the date is trustworthy |
+| GDELT | News event index from 2015 | Article date | Noisy, names companies; skip unless time allows |
+
+**R&D sources**
+| Source | Gives us | Notes |
+|---|---|---|
+| XBRL `ResearchAndDevelopmentExpense` | R&D spend | Already in the core feed. Used by the Moat agent |
+| 10-K R&D section | Qualitative pipeline text | Comes with SEC filing documents |
+| USPTO patents (PatentsView / USPTO open data) | Patent grants per company | Assignee-to-company matching is messy; access has changed recently. Skip for MVP |
+| ClinicalTrials.gov, openFDA | Trials, approvals, recalls | Sector-specific (pharma, biotech). Skip for MVP |
+
+### 4.1c Data used by each agent and task
+
+| Agent / task | Inputs | Graded or resolved by |
+|---|---|---|
+| Fundamentals | XBRL: operating cash flow, capex, revenue, operating income, debt, invested capital | Next 10-Q or 10-K (XBRL) |
+| Risk | XBRL: interest expense, current assets and liabilities, cash, dividends. Submissions: auditor-change history. Full-text: going-concern hits | 8-K items, XBRL dividends, 10-K text |
+| Scenarios | XBRL: 5-year revenue history. ALFRED: GDP, unemployment, yield curve, credit spread | Actual revenue growth (XBRL) |
+| Valuation (stretch) | XBRL: growth, owner earnings. Prices for the reverse DCF (decision needed, see below) | Revenue growth over next year (XBRL) |
+| Moat (stretch) | XBRL: gross margin, R&D, SG&A | Next 4 filings (XBRL) |
+| Synthesizer | Stored calls and grades only | Composite of graded outcomes |
+| Universe selection | `company_tickers.json`; sector from SIC code in `submissions` or chosen manually | n/a |
+| Replay, dashboard, eval, screener, memos, calibration | Postgres only (`calls`, `grades`, `facts`, `events`) | n/a |
+
+**Open data decisions:** (1) Valuation needs a market value for the reverse DCF, but prices are defined as context only. Decide before building it. (2) `peer_compare` needs a sector source (SIC from `submissions`). (3) Plain FRED values are revised after release; use ALFRED vintages only.
+
+### 4.1d Firecrawl: where it helps
+
+Firecrawl turns web pages into markdown and can crawl or map sites. It earns its place on **non-SEC pages**. For SEC filings use `edgartools`, which is structured and carries filing dates.
+
+| Use | How | Fit |
+|---|---|---|
+| Build `principles/` | Scrape or parse public Berkshire shareholder letters, then write 5-10 rules per investor in our own words | Best fit. Development-time only, no leakage risk |
+| Read Mubit docs | Scrape the docs we have so nobody guesses endpoints | Good, development-time |
+| Press-release text | Crawl 8-K exhibits or IR pages into `events`, `filed_date` = publication date | Good for Risk. Keep only pages with a reliable date |
+| Historical IR pages | Scrape Wayback snapshots, use snapshot date as `filed_date` | Medium |
+| FOMC and macro statements | Crawl dated statements into `events` for Scenarios | Medium |
+| Numeric extraction | Firecrawl extract/agent pulling figures from releases | **Do not use.** An LLM-extracted number breaks rule 1. Numbers stay in XBRL |
+
+Constraints on every new source:
+1. **Point-in-time.** Every row needs a trustworthy `filed_date`. If a page's date is unreliable, do not ingest it.
+2. **Names leak.** News and press text contains company names, which defeats anonymization. Scrub names before text reaches a prompt, or use the source only for Python-side flags (for example "8-K item present").
+3. **No live calls in the demo.** Scrape at ingest time and cache raw responses to disk. The demo reads Postgres only.
+4. **Survivorship.** Scraped pages exist only if the company kept them, which biases Risk against failed companies. SEC filings do not have this problem.
+
+**Recommendation:** MVP uses SEC (XBRL, submissions, filings, full-text), FRED/ALFRED and Stooq. Add 8-K Exhibit 99.1 as the cheap news source. Use Firecrawl first for the principles files. Then FOMC statements and Wayback IR pages if time allows. Skip GDELT, patents, clinical trials and FDA.
+
 ### 4.2 Universe
 ~50 US companies, chosen for: filings continuous 2017-2025, mix of sectors, a few that visibly suffer in 2020 (airlines, retail) and a few that don't. Frozen in `ingest/universe.json` early (Hour 3). Each gets a stable alias `anon_001`...`anon_050`.
 

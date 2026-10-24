@@ -145,7 +145,11 @@ Stretch modules plug into the same stores: `screener/` reads metrics and calls, 
 | EDGAR full-text search | Going-concern and risk text |
 | FRED + ALFRED | Macro series with vintages (what was known then) |
 | Tiingo or Stooq | Prices, context only, never a prediction target |
-| Firecrawl press releases (stretch) | Extra event source |
+| 8-K Exhibit 99.1 (stretch) | Dated earnings and deal press releases |
+| FOMC statements, Wayback IR snapshots (stretch) | Macro tone, historical company pages |
+| Firecrawl (stretch, plus dev-time use) | Crawl non-SEC pages into `events`; scrape investor letters and Mubit docs while building |
+
+R&D comes from XBRL `ResearchAndDevelopmentExpense` and the 10-K R&D section. Patents, clinical trials and FDA data are post-MVP. The full source list, per-agent data mapping and Firecrawl rules (no numeric extraction, scrub company names, trusted dates only) are in README sections 4.1b to 4.1d.
 
 Rules: SEC `User-Agent` with name and email, under about 10 requests per second, raw responses cached to disk before parsing. No live API calls in the demo.
 
