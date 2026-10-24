@@ -3,7 +3,7 @@
 :root {
   --bg: #070b14; --panel: #0e1524; --panel2: #121c30; --line: #1f2b45;
   --text: #e8edf8; --mute: #8a98b8;
-  --blue: #4f8cff; --green: #2fd37c; --amber: #f5b13d; --red: #ff5a67; --purple: #a98bff;
+  --blue: #4f8cff; --green: #2fd37c; --amber: #f5b13d; --red: #ff5a67; --purple: #a98bff; --warm: #f0925a;
 }
 @media (prefers-color-scheme: light) {
   :root { --bg: #f4f6fb; --panel: #ffffff; --panel2: #eef2fa; --line: #d8dfee; --text: #131a2b; --mute: #55627f; }

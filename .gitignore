@@ -8,4 +8,4 @@ data/
 .DS_Store
 agents/memory/
 .vercel
-public/
+/public/

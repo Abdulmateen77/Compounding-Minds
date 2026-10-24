@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "../api/client";
 import { ErrorBox, Skeleton } from "../components/bits";
+import { ShowcaseHero } from "../components/Showcase";
+import { assessHref, go } from "../route";
 
-export default function Select({ onStart }: { onStart: (assessmentId: string) => void }) {
+export default function Select() {
   const companies = useQuery({ queryKey: ["companies"], queryFn: api.companies });
   const [q, setQ] = useState("");
   const [sector, setSector] = useState<string | null>(null);
@@ -17,20 +19,20 @@ export default function Select({ onStart }: { onStart: (assessmentId: string) =>
   const sectors = [...new Set((companies.data ?? []).map((c) => c.sector).filter(Boolean))] as string[];
   const chosen = asOf || quarters.data?.[quarters.data.length - 1] || "";
 
-  async function go() {
+  async function convene() {
     if (!sel) return;
     setBusy(true); setErr(null);
-    try { onStart((await api.start(sel, chosen || undefined)).assessment_id); }
+    try { go(assessHref((await api.start(sel, chosen || undefined)).assessment_id, true)); }
     catch (e) { setErr(String(e)); setBusy(false); }
   }
 
   return (
     <div>
-      <h1 className="text-4xl font-bold tracking-tight m-0">Is it investable?</h1>
-      <p className="mute mt-2 max-w-xl">Pick a company. A committee of AI analysts, each following a legendary investor&apos;s principles, reads the filings as they stood on the date you choose and reports what the evidence supports.</p>
+      <ShowcaseHero />
+      <h2 className="text-xl font-semibold tracking-tight m-0">Pick a company</h2>
 
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search companies…" aria-label="Search companies"
-        className="card w-full mt-6 px-4 py-3 outline-none" style={{ color: "var(--text)" }} />
+        className="card w-full mt-4 px-4 py-3 outline-none" style={{ color: "var(--text)" }} />
 
       {sectors.length > 1 && (
         <div className="flex flex-wrap gap-2 mt-3" role="group" aria-label="Sector filter">
@@ -62,7 +64,7 @@ export default function Select({ onStart }: { onStart: (assessmentId: string) =>
             {(quarters.data ?? []).map((d) => <option key={d} value={d}>{d}</option>)}
           </select>
         </label>
-        <button className="btn" disabled={!sel || busy || !chosen} onClick={go}>{busy ? "Starting…" : "Convene committee"}</button>
+        <button className="btn" disabled={!sel || busy || !chosen} onClick={convene}>{busy ? "Starting…" : "Convene committee"}</button>
       </div>
       {err && <div className="mt-3"><ErrorBox msg={err} /></div>}
     </div>
