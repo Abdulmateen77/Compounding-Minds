@@ -7,6 +7,7 @@ from .context import Context, Result, combine
 from .stats import slope
 
 DEBT_CAP = 99.0  # debt/EBITDA when EBITDA is not positive: "not meaningful, very high"
+DEFAULT_TAX_RATE = 0.21  # US statutory rate since 2018, used when a filer reports no usable pre-tax income
 
 
 def fcf_quarter(ctx: Context, end: date) -> Result | None:
@@ -29,25 +30,20 @@ def fcf_margin_ttm_at(ctx: Context, end: date) -> Result | None:
 
 
 def total_debt(ctx: Context, end: date) -> Result | None:
-    """Long-term plus short-term debt, without counting the current portion twice.
+    """All debt at a date, without counting the current portion twice.
 
-    `LongTermDebt` already includes the current part, so when that is the tag in use only pure
-    `ShortTermBorrowings` is added on top. A company that never reports a debt concept has none.
-    """
-    def pick(concept: str) -> tuple[Result | None, str | None]:
-        if not ctx.has(concept):
-            return Result(0.0), None
-        r = ctx.balance(concept, end)
-        tag = next((f.source_tag for f in ctx.facts(concept) if f.period_end == end), None)
-        return r, tag
-
-    ltd, ltd_tag = pick("long_term_debt")
-    std, std_tag = pick("short_term_debt")
-    if ltd is None or std is None:
+    Filers tag debt three ways. If the company reports a single total (current plus non-current)
+    for this date, that figure is used. Otherwise the non-current and current parts are added. A
+    company that never reports a debt concept has none of that part."""
+    total = ctx.balance("total_debt", end)
+    if total is not None:
+        return total
+    parts = []
+    for concept in ("long_term_debt", "short_term_debt"):
+        parts.append(Result(0.0) if not ctx.has(concept) else ctx.balance(concept, end))
+    if any(p is None for p in parts):
         return None
-    if ltd_tag == "LongTermDebt" and std_tag != "ShortTermBorrowings":
-        std = Result(0.0)
-    return ltd + std
+    return parts[0] + parts[1]
 
 
 def debt_to_ebitda_at(ctx: Context, end: date) -> Result | None:
@@ -69,7 +65,7 @@ def _invested_capital(ctx: Context, end: date) -> Result | None:
 def roic(ctx: Context, q0: date) -> Result | None:
     ebit, tax, pretax = ctx.ttm("operating_income", q0), ctx.ttm("income_tax_expense", q0), ctx.ttm("pretax_income", q0)
     prior = ctx.back(q0, 4)
-    if ebit is None or tax is None or pretax is None or prior is None:
+    if ebit is None or prior is None:
         return None
     ic_now, ic_then = _invested_capital(ctx, q0), _invested_capital(ctx, prior)
     if ic_now is None or ic_then is None:
@@ -77,8 +73,12 @@ def roic(ctx: Context, q0: date) -> Result | None:
     avg = (ic_now.value + ic_then.value) / 2
     if avg <= 0:
         return None
-    rate = min(max(tax.value / pretax.value, 0.0), 0.35) if pretax.value > 0 else 0.0
-    return combine(ebit.value * (1 - rate) / avg, ebit, tax, pretax, ic_now, ic_then)
+    if tax is not None and pretax is not None:
+        rate = min(max(tax.value / pretax.value, 0.0), 0.35) if pretax.value > 0 else 0.0
+        parts = (ebit, tax, pretax, ic_now, ic_then)
+    else:  # e.g. McDonald's reports pre-tax income only split into domestic and foreign
+        rate, parts = DEFAULT_TAX_RATE, (ebit, ic_now, ic_then)
+    return combine(ebit.value * (1 - rate) / avg, *parts)
 
 
 def fcf_slope_8q(ctx: Context, q0: date) -> Result | None:

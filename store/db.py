@@ -13,6 +13,9 @@ from typing import Iterable
 import psycopg
 
 SCHEMA_PATH = Path(__file__).with_name("schema.sql")
+# Person B's additions for what the agents and eval write (grades.resolution_date, eval_results). Applied after
+# schema.sql; without it the dashboard and API fail on the first query of a real database.
+EXTRAS_PATH = Path(__file__).resolve().parent.parent / "schemas" / "run_extras.sql"
 DEFAULT_URL = "postgresql://localhost:5432/compounding_minds"
 
 
@@ -27,8 +30,10 @@ def connect(url: str | None = None, timeout: int = 10) -> psycopg.Connection:
 
 
 def apply_schema(conn: psycopg.Connection) -> None:
-    """Create all tables and indexes. Idempotent."""
+    """Create all tables and indexes: schema.sql, then run_extras.sql. Idempotent."""
     conn.execute(SCHEMA_PATH.read_text(encoding="utf-8"))
+    if EXTRAS_PATH.exists():
+        conn.execute(EXTRAS_PATH.read_text(encoding="utf-8"))
     conn.commit()
 
 

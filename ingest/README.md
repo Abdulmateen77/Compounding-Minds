@@ -26,6 +26,8 @@ docker compose up -d                 # Postgres 16 on localhost:5432
 pip install -r requirements.txt
 python -m store.migrate              # creates every table. Safe to re-run
 python -m pytest -q                  # database tests run against it too (they skip if it is down)
+python -m store.envcheck             # says exactly which key is missing and how to get it. Never prints a secret
+python -m store.envcheck --ping      # then one tiny real request to SEC and FRED, to prove the keys work
 ```
 
 `SEC_USER_AGENT` must be a real name and email, for example `"Jane Doe jane@example.com"`. The SEC blocks

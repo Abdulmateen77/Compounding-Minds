@@ -18,8 +18,9 @@ from store.concepts import COMPOSITES, CONCEPTS
 
 from .quarters import Q, discrete_quarters, instants
 
-# Consecutive quarter ends are about 91 days apart (52/53 week calendars vary a little).
-MIN_GAP, MAX_GAP = 75, 110
+# Consecutive quarter ends are about 91 days apart. 52/53-week calendars vary: a retailer such as Costco has
+# three 12-week quarters (84 days) and a 16-week fourth quarter (112 days).
+MIN_GAP, MAX_GAP = 75, 120
 
 
 @dataclass(frozen=True)

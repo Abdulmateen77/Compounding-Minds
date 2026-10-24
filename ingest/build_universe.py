@@ -87,7 +87,7 @@ _COMPANIES = [
     ("GE", "General Electric", "Industrials", "hit", False),
     ("LMT", "Lockheed Martin", "Industrials", "resilient", False),
     # Energy
-    ("XOM", "Exxon Mobil", "Energy", "hit", False),
+    ("CVX", "Chevron", "Energy", "hit", False),  # replaced Exxon Mobil: the SEC's data for ExxonMobil's current CIK starts in 2025
     ("COP", "ConocoPhillips", "Energy", "hit", False),
     ("SLB", "Schlumberger", "Energy", "hit", True),
     # Materials
