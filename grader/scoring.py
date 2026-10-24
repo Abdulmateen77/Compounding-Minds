@@ -28,3 +28,9 @@ def brier_multiclass(answer: str, probability: float, outcome: str) -> float:
         ((probability if b == answer else others) - (1.0 if b == outcome else 0.0)) ** 2
         for b in BUCKET_ORDER
     )
+
+
+def accuracy(grades) -> float | None:
+    """Share correct among resolvable grades; `unresolvable` (correct is None) is excluded."""
+    done = [g for g in grades if g.correct is not None]
+    return sum(g.correct for g in done) / len(done) if done else None

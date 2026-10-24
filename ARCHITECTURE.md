@@ -56,7 +56,7 @@ Multi-agent design, data flow and the reasoning behind both. Companions: [PROJEC
                                            |
    [replay orchestrator] --sets as_of--> calls written to Postgres
                                            |
-                          [grader/]  external verifier, pure Python
+                          [grader/]  external verifier, Python (Sapling only for Risk going-concern text)
                                            |
                                     Grade + Correction
                                            |
@@ -78,7 +78,7 @@ Multi-agent design, data flow and the reasoning behind both. Companions: [PROJEC
 | Metrics engine | Python | Compute every number with accession traceability | Call an LLM |
 | MCP tools | Read-only servers | Drill-down (metric series, events, macro snapshot, peer compare), capped at about 5 calls per run | Bypass `store/queries.py` |
 | Synthesizer | Python weights + LLM rationale | Combine calls into a verdict, with weights from `grades` | Let an LLM set weights or confidence |
-| Reality grader | Pure Python | Resolve each `question_id` from later filings, compute Brier | Use an LLM, guess on missing data |
+| Reality grader | Pure Python, one exception: Mubit's Sapling verifier judges going-concern passages for the Risk rule (cached, replayed offline) | Resolve each `question_id` from later filings, compute Brier. Facts are read as known on the resolution date (a later restatement is ignored); `unresolvable` is excluded and logged | Use any other LLM, guess on missing data, grade a restated value the system could not yet have seen |
 | Correction maker | Python + reflection LLM | Select corrections (rate-limited), write lesson text | Name companies in lessons |
 | ModelUpdater | Mubit client / fallback | Submit corrections per agent, expose model version | Leak lessons across agents |
 | Store gate | `store/queries.py` | Enforce `filed_date <= as_of` | Filter by `period_end` |
