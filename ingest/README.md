@@ -95,12 +95,16 @@ queries.get_facts("anon_001", "revenue", date(2019, 6, 30))   # only rows filed 
 
 ## 5. What is still yours (README, TASKS.md section 4)
 
-- [ ] The fetchers above, with the rate limits and the "skip if cached" rule
-- [ ] Going-concern text pass: for each 10-K and 10-Q event with a `text_ref`, download the document, count
-      the passages with the keywords in `grader/config.py`, and write the count back with
-      `db.insert_events` (it keeps the larger `going_concern_hits`). The grader and the Risk agent read it
-- [ ] Prices (stretch, nothing in the MVP uses them)
-- [ ] The ingest QA report. `store.quality.coverage` is the data half of it
+- [x] The fetchers above, with the rate limits and the "skip if cached" rule (`ingest/sec.py`, `ingest/macro.py`)
+- [x] Going-concern text pass: `python -m ingest load --filing-text` (`ingest/events.py` `tag_going_concern`)
+- [ ] Prices (stretch, nothing in the MVP uses them): `StooqClient` is built, nothing is downloaded yet
+- [x] The ingest QA report: `python -m ingest load` writes `<out>/qa_report.txt` and `qa_report.json`
+
+Offline reload of everything from the raw cache (no network, no User-Agent, nothing written to Postgres):
+
+```bash
+python -m ingest load --offline --fred --filing-text --raw-dir data/raw --out data/processed
+```
 
 ## 6. Things that will bite you
 

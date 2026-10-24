@@ -161,3 +161,85 @@ def test_one_failed_call_does_not_lose_the_others_and_the_run_can_resume(tmp_pat
     boom["on"] = False
     rp.run(qs)                                            # resume: only the missing call is asked for
     assert len([r for r in store.rows("calls") if r["run_id"] == "t-learned-train"]) == 6 * 3
+
+
+# ---- held-out companies: called and graded every quarter, never learned from -----------------------------
+
+def test_heldout_companies_are_graded_but_never_become_lessons(tmp_path):
+    held = ["anon_002", "anon_005"]
+    rp, store, ups = make(tmp_path, held=held, **BIG)
+    res = rp.run(parse_quarters("2019Q1:2020Q4"), settle=4)
+    calls = {r["call_id"]: r["payload"] for r in store.rows("calls")}
+    corr = store.rows("corrections")
+    assert res.n_corrections > 0 and corr                       # learning really happened on the train names
+    assert all(calls[c["call_id"]]["company_id"] not in held for c in corr)
+    assert all(c["payload"]["company_id"] not in held for c in corr)
+    lesson_ids = {r["correction_id"] for a in BIG["agents"] for r in ups["learned"]._rows(a)}
+    assert lesson_ids == {c["correction_id"] for c in corr}     # the updater saw exactly those, nothing else
+    graded = {r["call_id"] for r in store.rows("grades")}
+    for cid in held:                                            # still called and graded, in the learned arm too
+        mine = [k for k, p in calls.items() if p["company_id"] == cid and p["run_id"] == "t-learned-train"]
+        assert mine and set(mine) & graded
+
+
+# ---- a crash part-way through a quarter --------------------------------------------------------------------
+
+def _jsonl_replay(tmp_path, runner=None):
+    from agents.run_store import JsonlRunStore
+    return make(tmp_path, store=JsonlRunStore(tmp_path / "store"), runner=runner, **BIG)
+
+
+def test_crash_in_the_frozen_arm_resumes_without_relearning_or_redoing_the_learned_arm(tmp_path):
+    from agents.frozen import FrozenUpdater as Frozen
+    from grader.replay import stub_backed_runner
+    qs = parse_quarters("2019Q1:2019Q4")
+    clean, clean_store, clean_ups = _jsonl_replay(tmp_path / "clean")
+    clean.run(qs)
+
+    boom, asked = {"on": True}, []
+
+    def runner(agent, company, as_of, **kw):
+        frozen = isinstance(kw["updater"], Frozen)
+        if boom["on"] and as_of == qs[2] and frozen:
+            raise RuntimeError("529 overloaded")
+        if as_of == qs[2] and not frozen:
+            asked.append((agent, company))
+        return stub_backed_runner(agent, company, as_of, **kw)
+
+    rp, _, _ = _jsonl_replay(tmp_path / "crash", runner)
+    try:
+        rp.run(qs)
+        raise AssertionError("the failure should have surfaced")
+    except RuntimeError as e:
+        assert "overloaded" in str(e)
+    n_learned_q3 = len(asked)
+    boom["on"] = False
+    rp2, store2, ups2 = _jsonl_replay(tmp_path / "crash", runner)   # a new process: state.json + store on disk
+    rp2.run(qs)
+    assert n_learned_q3 > 0 and len(asked) == n_learned_q3   # the learned arm of that quarter was not asked again
+    assert _digest(store2) == _digest(clean_store)           # same calls, grades, snapshots, corrections
+    for a in BIG["agents"]:                                  # and no lesson was submitted twice
+        assert ups2["learned"].get_model_version(a) == clean_ups["learned"].get_model_version(a)
+
+
+def test_lessons_from_an_unsaved_quarter_are_set_aside_on_resume(tmp_path):
+    import json
+    rp, store, ups = _jsonl_replay(tmp_path)
+    rp.run(parse_quarters("2019Q1:2019Q3"))
+    before = ups["learned"].get_model_version("fundamentals")
+    mem = ups["learned"]._mem("fundamentals")
+    with mem.open("a") as f:                                 # what an older replay left after crashing mid-quarter
+        f.write(json.dumps({"correction_id": "never-saved", "lesson": "x" * 30, "mubit_request_id": None}) + "\n")
+    assert ups["learned"].get_model_version("fundamentals") != before
+    rp2, _, ups2 = _jsonl_replay(tmp_path)
+    assert ups2["learned"].get_model_version("fundamentals") == before
+    assert "never-saved" in mem.with_name(mem.name + ".orphans").read_text()
+
+
+def test_state_file_from_before_per_arm_saves_still_resumes(tmp_path):
+    import json
+    rp, store, _ = make(tmp_path)
+    rp.run(parse_quarters("2019Q2:2019Q2"))
+    (tmp_path / "state.json").write_text(json.dumps({"tag": "t", "done_quarters": ["2019-06-30"]}))
+    rp2, _, _ = make(tmp_path, store=store)
+    assert rp2.run(parse_quarters("2019Q2:2019Q2")).n_calls == 0
