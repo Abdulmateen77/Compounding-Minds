@@ -76,8 +76,8 @@ Interfaces that do not change without telling the other person: `get_facts`, `ge
 | Phase | Goal | Due | Handoff | Status |
 |---|---|---|---|---|
 | **1. Contract** | Universe, concept map, final schema, metric spec, principles checked against the metrics | Sat 17:00 | 1, 2 | Done in code. Citations still to verify |
-| **2. Real store** | Postgres backend for the date gate, loaders, parsers, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | **Mostly done**: backend, loaders, parsers and a date-gate fix, tested on a real Postgres. Left: the leakage test on real filings (needs B's download, handoff 3) and `run_agent` |
-| **3. Metrics and tools** | The 22 metrics computed from real facts, `get_metrics` real, MCP tools | Sat 22:00 | 5 | Spec written (`metrics/SPEC.md`), code not started |
+| **2. Real store** | Postgres backend for the date gate, loaders, parsers, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | **Done** except the leakage test on real filings (needs B's download, handoff 3). Backend, loaders, parsers, date-gate fix and `agents/entry.py` are built and tested on a real Postgres |
+| **3. Metrics and tools** | The 22 metrics computed from real facts, `get_metrics` real, MCP tools | Sat 22:00 | 5 | **Engine done** (`metrics/`, 34 tests against hand-worked values, identical on Postgres). MCP tools are workstream H1 (Hermes) |
 | **4. Agents on real data** | Run the 3 MVP agents on real metrics, tune prompts, measure JSON validity and evidence match | Sun 01:00 | | Not started |
 | **5. Evaluation** | Frozen twins, baselines, held-out run, quality report with critique | Sun 05:00 | 9 | Not started |
 | **6. Content and freeze** | Copy, demo script, README results, backup video | Sun 08:00 | | Not started |
@@ -118,16 +118,16 @@ Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as han
 - [x] Final `store/schema.sql`: keys, indexes, `filed_date NOT NULL`, `vintage_date NOT NULL` for macro, `snapshots` table **(handoff 2)**
 - [x] `metrics/SPEC.md`: formulas for all 22 metrics and the quarter-derivation rules
 - [x] Date gate in `store/queries.py` with an in-memory backend, and `store/tests/test_leakage.py`
-- [ ] **Postgres backend** for the gate. Latest row per (concept, period_end) with `filed_date <= as_of`. Leakage test on real rows **(handoff 4)**
-- [ ] `metrics/` engine for Fundamentals, Risk and Scenarios. Each metric returns name, value, unit, as_of and the filing accessions **(handoff 5)**
-- [ ] Traceability test: every accession a metric cites exists in `facts`
-- [ ] `get_metrics` real, then flip `USE_STUBS=0`
+- [x] **Postgres backend** for the gate. Latest row per (concept, period_end) with `filed_date <= as_of`. Leakage test on real rows **(handoff 4)**
+- [x] `metrics/` engine for Fundamentals, Risk and Scenarios. Each metric returns name, value, unit, as_of and the filing accessions **(handoff 5)**
+- [x] Traceability test: every accession a metric cites is a real filing of that company and was filed by `as_of`
+- [x] `get_metrics` real. `agents/entry.py` uses it unless `USE_STUBS=1`; set `USE_STUBS=0` once real data is loaded
 - [ ] `tools/` MCP servers: `get_metric_series`, `get_recent_events`, `get_macro_snapshot`, `peer_compare`
 - [ ] Data quality report per company (coverage, gaps), agreed with B's ingest QA
 
 ### A3. Agents
 - [x] Runner, specs for Fundamentals, Risk and Scenarios, date masking, Mubit gateway
-- [ ] `run_agent(company_id, as_of) -> AgentCall` as the stable entry point **(handoff 7)**
+- [x] `agents/entry.py`: `Entry(gateway, updater).attempt(agent, company_id, as_of)` is the entry point **(handoff 7)**. It returns `ok`, `skipped` (bundle not usable, the model is never asked) or `dropped` (invalid reply), so the replay can count each
 - [ ] Run each agent on real metrics for one company, then widen. Check: JSON valid rate, evidence matches the metrics engine, tool calls capped at about 5 **(Sat 20:00)**
 - [ ] Mubit: per-agent identity, and the office-hours answers on the update API (endpoint, latency, version IDs). The gateway already notes that no public corrections endpoint is known
 - [ ] Confirm the model version is stamped into every `AgentCall`
