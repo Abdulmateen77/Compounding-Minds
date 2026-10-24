@@ -101,7 +101,7 @@ def test_no_row_visible_before_it_was_filed(loaded):
 
 def test_company_loader_resolves_ciks_and_reports_unresolved(pg_conn):
     r = pipeline.load_companies(pg_conn, {"AAPL": "0000320193"})
-    assert r["loaded"] == 1 and len(r["unresolved_tickers"]) == 49
+    assert r["loaded"] == 1 and len(r["unresolved_tickers"]) == 61
     cik, held = pg_conn.execute("SELECT cik, held_out FROM companies").fetchone()
     assert cik == "320193" and held is False
 

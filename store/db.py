@@ -43,12 +43,12 @@ def _many(conn: psycopg.Connection, sql: str, rows: Iterable[dict]) -> int:
 
 def upsert_companies(conn: psycopg.Connection, rows: Iterable[dict]) -> int:
     """Rows need company_id, cik, ticker, name. Re-running updates cik, sector and the flags."""
-    rows = [{"sector": None, "covid_group": None, "held_out": False, "sic": None, **r} for r in rows]
+    rows = [{"sector": None, "covid_group": None, "held_out": False, "short_history": False, "sic": None, **r} for r in rows]
     return _many(conn, """
-        INSERT INTO companies (company_id, cik, ticker, name, sector, covid_group, held_out, sic)
-        VALUES (%(company_id)s, %(cik)s, %(ticker)s, %(name)s, %(sector)s, %(covid_group)s, %(held_out)s, %(sic)s)
+        INSERT INTO companies (company_id, cik, ticker, name, sector, covid_group, held_out, short_history, sic)
+        VALUES (%(company_id)s, %(cik)s, %(ticker)s, %(name)s, %(sector)s, %(covid_group)s, %(held_out)s, %(short_history)s, %(sic)s)
         ON CONFLICT (company_id) DO UPDATE SET cik = EXCLUDED.cik, sector = EXCLUDED.sector,
-            covid_group = EXCLUDED.covid_group, held_out = EXCLUDED.held_out,
+            covid_group = EXCLUDED.covid_group, held_out = EXCLUDED.held_out, short_history = EXCLUDED.short_history,
             sic = COALESCE(EXCLUDED.sic, companies.sic)""", rows)
 
 

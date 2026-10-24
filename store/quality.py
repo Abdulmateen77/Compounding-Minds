@@ -17,6 +17,9 @@ REQUIRED = ("revenue", "operating_income", "op_cash_flow", "capex", "depreciatio
 OPTIONAL = ("dividends_paid", "dividends_per_share", "interest_expense", "long_term_debt", "short_term_debt")
 # 5-year statistics at the first replay quarter (2018Q1) need revenue back to about 2013.
 HISTORY_NEEDED_FROM = date(2013, 12, 31)
+# A recent filer (flagged short_history in universe.json) only needs to start by here: its calls
+# begin when enough quarters exist, and the replay skips quarters with too many missing metrics.
+SHORT_HISTORY_MAX_START = date(2021, 12, 31)
 
 
 def coverage(conn: psycopg.Connection) -> list[dict]:
@@ -24,8 +27,10 @@ def coverage(conn: psycopg.Connection) -> list[dict]:
         cur.execute("""SELECT company_id, concept, count(*), min(period_end), max(period_end)
                        FROM facts GROUP BY company_id, concept""")
         rows = cur.fetchall()
-        cur.execute("SELECT company_id FROM companies ORDER BY company_id")
-        ids = [r[0] for r in cur.fetchall()]
+        cur.execute("SELECT company_id, short_history FROM companies ORDER BY company_id")
+        company_rows = cur.fetchall()
+    ids = [r[0] for r in company_rows]
+    short = {r[0] for r in company_rows if r[1]}
     by_company: dict[str, dict[str, tuple]] = {i: {} for i in ids}
     for company_id, concept, n, lo, hi in rows:
         by_company.setdefault(company_id, {})[concept] = (n, lo, hi)
@@ -34,7 +39,8 @@ def coverage(conn: psycopg.Connection) -> list[dict]:
         have = by_company[company_id]
         missing = [c for c in REQUIRED if c not in have]
         rev = have.get("revenue")
-        shallow = bool(rev) and rev[1] > HISTORY_NEEDED_FROM
+        limit = SHORT_HISTORY_MAX_START if company_id in short else HISTORY_NEEDED_FROM
+        shallow = bool(rev) and rev[1] > limit
         out.append({
             "company_id": company_id,
             "missing_required": missing,

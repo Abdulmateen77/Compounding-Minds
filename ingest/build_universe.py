@@ -5,14 +5,20 @@ from SEC company_tickers.json and fills `cik`. Names and tickers live only in th
 the `companies` table. They never go into an agent prompt.
 
 Selection rules (checked by ingest/universe.py and its tests):
-  * 50 US operating companies with 10-K/10-Q filings across 2017 to 2025
+  * 62 US operating companies with 10-K/10-Q filings across 2017 to 2025 (Palantir, which only
+    started filing in late 2020, is kept but flagged `short_history`)
   * no banks, insurers or REITs: the metric set (FCF, gross margin, debt/EBITDA) does not
     fit their statements
   * a mix of sectors, with COVID "hit", "resilient" and "mixed" groups, so the replay shows
     a visible 2020 shock and a recovery
-  * 10 held out of ALL learning (README 9), spread over sectors and COVID groups, and
+  * 12 held out of ALL learning (README 9), spread over sectors and COVID groups, and
     including some distress candidates so the held-out set has positive Risk outcomes
-  * anon IDs come from a seeded shuffle so an ID says nothing about sector or ticker
+  * anon IDs come from a seeded shuffle so an ID says nothing about sector or ticker. The first
+    50 companies keep the IDs they were first given (anon_001 to anon_050) so nothing already
+    loaded changes; the 12 added later take anon_051 to anon_062
+
+Not included on purpose: private companies (SpaceX, xAI) have no 10-K or 10-Q history to grade
+against, and Broadcom changed CIK in 2018 so its history is split across two filers.
 """
 from __future__ import annotations
 
@@ -87,9 +93,30 @@ _COMPANIES = [
 ]
 
 
+# Added after the first 50 (tech-heavy). Same tuple shape.
+_ADDED = [
+    ("TSLA", "Tesla", "Consumer Discretionary", "resilient", False),
+    ("NVDA", "NVIDIA", "Technology", "resilient", False),
+    ("PLTR", "Palantir Technologies", "Technology", "resilient", False),
+    ("AMD", "Advanced Micro Devices", "Technology", "resilient", False),
+    ("META", "Meta Platforms", "Communication", "resilient", True),
+    ("GOOGL", "Alphabet", "Communication", "mixed", False),
+    ("AMZN", "Amazon.com", "Consumer Discretionary", "resilient", False),
+    ("NFLX", "Netflix", "Communication", "resilient", False),
+    ("CRM", "Salesforce", "Technology", "resilient", False),
+    ("QCOM", "Qualcomm", "Technology", "mixed", False),
+    ("MU", "Micron Technology", "Technology", "mixed", True),
+    ("AMAT", "Applied Materials", "Technology", "resilient", False),
+]
+SHORT_HISTORY = {"PLTR"}  # first 10-Q was for Q3 2020: metrics exist only from about 2022
+
+
 def build() -> dict:
     rows = list(_COMPANIES)
-    random.Random(SEED).shuffle(rows)
+    random.Random(SEED).shuffle(rows)  # unchanged: the first 50 keep their IDs
+    added = list(_ADDED)
+    random.Random(SEED + 1).shuffle(added)
+    rows += added
     companies = [
         {
             "company_id": f"anon_{i + 1:03d}",
@@ -98,6 +125,7 @@ def build() -> dict:
             "sector": s,
             "covid_group": g,
             "held_out": h,
+            "short_history": t in SHORT_HISTORY,
             "cik": None,  # filled by ingest from SEC company_tickers.json
         }
         for i, (t, n, s, g, h) in enumerate(rows)
@@ -111,4 +139,4 @@ def build() -> dict:
 
 if __name__ == "__main__":
     OUT.write_text(json.dumps(build(), indent=2) + "\n", encoding="utf-8")
-    print(f"wrote {OUT} ({len(_COMPANIES)} companies)")
+    print(f"wrote {OUT} ({len(_COMPANIES) + len(_ADDED)} companies)")

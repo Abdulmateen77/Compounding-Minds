@@ -9,6 +9,7 @@
       "sector": "Materials",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -18,6 +19,7 @@
       "sector": "Health Care",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -27,6 +29,7 @@
       "sector": "Industrials",
       "covid_group": "hit",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -36,6 +39,7 @@
       "sector": "Consumer Staples",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -45,6 +49,7 @@
       "sector": "Communication",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -54,6 +59,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -63,6 +69,7 @@
       "sector": "Health Care",
       "covid_group": "resilient",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -72,6 +79,7 @@
       "sector": "Industrials",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -81,6 +89,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -90,6 +99,7 @@
       "sector": "Health Care",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -99,6 +109,7 @@
       "sector": "Industrials",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -108,6 +119,7 @@
       "sector": "Communication",
       "covid_group": "mixed",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -117,6 +129,7 @@
       "sector": "Health Care",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -126,6 +139,7 @@
       "sector": "Technology",
       "covid_group": "mixed",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -135,6 +149,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -144,6 +159,7 @@
       "sector": "Technology",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -153,6 +169,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -162,6 +179,7 @@
       "sector": "Technology",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -171,6 +189,7 @@
       "sector": "Industrials",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -180,6 +199,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -189,6 +209,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -198,6 +219,7 @@
       "sector": "Technology",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -207,6 +229,7 @@
       "sector": "Consumer Staples",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -216,6 +239,7 @@
       "sector": "Materials",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -225,6 +249,7 @@
       "sector": "Industrials",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -234,6 +259,7 @@
       "sector": "Energy",
       "covid_group": "hit",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -243,6 +269,7 @@
       "sector": "Technology",
       "covid_group": "resilient",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -252,6 +279,7 @@
       "sector": "Utilities",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -261,6 +289,7 @@
       "sector": "Energy",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -270,6 +299,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -279,6 +309,7 @@
       "sector": "Communication",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -288,6 +319,7 @@
       "sector": "Energy",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -297,6 +329,7 @@
       "sector": "Industrials",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -306,6 +339,7 @@
       "sector": "Technology",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -315,6 +349,7 @@
       "sector": "Consumer Staples",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -324,6 +359,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -333,6 +369,7 @@
       "sector": "Health Care",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -342,6 +379,7 @@
       "sector": "Technology",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -351,6 +389,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -360,6 +399,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -369,6 +409,7 @@
       "sector": "Consumer Staples",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -378,6 +419,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "mixed",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -387,6 +429,7 @@
       "sector": "Utilities",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -396,6 +439,7 @@
       "sector": "Health Care",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -405,6 +449,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -414,6 +459,7 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -423,6 +469,7 @@
       "sector": "Consumer Staples",
       "covid_group": "mixed",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
@@ -432,6 +479,7 @@
       "sector": "Energy",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -441,6 +489,7 @@
       "sector": "Industrials",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -450,6 +499,127 @@
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_051",
+      "ticker": "QCOM",
+      "name": "Qualcomm",
+      "sector": "Technology",
+      "covid_group": "mixed",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_052",
+      "ticker": "NFLX",
+      "name": "Netflix",
+      "sector": "Communication",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_053",
+      "ticker": "NVDA",
+      "name": "NVIDIA",
+      "sector": "Technology",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_054",
+      "ticker": "AMAT",
+      "name": "Applied Materials",
+      "sector": "Technology",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_055",
+      "ticker": "MU",
+      "name": "Micron Technology",
+      "sector": "Technology",
+      "covid_group": "mixed",
+      "held_out": true,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_056",
+      "ticker": "TSLA",
+      "name": "Tesla",
+      "sector": "Consumer Discretionary",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_057",
+      "ticker": "META",
+      "name": "Meta Platforms",
+      "sector": "Communication",
+      "covid_group": "resilient",
+      "held_out": true,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_058",
+      "ticker": "AMD",
+      "name": "Advanced Micro Devices",
+      "sector": "Technology",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_059",
+      "ticker": "CRM",
+      "name": "Salesforce",
+      "sector": "Technology",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_060",
+      "ticker": "GOOGL",
+      "name": "Alphabet",
+      "sector": "Communication",
+      "covid_group": "mixed",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_061",
+      "ticker": "AMZN",
+      "name": "Amazon.com",
+      "sector": "Consumer Discretionary",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_062",
+      "ticker": "PLTR",
+      "name": "Palantir Technologies",
+      "sector": "Technology",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": true,
       "cik": null
     }
   ]

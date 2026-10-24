@@ -47,7 +47,7 @@ One sentence: a team of AI analysts that grades itself against reality and impro
 
 Supporting: **replay orchestrator** (advances one quarter, enforces as-of date) and **reality grader** (scores calls, emits corrections).
 
-**MVP:** Fundamentals, Risk, Scenarios + synthesizer + grader + Mubit correction loop + replay dashboard, ~50 US companies.
+**MVP:** Fundamentals, Risk, Scenarios + synthesizer + grader + Mubit correction loop + replay dashboard, 62 US companies (see `ingest/universe.json`).
 **Stretch:** Valuation, Moat, cross-examination round, legend scoreboard, frontier-model comparison, Firecrawl press releases, and the analyst workflow layer (README 11b): watchlist screener (`screener/`, A), memo drafting (`memos/`, B), calibration track record (`grader/calibration.py`, A). Memos may not contain any number the metrics engine did not produce. Screener flags are "needs attention", never buy/sell.
 **Never cut:** point-in-time store, reality grader, correction-to-Mubit loop, held-out eval, backup demo video.
 

@@ -48,7 +48,7 @@ Rules:
 - **FRED:** about 120 requests a minute. The revised series (GDP, unemployment) **must** use the
   `realtime_start=1776-07-04&realtime_end=9999-12-31` window, so every vintage comes back. Without it we
   would see today's revised numbers in 2019, which is exactly the leakage we are testing against.
-- **Universe:** the 50 companies are in `ingest/universe.json` (tickers only). Resolve each ticker to a CIK
+- **Universe:** the 62 companies are in `ingest/universe.json` (tickers only). Resolve each ticker to a CIK
   from `company_tickers.json`, then make `cik_by_ticker = {"AAPL": "320193", ...}`.
 
 ## 3. Load

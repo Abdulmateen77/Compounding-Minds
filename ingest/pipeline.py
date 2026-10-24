@@ -61,7 +61,7 @@ def load_companies(conn: psycopg.Connection, cik_by_ticker: dict[str, str]) -> d
         if cik is None:
             unresolved.append(c["ticker"])
             continue
-        rows.append({**{k: c[k] for k in ("company_id", "ticker", "name", "sector", "covid_group", "held_out")},
+        rows.append({**{k: c[k] for k in ("company_id", "ticker", "name", "sector", "covid_group", "held_out", "short_history")},
                      "cik": str(int(cik))})
     db.upsert_companies(conn, rows)
     return {"loaded": len(rows), "unresolved_tickers": unresolved}
