@@ -5,8 +5,8 @@ from datetime import date
 
 import pytest
 
-from eval.baselines import (BASE_RATE, Pick, always_yes_pick, fit_base_rate, score_outcomes, score_pick)
-from eval.tests.helpers import make_scored
+from quality.baselines import (BASE_RATE, Pick, always_yes_pick, fit_base_rate, score_outcomes, score_pick)
+from quality.tests.helpers import make_scored
 
 HELD = {"anon_090"}
 

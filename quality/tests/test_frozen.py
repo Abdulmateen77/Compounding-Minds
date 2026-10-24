@@ -6,7 +6,7 @@ from datetime import date
 
 from agents.gateway import FakeModelUpdater, ModelUpdater, ScriptedGateway, UpdateRef, UpdateStatus
 from agents.runner import run_agent
-from eval.frozen import FrozenUpdater, run_frozen
+from quality.frozen import FrozenUpdater, run_frozen
 from schemas import Correction
 from store.stubs import get_metrics_stub
 

@@ -6,10 +6,10 @@ from datetime import date, datetime, timezone
 
 import pytest
 
-from eval import report
-from eval.metrics import Scored
-from eval.report import build_heldout, build_quality, critique, write_reports
-from eval.tests.helpers import make_scored
+from quality import report
+from quality.metrics import Scored
+from quality.report import build_heldout, build_quality, critique, write_reports
+from quality.tests.helpers import make_scored
 
 HELD = {"anon_090", "anon_091"}
 NOW = datetime(2025, 6, 1, tzinfo=timezone.utc)
@@ -310,7 +310,7 @@ def test_the_critique_never_uses_advice_language():
 # ---- the demo and the CLI ---------------------------------------------------------------------------------
 
 def test_demo_writes_both_files_labels_itself_and_exercises_win_tie_and_loss(tmp_path, capsys):
-    from eval.cli import main
+    from quality.cli import main
 
     assert main(["--demo", "--out", str(tmp_path)]) == 0
     heldout = json.loads((tmp_path / "heldout.json").read_text(encoding="utf-8"))
@@ -326,7 +326,7 @@ def test_demo_writes_both_files_labels_itself_and_exercises_win_tie_and_loss(tmp
 
 
 def test_demo_is_deterministic(tmp_path):
-    from eval.cli import main
+    from quality.cli import main
 
     for sub in ("a", "b"):
         main(["--demo", "--out", str(tmp_path / sub)])
@@ -335,7 +335,7 @@ def test_demo_is_deterministic(tmp_path):
 
 
 def test_without_a_database_the_cli_fails_clearly_not_with_a_traceback(tmp_path, monkeypatch, capsys):
-    from eval.cli import main
+    from quality.cli import main
 
     monkeypatch.setenv("DATABASE_URL", "postgresql://postgres:nope@127.0.0.1:1/none")
     assert main(["--out", str(tmp_path)]) == 2
@@ -345,7 +345,7 @@ def test_without_a_database_the_cli_fails_clearly_not_with_a_traceback(tmp_path,
 
 
 def test_attempted_flag_is_validated(tmp_path):
-    from eval.cli import main
+    from quality.cli import main
 
     with pytest.raises(SystemExit):
         main(["--demo", "--out", str(tmp_path), "--attempted", "fundamentals"])

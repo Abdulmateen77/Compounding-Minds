@@ -1,4 +1,4 @@
-"""Builders for the eval tests. Grades are made by the project's own `grader.grade.grade`, so
+"""Builders for the quality tests. Grades are made by the project's own `grader.grade.grade`, so
 the Brier in a test is the real one, not a re-implementation of it."""
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import itertools
 from datetime import date, datetime, timedelta, timezone
 
 from agents.specs import SPECS
-from eval.metrics import Scored
+from quality.metrics import Scored
 from grader.grade import grade
 from schemas import AgentCall
 

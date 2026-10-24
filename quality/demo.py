@@ -1,4 +1,4 @@
-"""Synthetic scored calls so `python -m eval.cli --demo` runs with no database.
+"""Synthetic scored calls so `python -m quality.cli --demo` runs with no database.
 
 THIS IS NOT DATA ABOUT THE AGENTS. Every number it produces is made up from a seeded random
 generator, and every report built from it says so in its notes. It exists to exercise the report

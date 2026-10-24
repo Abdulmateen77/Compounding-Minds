@@ -5,8 +5,8 @@ from datetime import date
 
 import pytest
 
-from eval import split
-from eval.tests.helpers import make_call
+from quality import split
+from quality.tests.helpers import make_call
 from ingest.universe import held_out_ids
 
 HELD = {"anon_003"}
@@ -70,6 +70,6 @@ def test_the_real_universe_has_ten_heldout_companies_that_slice_correctly():
 
 @pytest.mark.parametrize("settled,late", [(date(2022, 12, 31), False), (date(2023, 1, 1), True), (None, False)])
 def test_an_outcome_settled_after_training_is_flagged_as_late(settled, late):
-    from eval.tests.helpers import make_scored
+    from quality.tests.helpers import make_scored
     s = make_scored("yes", as_of=date(2022, 9, 30), resolution=settled)
     assert split.resolves_after_training(s.grade) is late

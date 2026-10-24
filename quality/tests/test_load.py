@@ -5,8 +5,8 @@ from datetime import date
 
 import pytest
 
-from eval.load import load_scored, resolution_date_of
-from eval.tests.helpers import make_call, make_scored
+from quality.load import load_scored, resolution_date_of
+from quality.tests.helpers import make_call, make_scored
 from store import db
 
 psycopg = pytest.importorskip("psycopg")
@@ -76,7 +76,7 @@ def test_an_empty_database_loads_nothing(pg_conn):
 
 
 def test_the_loaded_records_feed_the_report(loaded, pg_conn):
-    from eval.report import build_heldout
+    from quality.report import build_heldout
 
     h = build_heldout(load_scored(pg_conn), {"anon_002"})
     assert set(h["agents"]) == {"fundamentals"}

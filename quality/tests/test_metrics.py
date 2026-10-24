@@ -6,8 +6,8 @@ from datetime import date
 
 import pytest
 
-from eval import metrics as M
-from eval.tests.helpers import make_call, make_scored, six_binary
+from quality import metrics as M
+from quality.tests.helpers import make_call, make_scored, six_binary
 
 
 def test_accuracy_and_brier_on_six_hand_computed_records():

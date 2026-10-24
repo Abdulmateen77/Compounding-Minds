@@ -1,9 +1,9 @@
 """Build the held-out report and the quality report.
 
-    python -m eval.cli --out eval/out                  read scored calls from DATABASE_URL
-    python -m eval.cli --demo --out eval/out           synthetic data, no database (labelled as such)
+    python -m quality.cli --out quality/out                  read scored calls from DATABASE_URL
+    python -m quality.cli --demo --out quality/out           synthetic data, no database (labelled as such)
 
-Writes eval/out/heldout.json (the dashboard's contract) and eval/out/quality.md.
+Writes quality/out/heldout.json (the dashboard's contract) and quality/out/quality.md.
 """
 from __future__ import annotations
 
@@ -27,8 +27,8 @@ def _parse_attempted(items: list[str]) -> dict[str, int]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="python -m eval.cli", description=__doc__.split("\n\n")[0])
-    p.add_argument("--out", default="eval/out", help="directory for heldout.json and quality.md")
+    p = argparse.ArgumentParser(prog="python -m quality.cli", description=__doc__.split("\n\n")[0])
+    p.add_argument("--out", default="quality/out", help="directory for heldout.json and quality.md")
     p.add_argument("--demo", action="store_true", help="use labelled synthetic data and no database")
     p.add_argument("--run-id", action="append", default=None, help="only these runs (repeatable)")
     p.add_argument("--attempted", action="append", default=[], metavar="AGENT=N",
