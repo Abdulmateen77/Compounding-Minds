@@ -21,15 +21,28 @@ export function ShowcaseHero() {
     <section aria-label="Product intro video" className="card overflow-hidden grid md:grid-cols-[1fr_1.15fr] items-stretch mb-8"
       style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--warm) 9%, var(--panel)), var(--panel))" }}>
       <div className="p-6 md:p-8 flex flex-col justify-center order-2 md:order-1">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">Is it investable?</h1>
-        <p className="mute mt-3 mb-5 text-[15px] leading-relaxed max-w-md">
-          A committee of AI analysts, each following a legendary investor&apos;s principles, reads the filings as they stood on the date you choose. Wrong calls are graded against what happened, and Mubit turns them into model updates.
+        <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">AI stock analysts, tested on the past</h1>
+        <p className="mt-3 mb-5 text-[15px] leading-relaxed max-w-md">
+          Go back to any quarter from 2018 to 2024. Three AI analysts, modelled on Buffett, Munger and Dalio, judge a real company using only what was public that day. Then you see what actually happened, and whether they were right.
         </p>
+        <ol className="m-0 mb-6 p-0 list-none grid gap-2 text-sm">
+          {[
+            ["Pick a company and a date", "for example Coca-Cola, March 2018"],
+            ["Read their predictions", "cash and profit, financial trouble, revenue"],
+            ["See what really happened", "checked against the company's later filings"],
+          ].map(([head, eg], i) => (
+            <li key={head} className="flex items-baseline gap-3">
+              <span className="num inline-grid place-items-center w-6 h-6 rounded-full text-xs shrink-0" style={{ background: "var(--warm)", color: "#1a1006" }}>{i + 1}</span>
+              <span><span className="font-semibold">{head}</span> <span className="mute">{eg}</span></span>
+            </li>
+          ))}
+        </ol>
+        <p className="mute text-sm m-0 mb-5 max-w-md">Every wrong prediction becomes a lesson the analyst reads next time, so they should get better. You can check whether they do.</p>
         <div className="flex items-center gap-3 flex-wrap">
           <button ref={btn} className="btn inline-flex items-center gap-2" style={{ background: "var(--warm)", color: "#1a1006" }} onClick={() => setOpen(true)}>
             <PlayIcon /> Watch how it works <span className="num text-xs opacity-70">0:23</span>
           </button>
-          <a href="#/mubit" className="text-sm mute underline underline-offset-4">See what Mubit has taught them</a>
+          <a href="#/mubit" className="text-sm mute underline underline-offset-4">Are they getting better?</a>
         </div>
       </div>
 

@@ -5,6 +5,12 @@ import { ErrorBox, Skeleton } from "../components/bits";
 import { ShowcaseHero } from "../components/Showcase";
 import { assessHref, go } from "../route";
 
+/** "2018-03-31" -> "Q1 2018 (31 Mar)" */
+const quarterLabel = (iso: string) => {
+  const d = new Date(`${iso}T12:00:00`);
+  return `Q${Math.floor(d.getMonth() / 3) + 1} ${d.getFullYear()} (${d.toLocaleDateString("en-GB", { day: "numeric", month: "short" })})`;
+};
+
 export default function Select() {
   const companies = useQuery({ queryKey: ["companies"], queryFn: api.companies });
   const [q, setQ] = useState("");
@@ -29,7 +35,8 @@ export default function Select() {
   return (
     <div>
       <ShowcaseHero />
-      <h2 className="text-xl font-semibold tracking-tight m-0">Pick a company</h2>
+      <h2 className="text-xl font-semibold tracking-tight m-0">1. Pick a company</h2>
+      <p className="mute text-sm m-0 mt-1">50 large US companies. Then choose a date at the bottom.</p>
 
       <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search companies…" aria-label="Search companies"
         className="card w-full mt-4 px-4 py-3 outline-none" style={{ color: "var(--text)" }} />
@@ -52,19 +59,19 @@ export default function Select() {
             style={{ color: "var(--text)", borderColor: sel === c.id ? "var(--blue)" : undefined, boxShadow: sel === c.id ? "0 0 0 2px color-mix(in srgb,var(--blue) 35%,transparent)" : undefined }}>
             <div className="font-semibold">{c.name}</div>
             <div className="mute text-sm mt-1">{c.sector ?? "Sector n/a"}</div>
-            <div className="flex gap-2 mt-3"><span className="chip num">{c.id}</span>{c.held_out && <span className="chip">held out</span>}</div>
+            {c.held_out && <div className="flex gap-2 mt-3"><span className="chip" title="The analysts never learned from this company, so its results are a fair test">Fair-test company</span></div>}
           </button>
         ))}
       </div>
 
       <div className="card mt-6 p-4 flex flex-wrap items-center gap-3 sticky bottom-4" style={{ backdropFilter: "blur(10px)" }}>
-        <span className="mute text-sm">{sel ? `Selected: ${companies.data?.find((c) => c.id === sel)?.name}` : "Select a company"}</span>
-        <label className="ml-auto text-sm mute flex items-center gap-2">As of
+        <span className="mute text-sm">{sel ? companies.data?.find((c) => c.id === sel)?.name : "Pick a company above"}</span>
+        <label className="ml-auto text-sm mute flex items-center gap-2">2. Go back to
           <select value={chosen} onChange={(e) => setAsOf(e.target.value)} disabled={!sel} className="card px-3 py-2 num" style={{ color: "var(--text)" }}>
-            {(quarters.data ?? []).map((d) => <option key={d} value={d}>{d}</option>)}
+            {(quarters.data ?? []).map((d) => <option key={d} value={d}>{quarterLabel(d)}</option>)}
           </select>
         </label>
-        <button className="btn" disabled={!sel || busy || !chosen} onClick={convene}>{busy ? "Starting…" : "Convene committee"}</button>
+        <button className="btn" disabled={!sel || busy || !chosen} onClick={convene}>{busy ? "Starting…" : "3. See their predictions"}</button>
       </div>
       {err && <div className="mt-3"><ErrorBox msg={err} /></div>}
     </div>

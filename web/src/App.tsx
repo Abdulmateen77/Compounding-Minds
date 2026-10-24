@@ -26,10 +26,10 @@ export default function App() {
           Compounding Minds
         </a>
         <nav aria-label="Pages" className="flex gap-5 text-sm font-medium">
-          <a href="#/" aria-current={!onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(!onMubit)}>Assess</a>
-          <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(onMubit)}>Mubit</a>
+          <a href="#/" aria-current={!onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(!onMubit)}>Companies</a>
+          <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(onMubit)}>Track record</a>
         </nav>
-        <span className="chip hidden sm:inline-flex">{health.data ? `${health.data.companies} companies · replay mode` : "connecting…"}</span>
+        <span className="chip hidden sm:inline-flex">{health.data ? `${health.data.companies} companies, 2018 to 2024` : "connecting…"}</span>
       </header>
       <main className="max-w-5xl w-full mx-auto px-4 py-6 flex-1">
         <AnimatePresence mode="wait">
