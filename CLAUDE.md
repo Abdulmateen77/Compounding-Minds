@@ -8,6 +8,13 @@ A multi-agent investment research system built for **Night Shift: Mubit Hackatho
 
 One sentence: a team of AI analysts that grades itself against reality and improves every time it's wrong.
 
+**The product (pivot, Sat 24 Oct):** type any US-listed company and get a research report from its SEC filings today:
+growth, profit, cash, balance sheet, R&D, risk, the company's own words on plans, four investor lenses (Buffett, Munger,
+Graham, Dalio) as rule checks over the figures, a cash-flow valuation with stated assumptions, ten-year scenarios and one
+overall reading. Code in `research/` (owner A). Python computes every number; models only write words, with a guard on
+numbers. The reading describes evidence and price, never gives a price target or personal advice. The replay below remains
+the evidence for the learning loop and the Mubit story.
+
 ## Hackathon rules that constrain the code
 
 - **All project code must be written during the event.** Do not paste in pre-existing code. Open-source libraries are fine.

@@ -7,6 +7,35 @@ Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITEC
 
 ---
 
+## 0. The product: research any listed company, today
+
+Type a company name or ticker. The app finds it (US exchanges today; London and Europe are next), reads its SEC filings and
+builds a report: growth, profit, cash, balance sheet, reinvestment and R&D, risk checks, what the company says about its own
+plans, price and market multiples. Then it reads the same evidence through four investors' habits of mind (Buffett, Munger,
+Graham, Dalio), values the business under three stated growth cases, shows what the share price assumes, sketches ten-year
+scenarios, and gives one overall reading with the reasons.
+
+How it stays honest:
+- **Python computes every figure** and each one names the SEC filings it came from. Models only write words: a paragraph per
+  investor, checked so it cannot use a number the checks did not produce, and a choice among verbatim sentences from the 10-K.
+- **The investor lenses are the checklists in `principles/`**, turned into checks with their verified sources (`principles/SOURCES.md`).
+- **The valuation is a plain cash-flow calculation with its assumptions on the page**, including the reverse question
+  "what growth does today's price assume?". It is not a price target.
+- **The overall reading describes the evidence and the price. It is not personal advice** and never predicts a share price.
+- **The back-test (`python -m research.backtest`)** runs the Buffett and Munger checks at every quarter 2018-2023 for the 50 companies
+  through the date gate and compares them with what happened over the next year. It is the evidence that the checks mean something
+  (or the honest report that they do not): see the results section.
+
+Code: `research/` (`resolve`, `live`, `report`, `analysis`, `valuation`, `text`, `narrative`, `market`, `service`, `backtest`),
+API `GET /api/research/search` and `/api/research/company/{cik}`, web screen `web/src/screens/Research.tsx`.
+Not covered yet: non-US listings, and banks and insurers only partly (several measures do not apply to them).
+
+The original replay (sections 1 to 15 below) is the evidence base for the learning loop and the Mubit story. Two places the pivot
+changes the original non-goals: the app now reads live filings (no longer "historical and cached" only), and it shows a valuation
+range with assumptions. It still gives no price target and no buy or sell instruction.
+
+---
+
 ## 1. Concept
 
 Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t`, it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings actually reported. Wrong calls become **corrections**. **Mubit** turns corrections into per-agent model updates, so the next round is better.
