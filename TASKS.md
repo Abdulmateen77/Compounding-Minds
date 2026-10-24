@@ -76,11 +76,22 @@ Interfaces that do not change without telling the other person: `get_facts`, `ge
 | Phase | Goal | Due | Handoff | Status |
 |---|---|---|---|---|
 | **1. Contract** | Universe, concept map, final schema, metric spec, principles checked against the metrics | Sat 17:00 | 1, 2 | Done in code. Citations still to verify |
-| **2. Real store** | Postgres backend for the date gate, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | Not started. Needs B's first 5 companies (handoff 3) |
+| **2. Real store** | Postgres backend for the date gate, loaders, parsers, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | **Mostly done**: backend, loaders, parsers and a date-gate fix, tested on a real Postgres. Left: the leakage test on real filings (needs B's download, handoff 3) and `run_agent` |
 | **3. Metrics and tools** | The 22 metrics computed from real facts, `get_metrics` real, MCP tools | Sat 22:00 | 5 | Spec written (`metrics/SPEC.md`), code not started |
 | **4. Agents on real data** | Run the 3 MVP agents on real metrics, tune prompts, measure JSON validity and evidence match | Sun 01:00 | | Not started |
 | **5. Evaluation** | Frozen twins, baselines, held-out run, quality report with critique | Sun 05:00 | 9 | Not started |
 | **6. Content and freeze** | Copy, demo script, README results, backup video | Sun 08:00 | | Not started |
+
+**Unblocked for Person B now.** Everything after the network call is built and tested: `docker compose up -d`, `python -m store.migrate`, then follow [ingest/README.md](ingest/README.md). B's only job to get real data flowing is to download the raw SEC and FRED files into the cache; `ingest/pipeline.py` parses and loads them, and `store.quality.coverage` reports which companies are missing what.
+
+**Phase 2 delivered**
+- `store/pg.py`: Postgres backend for the date gate. It only supplies candidate rows, so the visibility rule stays in `store/queries.py` and cannot differ from the tested in-memory one.
+- `store/db.py`, `store/migrate.py`: connection, schema apply, idempotent bulk loaders (re-running inserts nothing).
+- `ingest/parse_facts.py`, `parse_submissions.py`, `parse_fred.py`: raw SEC and FRED JSON to rows. Pure functions, tested on fixtures shaped like the real responses.
+- `ingest/pipeline.py`: loads a cache directory into Postgres, offline. `store/quality.py`: per-company coverage and drop candidates.
+- **Bug fixed in the date gate:** it kept one fact per `(concept, period_end)`, but a Q2 10-Q reports a 3-month and a 6-month figure ending the same day, so one was silently dropped. It now keys on `(concept, period_start, period_end)`, with a regression test.
+- **Design fix in the concept map:** a restatement filed under a different tag (the 2018 revenue-recognition change) is now kept, so the gate can show the old value before the restatement and the new one after.
+- `docker-compose.yml`, `.env.example`, and a `pg_conn` test fixture that skips cleanly when no database is reachable.
 
 Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as handoff 3 (5 companies in Postgres) lands: until then, build the Postgres backend against the in-memory gate tests so it is ready to run.
 

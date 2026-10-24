@@ -1,0 +1,19 @@
+# Local Postgres for development:  docker compose up -d   then   python -m store.migrate
+# DATABASE_URL=postgresql://postgres:postgres@localhost:5432/compounding_minds
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: compounding_minds
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d compounding_minds"]
+      interval: 5s
+      retries: 10
+volumes:
+  pgdata:

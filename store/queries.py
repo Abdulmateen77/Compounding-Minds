@@ -3,7 +3,7 @@
 No agent, metric or tool reads tables directly. Rules:
   * a row is visible at `as_of` iff filed_date (vintage_date for macro) <= as_of
   * a restated fact is a new row; we return the latest visible row per
-    (concept, period_end)
+    (concept, period_start, period_end)
   * never filter or order by period_end to decide visibility
 
 The backend only supplies candidate rows; `_visible_*` below decide visibility, so
@@ -58,7 +58,9 @@ def _latest_per_key(rows: list[dict], key_fields: tuple[str, ...], date_field: s
 
 
 def get_facts(company_id: str, concept: str, as_of: date) -> list[Fact]:
-    rows = _latest_per_key(_backend.facts(company_id, concept), ("concept", "period_end"), "filed_date", as_of)
+    # A fact is one (concept, period_start, period_end): a Q2 10-Q reports the 3-month AND the 6-month
+    # figure with the same period_end, so keying on period_end alone would silently drop one of them.
+    rows = _latest_per_key(_backend.facts(company_id, concept), ("concept", "period_start", "period_end"), "filed_date", as_of)
     rows.sort(key=lambda r: (r["filed_date"], r["period_end"]))  # order by filing, not period
     return [Fact(**r) for r in rows]
 

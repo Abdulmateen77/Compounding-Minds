@@ -31,10 +31,12 @@ class Fact(_Strict):
     unit: str
     period_start: date | None = None
     period_end: date
+    fiscal_year: int | None = None
     fiscal_period: str | None = None
     form: str
     accession: str
     filed_date: date
+    source_tag: str | None = None  # the original us-gaap tag, for traceability
 
 
 class Event(_Strict):
@@ -44,6 +46,7 @@ class Event(_Strict):
     filed_date: date
     accession: str
     text_ref: str | None = None
+    going_concern_hits: int = 0  # passages found in this filing's text (10-K / 10-Q)
 
 
 class Point(_Strict):
