@@ -306,6 +306,8 @@ Prevents the demo from just showing overfitting.
 - Held-out results are generated once, before freeze, and shown as a single slide/panel. No tuning against them.
 - Stretch: frontier-model comparison (same questions, a larger model with no learning), shown as a bar next to ours.
 
+**Status (harness built, results pending).** `eval/` implements the split, the frozen twin (`agents/frozen.py`), both baselines and the report. Run `python -m eval.run` for an offline preview (stub metrics, scripted LLM, stamped NOT RESULTS, written to `data/eval_preview/`). `python -m eval.run --live` is a dry run that prints the call count; `--live --yes` spends real Mubit calls. The official report goes to `eval/reports/` only for runs on real inputs and is never overwritten without `--force`. It needs Person A's real `get_metrics` and the fundamentals and scenarios grader rules first (`eval/metrics_source.py` is the one switch). Results section: none yet, by design.
+
 ---
 
 ## 10. Mubit integration

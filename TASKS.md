@@ -77,31 +77,31 @@ Interface (store gate): `get_facts`, `get_events`, `get_macro`, `get_metrics`, a
 ## 3. Person B: agents and Mubit
 
 ### B1. Foundations (Hours 0-3)
-- [ ] `schemas/` Pydantic models (see section 1)
-- [ ] `LLMGateway`, `ModelUpdater` interfaces, `FakeModelUpdater` (appends lessons to principles or few-shot memory, labelled fallback)
-- [ ] Mubit client setup (one base URL). **Ask at office hours:** exact update endpoint and payload, update latency, per-agent isolation, rate limits, how version IDs are exposed. Do not guess endpoints
-- [ ] Draft `principles/` skeletons
+- [x] `schemas/` Pydantic models (see section 1)
+- [x] `LLMGateway`, `ModelUpdater` interfaces, `FakeModelUpdater` (appends lessons to principles or few-shot memory, labelled fallback)
+- [ ] Mubit client setup (one base URL; gateway done, update-API answer still open). **Ask at office hours:** exact update endpoint and payload, update latency, per-agent isolation, rate limits, how version IDs are exposed. Do not guess endpoints
+- [x] Draft `principles/` skeletons
 
 ### B2. First agent (Hours 3-10)
-- [ ] `agents/runner`: load principles, receive anon `company_id`, `as_of` and metrics, allow at most about 5 tool calls, return one `AgentCall`. One repair retry, then drop and log
-- [ ] Parse-time check that `evidence` values match metrics engine output
-- [ ] Prompts contain only anon ID and metrics. No names, tickers or dates beyond relative framing (Q-8 to Q0)
-- [ ] Fundamentals agent working on stubs
-- [ ] `agents/adapters/<agent>.py`: one per agent, each with its own Mubit identity
-- [ ] `principles/buffett.md` (5-10 rules in own words, `id | rule | how to check | source`, no long quotes)
+- [x] `agents/runner`: load principles, receive anon `company_id`, `as_of` and metrics, allow at most about 5 tool calls, return one `AgentCall`. One repair retry, then drop and log
+- [x] Parse-time check that `evidence` values match metrics engine output
+- [x] Prompts contain only anon ID and metrics. No names, tickers or dates beyond relative framing (Q-8 to Q0)
+- [x] Fundamentals agent working on stubs
+- [x] `agents/adapters/<agent>.py`: one per agent, each with its own Mubit identity
+- [x] `principles/buffett.md` (5-10 rules in own words, `id | rule | how to check | source`, no long quotes)
 
 ### B3. MVP agents and synthesizer (Hours 10-20)
-- [ ] Risk (Munger) and Scenarios (Dalio) agents, plus `principles/munger.md` and `principles/dalio.md`
-- [ ] Synthesizer: weights from `grades` computed in Python, LLM only writes the rationale, calibrated confidence
-- [ ] Reflection prompt that produces the `lesson`. It must cite a principle or metric and never name a company
+- [x] Risk (Munger) and Scenarios (Dalio) agents, plus `principles/munger.md` and `principles/dalio.md`
+- [x] Synthesizer: weights from `grades` computed in Python, LLM only writes the rationale, calibrated confidence
+- [x] Reflection prompt that produces the `lesson`. It must cite a principle or metric and never name a company
 - [ ] Real `ModelUpdater` against Mubit, using whatever office hours confirmed
 - [ ] Hour 20 checkpoint: full vertical slice (one company, one agent, one quarter, graded and corrected)
 
 ### B4. Correction loop and eval (Hours 20-30)
 - [ ] Correction loop with real Mubit: lesson, `submit_corrections`, model version stamped into later `AgentCall.model`
-- [ ] Frozen twin of each agent (no learning)
-- [ ] `eval/` held-out harness: split by time (train 2018-2022, held-out 2023-2024) and by company (about 10 held out). Learning from train-window corrections only
-- [ ] Baselines: always-yes, base rate
+- [x] Frozen twin of each agent (no learning)
+- [x] `eval/` held-out harness: split by time (train 2018-2022, held-out 2023-2024) and by company (about 10 held out). Learning from train-window corrections only
+- [x] Baselines: always-yes, base rate
 
 ### B5. Full run and report (Hours 30-37)
 - [ ] Full replay run with real agents, results stored
