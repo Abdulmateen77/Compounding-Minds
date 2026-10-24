@@ -47,7 +47,8 @@ CONCEPTS: dict[str, Concept] = {c.key: c for c in [
     _c("rnd_expense", ["ResearchAndDevelopmentExpense"], note="Moat agent only"),
     _c("sga_expense", ["SellingGeneralAndAdministrativeExpense"], note="Moat agent only"),
     # ---- cash flow: 10-Qs report year-to-date (3, 6, 9 months), Q4 = full year - 9 months
-    _c("op_cash_flow", ["NetCashProvidedByUsedInOperatingActivities"], cum=True),
+    _c("op_cash_flow", ["NetCashProvidedByUsedInOperatingActivities",
+                        "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"], cum=True),
     _c("capex", ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets",
                  "PaymentsToAcquireOtherPropertyPlantAndEquipment"], cum=True,
        note="reported as a positive outflow; FCF = op_cash_flow - capex"),

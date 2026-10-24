@@ -4,9 +4,12 @@ Facts come from store.queries.get_facts(company, concept, as_of), so every row i
 point-in-time and the latest visible restatement wins. A derived quarter (Q2 = 6M - 3M,
 Q4 = FY - 9M) becomes visible at the LATER filing date of the facts it uses.
 
-Note: the store keeps one row per (concept, period_end). A 10-Q that reports both a 3-month and
-a 6-month income-statement fact with the same period_end therefore yields only one of them;
-`discrete_quarters` copes with either (direct 3M, or YTD minus the previous YTD).
+ONE DEFINITION OF A QUARTER. The agent is shown numbers built by metrics/ (Person A) and is graded on
+numbers built here, so the two must never disagree. `quarter_table` therefore reads its quarters from the
+same `metrics.context.Context` the metrics engine uses: the same period-length windows (52/53-week
+retailers), the same 120-day quarter-gap limit, and the same derived operating income for filers that
+never tag it. Found on real data: the grader's own copy marked 30 of 82 Fundamentals calls unresolvable
+because it knew none of this.
 """
 from __future__ import annotations
 
@@ -15,6 +18,8 @@ from datetime import date
 
 from schemas import Fact
 from store import queries
+
+from metrics.context import MAX_GAP, MIN_GAP, Context
 
 from .config import QUARTER_DAYS
 
@@ -58,7 +63,7 @@ def discrete_quarters(facts: list[Fact]) -> list[Quarter]:
 
 
 def _consecutive(a: Quarter, b: Quarter) -> bool:
-    return QUARTER_DAYS[0] <= _days(a.period_end, b.period_end) <= QUARTER_DAYS[1] + 10
+    return MIN_GAP <= _days(a.period_end, b.period_end) <= MAX_GAP
 
 
 def run_ending_at(qs: list[Quarter], end: date, n: int) -> list[Quarter] | None:
@@ -79,7 +84,9 @@ def ttm(qs: list[Quarter], end: date) -> Quarter | None:
 
 
 def quarter_table(company_id: str, concepts, as_of: date) -> dict[str, list[Quarter]]:
-    return {c: discrete_quarters(queries.get_facts(company_id, c, as_of)) for c in concepts}
+    ctx = Context(company_id, as_of)    # reads through the date gate at as_of, like everything else
+    return {c: [Quarter(q.end, q.value, q.available, tuple(sorted(q.accessions)))
+                for q in ctx.quarters(c).values()] for c in concepts}
 
 
 def common_ends(table: dict[str, list[Quarter]]) -> list[date]:
