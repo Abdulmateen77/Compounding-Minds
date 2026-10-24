@@ -3,6 +3,7 @@
 MubitGateway follows docs.mubit.ai (Anthropic-compatible proxy). MubitUpdater documents a
 gap: Mubit has no public corrections/outcomes endpoint, so lessons are applied in-prompt and
 linked to Mubit request ids. Ask Mubit whether an outcome or rating API exists.
+Findings from the docs and the questions still open: agents/MUBIT.md.
 """
 from __future__ import annotations
 
