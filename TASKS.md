@@ -78,11 +78,16 @@ Interfaces that do not change without telling the other person: `get_facts`, `ge
 | **1. Contract** | Universe, concept map, final schema, metric spec, principles checked against the metrics | Sat 17:00 | 1, 2 | Done in code. Citations still to verify |
 | **2. Real store** | Postgres backend for the date gate, loaders, parsers, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | **Done** except the leakage test on real filings (needs B's download, handoff 3). Backend, loaders, parsers, date-gate fix and `agents/entry.py` are built and tested on a real Postgres |
 | **3. Metrics and tools** | The 22 metrics computed from real facts, `get_metrics` real, MCP tools | Sat 22:00 | 5 | **Engine done** (`metrics/`, 34 tests against hand-worked values, identical on Postgres). MCP tools are workstream H1 (Hermes) |
-| **4. Agents on real data** | Run the 3 MVP agents on real metrics, tune prompts, measure JSON validity and evidence match | Sun 01:00 | | Not started |
+| **4. Agents on real data** | Run the 3 MVP agents on real metrics, tune prompts, measure JSON validity and evidence match | Sun 01:00 | | **Groundwork done**: prompt leak guard and a no-model dry run. Running the agents needs a Mubit key in `.env` and real data loaded (B, handoff 3) |
 | **5. Evaluation** | Frozen twins, baselines, held-out run, quality report with critique | Sun 05:00 | 9 | Not started |
 | **6. Content and freeze** | Copy, demo script, README results, backup video | Sun 08:00 | | Not started |
 
 **Unblocked for Person B now.** Everything after the network call is built and tested: `docker compose up -d`, `python -m store.migrate`, then follow [ingest/README.md](ingest/README.md). B's only job to get real data flowing is to download the raw SEC and FRED files into the cache; `ingest/pipeline.py` parses and loads them, and `store.quality.coverage` reports which companies are missing what.
+
+**Phase 4 groundwork delivered**
+- `agents/leakcheck.py`: every prompt is checked for a company name, ticker, calendar year or accession number before it is sent. A prompt that fails is **blocked** and the model is never called (status `blocked` from `Entry.attempt`). It is narrow on purpose: two real false alarms were found and fixed in testing (a decimal metric like `0.2018` is not a year, and "target" the word is not Target the company).
+- `python -m agents.dryrun --company anon_007 --as-of 2019-06-30`: prints the exact prompt each agent would be sent, its size, what is missing, and the leak result, with no model call. `--stubs` works without a database.
+- `store.db.connect` now gives up after 10 seconds instead of hanging when the database is down.
 
 **Phase 2 delivered**
 - `store/pg.py`: Postgres backend for the date gate. It only supplies candidate rows, so the visibility rule stays in `store/queries.py` and cannot differ from the tested in-memory one.

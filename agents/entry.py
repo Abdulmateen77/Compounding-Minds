@@ -5,12 +5,15 @@
     attempt.status    # "ok" | "skipped" | "dropped"
     attempt.call      # the AgentCall when status == "ok"
 
-Three outcomes, kept apart on purpose because they mean different things:
+Four outcomes, kept apart on purpose because they mean different things:
   * ok       a valid, evidence-checked call
   * skipped  the metric bundle was not usable (3 or more metrics missing for this company and
              quarter): the agent was never asked. Normal for a recent filer in its early quarters
   * dropped  the model answered but its reply was invalid twice (runner.run_agent logs why).
              Counts against the agent's valid-reply rate
+  * blocked  the prompt contained a company name, ticker, year or accession number (agents/leakcheck.py),
+             so it was never sent. This should never happen; if it does, a lesson or a metric name
+             leaked and must be fixed, not retried
 
 Metrics come from `metrics.get_metrics`, which reads only through the date gate. Set USE_STUBS=1
 to use the hand-written stub bundles instead (development before real data is loaded).
@@ -26,7 +29,8 @@ from typing import Callable
 from schemas import AgentCall
 
 from .gateway import LLMGateway, ModelUpdater
-from .runner import run_agent
+from .leakcheck import find_leaks
+from .runner import build_messages, run_agent
 
 log = logging.getLogger("agents.entry")
 MetricsFn = Callable[[str, str, date], dict]
@@ -45,9 +49,10 @@ class Attempt:
     agent: str
     company_id: str
     as_of: date
-    status: str                         # ok | skipped | dropped
+    status: str                         # ok | skipped | dropped | blocked
     call: AgentCall | None = None
     missing: list[str] = field(default_factory=list)
+    leaks: list[str] = field(default_factory=list)   # what blocked the prompt, when status == blocked
 
 
 class Entry:
@@ -61,6 +66,13 @@ class Entry:
         if not bundle.get("usable", True):      # stub bundles carry no `usable` flag
             log.info("skip %s %s %s: missing %s", agent, company_id, as_of, bundle.get("missing"))
             return Attempt(agent, company_id, as_of, "skipped", missing=list(bundle.get("missing", [])))
+        # Check the exact message the model would see, with the lessons it would be given.
+        if lessons is None:
+            lessons = getattr(self.updater, "lessons", lambda a: [])(agent)
+        leaks = find_leaks(build_messages(agent, company_id, as_of, bundle, lessons)[1]["content"])
+        if leaks:
+            log.error("BLOCKED %s %s %s: prompt would leak %s", agent, company_id, as_of, leaks)
+            return Attempt(agent, company_id, as_of, "blocked", leaks=leaks)
         call = run_agent(agent, company_id, as_of, bundle, self.gateway, self.updater, run_id=run_id, lessons=lessons)
         if call is None:
             return Attempt(agent, company_id, as_of, "dropped", missing=list(bundle.get("missing", [])))
