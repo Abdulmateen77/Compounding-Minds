@@ -8,7 +8,7 @@ from datetime import date, timedelta
 
 from ingest.sec import SecClient
 
-from . import live, market, resolve, text
+from . import live, market, narrative, resolve, text
 from .report import build_report
 
 REPORT_TTL_S = 1800
@@ -73,6 +73,10 @@ class ResearchService:
         if shares and date.fromisoformat(shares[1]) < today - timedelta(days=SHARES_MAX_AGE_DAYS):
             shares = None
         report = build_report(c.company_id, today, profile, quote=quote, shares=shares, plans=plans)
+        gw = self._gw()
+        if gw is not None and report.get("supported"):
+            figs = [str(round(f["value"] * 100, 1)) for sec in report["sections"] for f in sec["figures"] if f["value"] is not None and f["unit"] == "pct"]
+            narrative.attach(gw, report["analysis"], profile["name"], figs)
         report["generated_at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         report["sec_url"] = f"https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK={cik:010d}&type=10-K"
         return report

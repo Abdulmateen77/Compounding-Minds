@@ -169,3 +169,33 @@ def test_sec_capital_names_are_made_readable_but_acronyms_survive():
     assert resolve.pretty_name("COCA COLA CO") == "Coca Cola Co"
     assert resolve.pretty_name("IBM CORP", "IBM") == "IBM Corp" and resolve.pretty_name("AMD INC", "AMD") == "AMD Inc"
     assert resolve.pretty_name("Tesla, Inc.") == "Tesla, Inc."
+
+
+# ---- the narrative guard -------------------------------------------------------------------------------------
+from research import narrative                                                                      # noqa: E402
+
+LENS = {"key": "buffett", "name": "Warren Buffett", "question": "Is it durable?", "word": "Fits well",
+        "checks": [{"id": "buffett.01", "principle": "profit into cash", "check": "Does profit turn into free cash?",
+                    "result": "pass", "shown": "0.92 dollars of free cash per dollar of profit", "source": "x"}]}
+
+
+class _Seq:
+    def __init__(self, *replies):
+        self.replies, self.calls = list(replies), 0
+
+    def complete(self, agent, messages, **kw):
+        self.calls += 1
+        return self.replies.pop(0)
+
+
+def test_a_paragraph_with_only_known_numbers_is_kept():
+    gw = _Seq('{"paragraph": "Buffett sees 0.92 dollars of free cash for each dollar of profit, and 3 of 5 checks pass."}')
+    assert "0.92" in narrative.write(gw, LENS, "Co", "Mixed")
+
+
+def test_an_invented_number_is_sent_back_once_then_dropped():
+    bad = '{"paragraph": "Buffett notes a 41% return on capital."}'
+    assert narrative.write(_Seq(bad, bad), LENS, "Co", "Mixed") is None
+    gw = _Seq(bad, '{"paragraph": "Buffett sees 0.92 dollars of free cash per dollar of profit."}')
+    assert narrative.write(gw, LENS, "Co", "Mixed") and gw.calls == 2
+    assert narrative.write(_Seq("not json"), LENS, "Co", "Mixed") is None

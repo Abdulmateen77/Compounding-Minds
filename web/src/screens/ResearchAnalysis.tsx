@@ -63,6 +63,12 @@ function LensCard({ l }: { l: Lens }) {
         <div><h3 className="text-lg font-semibold m-0">{l.name}</h3><p className="mute text-sm m-0">{l.question}</p></div>
         <span className="chip shrink-0" style={{ color: c, borderColor: c }}>{l.word}</span>
       </div>
+      {l.narrative && (
+        <div className="grid gap-1">
+          <p className="m-0 text-sm leading-relaxed">{l.narrative}</p>
+          <span className="mute text-[11px]">Summarised by an AI from the checks below. Every number in it is checked against them.</span>
+        </div>
+      )}
       {l.fit != null && <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--line)" }}><div style={{ width: `${Math.round(l.fit * 100)}%`, height: "100%", background: c }} /></div>}
       <ul className="m-0 p-0 list-none grid gap-3">{l.checks.map((k) => <CheckRow key={k.id} k={k} />)}</ul>
     </article>
