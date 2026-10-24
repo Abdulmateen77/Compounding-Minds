@@ -151,6 +151,15 @@ def research_search(q: str = Query("", max_length=80)):
         raise HTTPException(502, f"Could not search the SEC company list: {e}")
 
 
+@app.get("/api/research/evidence")
+def research_evidence():
+    """The back-test summary: how the investor checks did against what happened next (research/backtest.py)."""
+    from research.backtest import EVIDENCE
+    if not EVIDENCE.exists():
+        raise HTTPException(404, "no back-test summary yet: run python -m research.backtest --write-evidence")
+    return json.loads(EVIDENCE.read_text(encoding="utf-8"))
+
+
 @app.get("/api/research/company/{cik}")
 def research_company(cik: int, refresh: bool = False):
     try:

@@ -1,0 +1,263 @@
+{
+ "window": "2018 Q1 to 2023 Q4",
+ "companies": 50,
+ "horizon": "the next twelve months",
+ "all_quarters": {
+  "rows": 1184,
+  "tests": [
+   {
+    "lens": "buffett",
+    "outcome": "Revenue growth over the next year",
+    "n": 1170,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 488,
+      "mean": 0.0859003292349372,
+      "median": 0.05604788939006522
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 496,
+      "mean": 0.07980121620240174,
+      "median": 0.052066847116643555
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 186,
+      "mean": 0.5081648592693356,
+      "median": 0.05892519140936858
+     }
+    ],
+    "spearman": -0.02646288990130719,
+    "p": 0.3823088455772114
+   },
+   {
+    "lens": "buffett",
+    "outcome": "Free-cash-flow margin a year later",
+    "n": 1112,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 459,
+      "mean": 0.15945209499472018,
+      "median": 0.14373777411716257
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 471,
+      "mean": 0.11995189926269718,
+      "median": 0.11114537399652574
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 182,
+      "mean": -0.605610772998158,
+      "median": 0.04445422025484895
+     }
+    ],
+    "spearman": 0.2821587860010026,
+    "p": 0.0004997501249375312
+   },
+   {
+    "lens": "munger",
+    "outcome": "Auditor change or dividend cut within a year",
+    "n": 1103,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 720,
+      "mean": 0.03194444444444444,
+      "median": 0.0
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 316,
+      "mean": 0.12974683544303797,
+      "median": 0.0
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 67,
+      "mean": 0.44776119402985076,
+      "median": 0
+     }
+    ],
+    "spearman": -0.27152670886974467,
+    "p": 0.0004997501249375312
+   }
+  ]
+ },
+ "year_end_only": {
+  "rows": 297,
+  "tests": [
+   {
+    "lens": "buffett",
+    "outcome": "Revenue growth over the next year",
+    "n": 293,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 126,
+      "mean": 0.08912512957012304,
+      "median": 0.05583108483303156
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 122,
+      "mean": 0.05370682883488835,
+      "median": 0.03792726041640915
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 45,
+      "mean": 0.41185997382203965,
+      "median": 0.04396121282292498
+     }
+    ],
+    "spearman": 0.014140576156694777,
+    "p": 0.8060969515242379
+   },
+   {
+    "lens": "buffett",
+    "outcome": "Free-cash-flow margin a year later",
+    "n": 279,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 119,
+      "mean": 0.1607386599359933,
+      "median": 0.14239381920343744
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 115,
+      "mean": 0.11650922438706093,
+      "median": 0.11555225939081672
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 45,
+      "mean": -0.31080395299942765,
+      "median": 0.03505469429745599
+     }
+    ],
+    "spearman": 0.3189255814416245,
+    "p": 0.0004997501249375312
+   },
+   {
+    "lens": "munger",
+    "outcome": "Auditor change or dividend cut within a year",
+    "n": 278,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 180,
+      "mean": 0.03888888888888889,
+      "median": 0.0
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 81,
+      "mean": 0.16049382716049382,
+      "median": 0
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 17,
+      "mean": 0.5294117647058824,
+      "median": 1
+     }
+    ],
+    "spearman": -0.3258085373057397,
+    "p": 0.0004997501249375312
+   }
+  ]
+ },
+ "held_out_year_end": {
+  "rows": 60,
+  "tests": [
+   {
+    "lens": "buffett",
+    "outcome": "Revenue growth over the next year",
+    "n": 60,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 18,
+      "mean": 0.04780773035945814,
+      "median": 0.029139559431153983
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 27,
+      "mean": 0.04557159298601259,
+      "median": 0.053913201793313714
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 15,
+      "mean": 0.09509519118020572,
+      "median": 0.03344030280589161
+     }
+    ],
+    "spearman": -0.04500582350952948,
+    "p": 0.744127936031984
+   },
+   {
+    "lens": "buffett",
+    "outcome": "Free-cash-flow margin a year later",
+    "n": 60,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 18,
+      "mean": 0.09827946517216472,
+      "median": 0.09754453105044264
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 27,
+      "mean": 0.1425250428232187,
+      "median": 0.1421906523201076
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 15,
+      "mean": 0.020847758505329706,
+      "median": 0.020712539294446386
+     }
+    ],
+    "spearman": 0.2728547848378608,
+    "p": 0.04247876061969016
+   },
+   {
+    "lens": "munger",
+    "outcome": "Auditor change or dividend cut within a year",
+    "n": 56,
+    "buckets": [
+     {
+      "bucket": "High (0.70 or more)",
+      "n": 29,
+      "mean": 0.034482758620689655,
+      "median": 0
+     },
+     {
+      "bucket": "Middle (0.40 to 0.70)",
+      "n": 23,
+      "mean": 0.34782608695652173,
+      "median": 0
+     },
+     {
+      "bucket": "Low (under 0.40)",
+      "n": 4,
+      "mean": 1.0,
+      "median": 1.0
+     }
+    ],
+    "spearman": -0.49805019286762386,
+    "p": 0.0004997501249375312
+   }
+  ]
+ }
+}

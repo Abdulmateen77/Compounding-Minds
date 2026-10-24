@@ -133,10 +133,21 @@ def permutation_p(x: list[float], y: list[float], rho: float, n: int = 2000, see
 BUCKETS = [("High (0.70 or more)", 0.70, 1.01), ("Middle (0.40 to 0.70)", 0.40, 0.70), ("Low (under 0.40)", -0.01, 0.40)]
 
 
-def summarise(path: Path = OUT, held_out: bool | None = None) -> dict:
+def _median(xs: list[float]) -> float | None:
+    if not xs:
+        return None
+    s = sorted(xs)
+    m = len(s) // 2
+    return s[m] if len(s) % 2 else (s[m - 1] + s[m]) / 2
+
+
+def summarise(path: Path = OUT, held_out: bool | None = None, year_end_only: bool = False) -> dict:
+    """`year_end_only` keeps one quarter per company per year, so the twelve-month windows do not overlap."""
     rows = [json.loads(l) for l in path.open(encoding="utf-8")]
     if held_out is not None:
         rows = [r for r in rows if r["held_out"] == held_out]
+    if year_end_only:
+        rows = [r for r in rows if r["as_of"].endswith("-12-31")]
     tests = [("buffett", "growth_next", "Revenue growth over the next year"),
              ("buffett", "fcf_margin_next", "Free-cash-flow margin a year later"),
              ("munger", "distress", "Auditor change or dividend cut within a year")]
@@ -146,7 +157,7 @@ def summarise(path: Path = OUT, held_out: bool | None = None) -> dict:
         t = {"lens": lens, "outcome": label, "n": len(pairs), "buckets": []}
         for name, lo, hi in BUCKETS:
             ys = [y for x, y in pairs if lo <= x < hi]
-            t["buckets"].append({"bucket": name, "n": len(ys), "mean": sum(ys) / len(ys) if ys else None})
+            t["buckets"].append({"bucket": name, "n": len(ys), "mean": sum(ys) / len(ys) if ys else None, "median": _median(ys)})
         xs, ys = [p[0] for p in pairs], [p[1] for p in pairs]
         rho = spearman(xs, ys)
         t["spearman"] = rho
@@ -161,22 +172,39 @@ def format_summary(s: dict) -> str:
         lines.append(f"\n{t['lens'].title()} fit vs {t['outcome'].lower()} (n={t['n']})")
         for b in t["buckets"]:
             m = "n/a" if b["mean"] is None else (f"{b['mean'] * 100:.1f}%")
-            lines.append(f"   {b['bucket']:<24} n={b['n']:<5} average {m}")
+            md = "n/a" if b["median"] is None else (f"{b['median'] * 100:.1f}%")
+            lines.append(f"   {b['bucket']:<24} n={b['n']:<5} typical (median) {md:<8} average {m}")
         if t["spearman"] is not None:
             lines.append(f"   rank correlation {t['spearman']:+.3f}, shuffle-test p = {t['p']:.3f}")
     return "\n".join(lines)
+
+
+EVIDENCE = Path(__file__).resolve().parent / "evidence.json"
+
+
+def write_evidence(path: Path = OUT, dest: Path = EVIDENCE) -> dict:
+    """The small summary the app shows (the 1,184-row file itself stays in data/, which is not committed)."""
+    out = {"window": "2018 Q1 to 2023 Q4", "companies": 50, "horizon": "the next twelve months",
+           "all_quarters": summarise(path), "year_end_only": summarise(path, year_end_only=True),
+           "held_out_year_end": summarise(path, held_out=True, year_end_only=True)}
+    dest.write_text(json.dumps(out, indent=1), encoding="utf-8")
+    return out
 
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--summary-only", action="store_true")
     ap.add_argument("--out", default=str(OUT))
+    ap.add_argument("--write-evidence", action="store_true", help="also write research/evidence.json for the app")
     a = ap.parse_args(argv)
     if not a.summary_only:
         from dotenv import load_dotenv
         load_dotenv(Path(__file__).resolve().parent.parent / ".env")
         print(f"wrote {run(Path(a.out))} rows to {a.out}")
     print(format_summary(summarise(Path(a.out))))
+    if a.write_evidence:
+        write_evidence(Path(a.out))
+        print(f"wrote {EVIDENCE}")
     return 0
 
 

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ErrorBox, Skeleton, Spark } from "../components/bits";
 import { researchHref, go } from "../route";
-import { Future, Lenses, Verdict, Worth } from "./ResearchAnalysis";
+import { EvidencePanel, Future, Lenses, Verdict, Worth } from "./ResearchAnalysis";
 import {
   TONE, fmtValue, longDate, money, multiple, pctOf, year,
   type Candidate, type Figure, type Flag, type Report, type SearchResult, type Section,
@@ -166,6 +166,7 @@ function ReportPage({ cik }: { cik: string }) {
       {r.analysis && <Lenses lenses={r.analysis.lenses} />}
       {r.analysis && <Worth a={r.analysis} />}
       {r.analysis?.future && <Future a={r.analysis} outlook={r.plans?.outlook ?? []} />}
+      {r.analysis && <EvidencePanel />}
       {r.economy && r.economy.length > 0 && (
         <section className="grid gap-3">
           <div><h2 className="text-xl font-semibold m-0">What is the economy doing?</h2><p className="mute text-sm m-0 mt-1">Context for how this company's sales might move. As reported to date.</p></div>

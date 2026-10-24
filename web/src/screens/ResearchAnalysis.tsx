@@ -174,3 +174,64 @@ export function Future({ a, outlook }: { a: Analysis; outlook: string[] }) {
     </section>
   );
 }
+
+/* ───────────────────────── has this method worked? ───────────────────────── */
+
+import { useQuery } from "@tanstack/react-query";
+import type { Evidence, EvidenceTest } from "../research";
+
+const pc = (x: number | null | undefined, d = 0) => (x == null ? "n/a" : `${(x * 100).toFixed(d)}%`);
+
+function Bars({ t, value, color, fmt }: { t: EvidenceTest; value: (b: EvidenceTest["buckets"][number]) => number | null; color: string; fmt: (x: number | null) => string }) {
+  const vals = t.buckets.map(value), top = Math.max(...vals.map((v) => v ?? 0), 0.0001);
+  const names = ["Passes most checks", "Passes some", "Passes few"];
+  return (
+    <div className="grid gap-2">
+      {t.buckets.map((b, i) => (
+        <div key={b.bucket} className="grid grid-cols-[9rem_1fr_3.5rem] items-center gap-3 text-sm">
+          <span className="text-xs">{names[i]} <span className="mute">({b.n})</span></span>
+          <div className="h-3 rounded-full overflow-hidden" style={{ background: "var(--line)" }}>
+            <div style={{ width: `${Math.max(((vals[i] ?? 0) / top) * 100, 1.5)}%`, height: "100%", background: color }} />
+          </div>
+          <span className="num font-semibold text-right">{fmt(vals[i])}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export function EvidencePanel() {
+  const q = useQuery({ queryKey: ["evidence"], retry: 0, staleTime: Infinity, queryFn: async (): Promise<Evidence> => { const r = await fetch("/api/research/evidence"); if (!r.ok) throw new Error(); return r.json(); } });
+  if (!q.data) return null;
+  const e = q.data, all = e.all_quarters.tests, ye = e.year_end_only.tests, ho = e.held_out_year_end.tests;
+  const find = (ts: EvidenceTest[], lens: string, k: string) => ts.find((t) => t.lens === lens && t.outcome.startsWith(k))!;
+  const m = find(all, "munger", "Auditor"), b = find(all, "buffett", "Free-cash"), g = find(all, "buffett", "Revenue");
+  return (
+    <section className="grid gap-3">
+      <div>
+        <h2 className="text-xl font-semibold m-0">Have these checks actually worked?</h2>
+        <p className="mute text-sm m-0 mt-1 max-w-3xl">We ran the same checks on 50 large US companies at every quarter from 2018 to 2023, using only the filings public at the time, and compared them with what happened over the next twelve months. {e.all_quarters.rows.toLocaleString()} company-quarters, no AI involved, repeatable.</p>
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="card p-5 grid gap-3 content-start">
+          <span className="font-semibold">Munger's “how could it fail?” checks</span>
+          <span className="mute text-xs">Share of companies that cut the dividend or changed auditor within the next year</span>
+          <Bars t={m} value={(x) => x.mean} color="var(--red)" fmt={(x) => pc(x, 1)} />
+          <p className="m-0 text-sm">The checks separated them well: companies passing few had a distress event about {Math.round((m.buckets[2].mean ?? 0) / Math.max(m.buckets[0].mean ?? 1, 0.001))}× as often as those passing most. The link holds on the 10 companies kept out of everything else (rank correlation {ho.find((t) => t.lens === "munger")?.spearman?.toFixed(2)}, small sample).</p>
+        </div>
+        <div className="card p-5 grid gap-3 content-start">
+          <span className="font-semibold">Buffett's “quality” checks</span>
+          <span className="mute text-xs">Typical free-cash-flow margin a year later (median)</span>
+          <Bars t={b} value={(x) => x.median} color="var(--green)" fmt={(x) => pc(x, 1)} />
+          <p className="m-0 text-sm">Companies passing most of the checks kept earning more cash per dollar of sales. But the same checks said nothing about sales growth: typical growth was {pc(g.buckets[0].median, 1)}, {pc(g.buckets[1].median, 1)} and {pc(g.buckets[2].median, 1)}, with no pattern.</p>
+        </div>
+      </div>
+      <ul className="mute text-xs m-0 pl-5 grid gap-1 max-w-3xl">
+        <li>This tests whether the checks tell good businesses from weak ones. It does not test whether the share price rose, and it does not test the price and valuation checks (we hold no historical prices).</li>
+        <li>The cash-flow check overlaps with what it predicts, so its result shows persistence, not independent proof.</li>
+        <li>Windows overlap from quarter to quarter. Using one window per company per year gives the same direction (Munger {ye.find((t) => t.lens === "munger")?.spearman?.toFixed(2)}, Buffett cash {ye.find((t) => t.lens === "buffett" && t.outcome.startsWith("Free-cash"))?.spearman?.toFixed(2)}).</li>
+        <li>Large US companies, 2018 to 2023, includes the 2020 shock. Past performance of a method is no guarantee.</li>
+      </ul>
+    </section>
+  );
+}

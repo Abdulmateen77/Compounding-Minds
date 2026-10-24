@@ -71,3 +71,12 @@ export const longDate = (iso: string) =>
   new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", { day: "numeric", month: "long", year: "numeric" });
 export const multiple = (v: number | null | undefined) => (v == null ? "n/a" : `${v.toFixed(1)}×`);
 export const pctOf = (v: number | null | undefined) => (v == null ? "n/a" : `${(v * 100).toFixed(1)}%`);
+
+export type Bucket = { bucket: string; n: number; mean: number | null; median: number | null };
+export type EvidenceTest = { lens: string; outcome: string; n: number; buckets: Bucket[]; spearman: number | null; p: number | null };
+export type Evidence = {
+  window: string; companies: number; horizon: string;
+  all_quarters: { rows: number; tests: EvidenceTest[] };
+  year_end_only: { rows: number; tests: EvidenceTest[] };
+  held_out_year_end: { rows: number; tests: EvidenceTest[] };
+};
