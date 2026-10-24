@@ -45,7 +45,7 @@ class Dataset:
 
 # ---- universe -----------------------------------------------------------------------------------
 
-COMPANY_KEYS = ("company_id", "cik", "ticker", "name", "sector", "covid_group", "held_out", "sic")
+COMPANY_KEYS = ("company_id", "cik", "ticker", "name", "sector", "covid_group", "held_out", "short_history", "sic")
 
 
 def read_universe(universe_file: Path | None = UNIVERSE_FILE) -> list[dict]:
@@ -85,6 +85,7 @@ def resolve_universe(sec: SecClient, tickers: list[str] | None = None,
                     "ticker": (hit.get("ticker") or m.get("ticker") or key).upper(),
                     "name": m.get("name") or hit.get("title", key), "sector": m.get("sector"),
                     "covid_group": m.get("covid_group"), "held_out": bool(m.get("held_out", False)),
+                    "short_history": bool(m.get("short_history", False)),
                     "sic": m.get("sic"), **({"_unresolved": True} if cik is None else {})})
     return out
 
@@ -189,7 +190,7 @@ SCHEMA_FILE = Path(__file__).resolve().parent.parent / "store" / "schema.sql"
 # Insert columns per table: exactly store/schema.sql minus DB-generated ones (id, period_start_key).
 # tests/test_schema_contract.py checks these, the parsers' row keys and schema.sql stay in sync.
 COLUMNS = {
-    "companies": ("company_id", "cik", "ticker", "name", "sector", "covid_group", "held_out", "sic"),
+    "companies": ("company_id", "cik", "ticker", "name", "sector", "covid_group", "held_out", "short_history", "sic"),
     "facts": ("company_id", "concept", "source_tag", "value", "unit", "period_start", "period_end",
               "fiscal_year", "fiscal_period", "form", "accession", "filed_date"),
     "events": ("company_id", "form", "items", "filed_date", "accession", "text_ref", "going_concern_hits"),

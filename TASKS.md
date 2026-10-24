@@ -27,6 +27,23 @@ Who builds what, in what order. Spec: [README.md](README.md). Pattern and flow: 
 
 ---
 
+## 0b. Integration notes (Sat 24 Oct, ~17:45): A's branch merged with B's `person-b/eval`
+
+What the merge found, and what was done. 499 tests pass on the merged branch (4 skip: 3 need the `mcp` package).
+
+| Finding | Resolution |
+|---|---|
+| **Two sources of truth for held-out companies.** B's split picked them by hash; `universe.json` (and so the `companies` table) carries curated `held_out` flags. The replay could have learned from a company the database calls held out | `eval/split.py::pick_held_out` now uses the `universe.json` flags for any run over the real universe (30 or more universe companies). Stub runs and tests keep the hash. A test proves the replay, the report and the database agree |
+| **Two evaluation packages with the same file names** | B's `eval/` (held-out harness, wired to the dashboard) is kept as is. Hermes's package moved to `quality/` (frozen twin, strict baselines, quality report with critique) |
+| **B's parser dropped a restatement filed under a different tag** (the 2018 revenue-rule change) | `ingest/parse.py::_resolve` now chooses the tag per period AND per filing, as `store.concepts.resolve_concept` does. Regression test in `ingest/tests/test_parse_restatement.py` |
+| **`companies.short_history`** (Palantir) missing from B's row builder | Added to `ingest/load.py` and its contract test |
+| **`eval.run --save` crashed** (`write_snapshot` missing `n_correct`) | Fixed in `eval/run.py` |
+| **Two loaders** (A's `ingest/pipeline.py` and B's `ingest/load.py`) | B's is the loader of record; A's is kept as a tested reference (see `ingest/README.md`) |
+| **8 API tests failed on a fresh checkout** | They need demo data in `data/runs` (gitignored). Generate it with `python -m eval.run --agents fundamentals,risk,scenarios --curves --save data/runs` before running them |
+| **Hermes's test assumed an older grader** | Test helper updated: B's grader now derives the resolution date itself |
+
+Held-out reporting: B's dashboard reads B's `heldout_report.json` (segments `all_companies`, `seen_companies`, `unseen_companies`). Hermes's `quality/` writes a different format with an extra time slice; it feeds `quality.md` and the README results section, not the dashboard.
+
 ## 1. Where we are now (Sat 24 Oct, ~15:00)
 
 Read from the repo. 74 tests pass. Nothing runs on real data yet: every agent runs on three hand-written stub files.
@@ -137,7 +154,7 @@ Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as han
 - [ ] Mubit: per-agent identity, and the office-hours answers on the update API (endpoint, latency, version IDs). The gateway already notes that no public corrections endpoint is known
 - [ ] Confirm the model version is stamped into every `AgentCall`
 
-### A4. Agent evaluation (`eval/`)
+### A4. Agent quality report (`quality/`, built by Hermes; B owns the held-out harness in `eval/`)
 - [ ] Frozen twin of each agent (never updated)
 - [ ] Baselines: always yes, base rate
 - [ ] Held-out harness: split by time (train 2018 to 2022, held out 2023 to 2024) and by company (about 10). Learning from train-window corrections only

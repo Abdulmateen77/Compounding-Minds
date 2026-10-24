@@ -1,8 +1,11 @@
 """Train and held-out split by time and by company (README 9).
 
 * Time: train 2018-2022, held-out 2023-2024.
-* Company: about 10 companies are held out for good. Learning never sees them, in any year.
-* The company choice is a fixed hash, so it never depends on results and nobody can tune it.
+* Company: 10 companies are held out for good. Learning never sees them, in any year.
+* The company choice never depends on results, so nobody can tune it. For a run over the real
+  universe (ingest/universe.json) the held-out set is that file's `held_out` flags, which are also
+  what the `companies` table stores, so the database, the replay and the held-out report agree.
+  For any other list of ids (stub runs, tests) it is a fixed hash.
 """
 from __future__ import annotations
 
@@ -35,7 +38,25 @@ def add_quarters(d: date, n: int) -> date:
     return date(year, month, calendar.monthrange(year, month)[1])
 
 
+REAL_RUN_MIN_COMPANIES = 30  # the same threshold eval/run.py uses to tell a real run from a stub run
+
+
+def universe_held_out(companies: list[str]) -> list[str] | None:
+    """The held-out ids from ingest/universe.json, if `companies` is a universe-sized run made of
+    universe companies. None otherwise (stub runs and tests use their own ids)."""
+    from ingest.universe import load_universe
+    flags = {c["company_id"]: c["held_out"] for c in load_universe()}
+    ids = set(companies)
+    if len(ids) < REAL_RUN_MIN_COMPANIES or not ids <= set(flags):
+        return None
+    return sorted(c for c in ids if flags[c])
+
+
 def pick_held_out(companies: list[str], n: int = DEFAULT_HELD_OUT_COMPANIES, seed: str = SEED) -> list[str]:
+    """The held-out companies. `n` and `seed` apply only to the hash fallback."""
+    curated = universe_held_out(companies)
+    if curated is not None:
+        return curated
     ranked = sorted(companies, key=lambda c: hashlib.sha256(f"{seed}:{c}".encode()).hexdigest())
     return sorted(ranked[:n])
 

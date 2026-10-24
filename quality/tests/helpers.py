@@ -34,6 +34,8 @@ def make_scored(outcome: str, variant: str = "learned", resolution: date | None 
         resolution = call.as_of + timedelta(days=90)
     info = {"resolution_date": resolution.isoformat()} if resolution else {}
     g = grade(call, outcome_fn=lambda c: (outcome, dict(info))).model_copy(update={"graded_at": graded_at})
+    if resolution is None:  # the grader now derives a resolution date itself: strip it for "not recorded"
+        g = g.model_copy(update={"resolution_date": None, "evidence": []})
     return Scored(call=call, grade=g, variant=variant)
 
 

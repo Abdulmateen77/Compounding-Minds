@@ -160,7 +160,7 @@ def test_load_then_rerun_offline_from_cache_identical(tmp_path):
     assert offline.fetches == 0 and second.facts == first.facts and second.events == first.events
     assert first.companies[0] == {"company_id": "anon_001", "cik": "0001234567", "ticker": "ACME",
                                   "name": "Acme Corp", "sector": None, "covid_group": None,
-                                  "held_out": False, "sic": None}
+                                  "held_out": False, "short_history": False, "sic": None}
     assert any(e["items"] == ["5.02"] for e in first.events)  # older submissions page joined
 
 

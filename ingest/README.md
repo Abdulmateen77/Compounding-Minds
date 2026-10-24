@@ -1,5 +1,12 @@
 # Ingestion guide (for Person B)
 
+> **Which loader to use.** Person B's `python -m ingest` (`ingest/sec.py`, `load.py`, `parse.py`, `events.py`,
+> `macro.py`) is the loader of record: it has the rate-limited, caching SEC client and writes to Postgres.
+> The files described below (`parse_facts.py`, `parse_submissions.py`, `parse_fred.py`, `pipeline.py`) are
+> Person A's earlier, separately tested implementation of the same load from a raw-file cache. They are kept as
+> a reference and as a cross-check, not as a second way to load data. Do not run both against one database:
+> they store the CIK in different formats (B pads to 10 digits, A does not).
+
 Person A built everything on the far side of the network call: what the data *is*, how raw SEC and
 FRED files become rows, and how rows get into Postgres and back out through the date gate. Your job
 is the part in the middle that touches the internet: **download the raw files into the cache.** Once
