@@ -106,6 +106,7 @@ def build(*, fcf_history: list[float], revenue: float | None, cagr3: float | Non
                 rev_path.append(r)
         out["scenarios"].append({
             "name": name, "start_growth": g, "fcf_path": path, "revenue_path": rev_path,
+            "equity_value": present_value(path, DISCOUNT) - net_debt,
             "value_per_share": None if not shares else equity_per_share(path, DISCOUNT, net_debt, shares)})
     if shares:
         base = out["scenarios"][1]

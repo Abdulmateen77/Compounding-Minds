@@ -97,7 +97,8 @@ export function Worth({ a }: { a: Analysis }) {
             {v.scenarios!.map((s) => (
               <div key={s.name} className="rounded-xl p-4 grid gap-1" style={{ background: "var(--panel2)" }}>
                 <span className="text-xs mute">{s.name} case</span>
-                <span className="num text-2xl font-semibold">{usd(s.value_per_share)}</span>
+                <span className="num text-2xl font-semibold">{s.value_per_share != null ? usd(s.value_per_share) : money(s.equity_value)}</span>
+                {s.value_per_share == null && <span className="mute text-xs">total value of the shares (no reliable share count)</span>}
                 <span className="mute text-xs">cash flow grows {pctOf(s.start_growth)} a year at first, fading to {pctOf(v.long_run_growth)}</span>
               </div>
             ))}

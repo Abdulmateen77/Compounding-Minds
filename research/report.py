@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import statistics
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import Callable
 
 from metrics import fundamentals, risk, scenarios
@@ -17,6 +17,7 @@ from metrics.context import Context, Result, combine
 
 from .analysis import analyse
 
+STALE_DAYS = 500            # a last revenue quarter older than this means we cannot read the company's revenue
 HISTORY_POINTS = 7          # year-spaced points, six years: the oldest only feeds the first growth figure
 
 
@@ -142,6 +143,11 @@ def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, sha
         return {"supported": False, "company": profile,
                 "reason": "No quarterly revenue in US-GAAP 10-K/10-Q filings. Foreign filers (20-F, IFRS), funds and "
                           "newly listed companies are not covered yet."}
+    if ends[-1] < as_of - timedelta(days=STALE_DAYS):
+        return {"supported": False, "company": profile,
+                "reason": f"The latest revenue figure we can read is from {ends[-1].strftime('%B %Y')}. This company reports "
+                          "revenue in a form this version does not recognise (banks, insurers and some other financial "
+                          "companies do), so a report would be out of date."}
     bases = {e: Base(ctx, e) for e in ends}
     cur, ago1 = bases[ends[-1]], bases.get(ctx.back(ends[-1], 4))
     notes: list[str] = []

@@ -123,11 +123,20 @@ def _get(sec: SecClient, url: str):
 
 
 def _shares(data: dict) -> list[dict]:
-    """Shares outstanding from the cover page (dei). One row per (period, class); latest first."""
+    """Shares outstanding from the cover page (dei). One row per (period, class); latest first. Companies with several
+    share classes (Alphabet) tag the cover page by class, which the SEC summary omits: for those, the diluted
+    weighted-average count from the income statement is the closest total, and it is marked as such."""
     rows = []
     for e in (data.get("facts", {}).get("dei", {}).get("EntityCommonStockSharesOutstanding", {}).get("units", {}).get("shares", [])):
         if e.get("val") is not None and e.get("end") and e.get("filed"):
             rows.append({"end": e["end"], "filed": e["filed"], "value": float(e["val"]), "accession": e.get("accn")})
+    if not rows:
+        w = (data.get("facts", {}).get("us-gaap", {}).get("WeightedAverageNumberOfDilutedSharesOutstanding", {}).get("units", {}).get("shares", []))
+        for e in w:
+            if e.get("val") is not None and e.get("end") and e.get("filed") and e.get("form") in ("10-Q", "10-K"):
+                rows.append({"end": e["end"], "filed": e["filed"], "value": float(e["val"]), "accession": e.get("accn"), "weighted": True})
+        rows.sort(key=lambda r: (r["filed"], r["end"]), reverse=True)
+        return rows[:1]
     rows.sort(key=lambda r: (r["filed"], r["end"]), reverse=True)
     return rows
 

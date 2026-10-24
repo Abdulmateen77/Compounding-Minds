@@ -277,7 +277,7 @@ def future(val: dict) -> dict | None:
     rows = []
     for s in val["scenarios"]:
         pick = lambda p, i: None if p is None else p[i - 1]                       # noqa: E731
-        rows.append({"name": s["name"], "start_growth": s["start_growth"], "value_per_share": s["value_per_share"],
+        rows.append({"name": s["name"], "start_growth": s["start_growth"], "value_per_share": s["value_per_share"], "equity_value": s["equity_value"],
                      "revenue": {str(y): pick(s["revenue_path"], y) for y in (1, 3, 5, 10)},
                      "fcf": {str(y): pick(s["fcf_path"], y) for y in (1, 3, 5, 10)}})
     return {"scenarios": rows}
