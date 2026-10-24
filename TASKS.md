@@ -174,53 +174,53 @@ Moat and Valuation metric sets and agents, cross-examination round, `screener/`,
 ## 4. Person B: ingestion, grading, orchestration and output
 
 ### B1. Ingestion (`ingest/`)
-- [ ] SEC fetcher: User-Agent with name and email, under about 10 requests a second, every raw response cached to disk before parsing
-- [ ] Pull `companyfacts`, `submissions` and filing text for the universe
-- [ ] FRED and ALFRED macro with vintage dates. Prices from Stooq (context only)
-- [ ] Parse into A's schema using A's concept map. `filed_date` on every row. A restatement is a new row, never an overwrite
-- [ ] Event extractor: 8-K item codes, going-concern passages for the risk rule
-- [ ] 5 companies loaded **(handoff 3, Sat 19:00)**, then all 50 **(handoff 6, Sat 23:00)**
-- [ ] Ingest QA report. The whole load must re-run from the raw cache with no network
+- [x] SEC fetcher: User-Agent with name and email, under about 10 requests a second, every raw response cached to disk before parsing
+- [x] Pull `companyfacts`, `submissions` and filing text for the universe
+- [~] FRED and ALFRED macro with vintage dates. Prices from Stooq (context only) (Stooq: code built, no prices downloaded; nothing reads prices)
+- [x] Parse into A's schema using A's concept map. `filed_date` on every row. A restatement is a new row, never an overwrite
+- [x] Event extractor: 8-K item codes, going-concern passages for the risk rule
+- [x] 5 companies loaded **(handoff 3, Sat 19:00)**, then all 50 **(handoff 6, Sat 23:00)**
+- [x] Ingest QA report. The whole load must re-run from the raw cache with no network. `python -m ingest load` writes `qa_report.txt`/`.json`; `--raw-dir` reloads offline
 - [ ] Stretch: 8-K Exhibit 99.1 and FOMC pages through Firecrawl (dated pages only, no numbers); Live today fetch
 
 ### B2. Grading (`grader/`)
 - [x] Brier scoring (binary and multiclass), `grade()`, Risk going-concern check through Sapling with a cache
-- [ ] Risk: auditor change (8-K item 4.01) and dividend-cut (25% or more) checks
-- [ ] Fundamentals rule: FCF margin and operating margin both up in the next reported quarter
-- [ ] Scenarios rule: bucket from actual revenue growth. Thresholds in `grader/config.py`, tuned on the train window only
-- [ ] One fixture per `question_id`, including a restatement case. `unresolvable` is excluded and logged **(handoff 8, Sat 23:00)**
-- [ ] `grader/corrections.py`: pick the misses (cap N per agent per quarter, default 10, highest confidence first) and assign `error_type`
-- [ ] Align the docs with the Sapling exception: [ARCHITECTURE.md](ARCHITECTURE.md), [PROJECT.md](PROJECT.md) and the diagrams still say "no LLM"
-- [ ] Stretch: `grader/calibration.py` track record
+- [x] Risk: auditor change (8-K item 4.01) and dividend-cut (25% or more) checks
+- [x] Fundamentals rule: FCF margin and operating margin both up in the next reported quarter
+- [x] Scenarios rule: bucket from actual revenue growth. Thresholds in `grader/config.py`, tuned on the train window only
+- [x] One fixture per `question_id`, including a restatement case. `unresolvable` is excluded and logged **(handoff 8, Sat 23:00)**
+- [x] `grader/corrections.py`: pick the misses (cap N per agent per quarter, default 10, highest confidence first) and assign `error_type`
+- [x] Align the docs with the Sapling exception: [ARCHITECTURE.md](ARCHITECTURE.md), [PROJECT.md](PROJECT.md) and the diagrams still say "no LLM"
+- [x] Stretch: `grader/calibration.py` track record
 
 ### B3. Orchestration
 - [x] Correction loop CLI and an offline demo that runs without Mubit
-- [ ] `grader/replay.py`: quarter loop 2018Q1 to 2024Q4. Set `as_of`, call A's `run_agent` for every company and agent, store calls, grade only calls whose filing is now visible, make corrections, call `ModelUpdater`, snapshot
-- [ ] `runs` table with train and held-out kinds. Learning from train-window corrections only
-- [ ] Deterministic replay: temperature 0, response cache keyed by prompt hash **and model version** (a Mubit update changes the model, so old cache entries stop matching)
-- [ ] Full replay run offline before the demo, results stored
-- [ ] Rough cost and time estimate for the full run, done before starting it
+- [x] `grader/replay.py`: quarter loop 2018Q1 to 2024Q4. Set `as_of`, call A's `run_agent` for every company and agent, store calls, grade only calls whose filing is now visible, make corrections, call `ModelUpdater`, snapshot
+- [x] `runs` table with train and held-out kinds. Learning from train-window corrections only
+- [x] Deterministic replay: temperature 0, response cache keyed by prompt hash **and model version** (a Mubit update changes the model, so old cache entries stop matching)
+- [~] Full replay run offline before the demo, results stored. Real run `--tag final` into `data/runs_final` in progress (started Sat 19:06, about 90 min, about $7.55 on haiku-5-5: `python -m grader.estimate`)
+- [x] Rough cost and time estimate for the full run, done before starting it
 
 ### B4. Synthesis
 - [x] Synthesizer exists
-- [ ] Weights from each agent's trailing accuracy, computed in Python from `grades`. The LLM only writes the rationale
-- [ ] Calibrated confidence for the committee verdict, graded as a composite of the underlying outcomes
-- [ ] Tests for the weighting
+- [x] Weights from each agent's trailing accuracy, computed in Python from `grades`. The LLM only writes the rationale
+- [x] Calibrated confidence for the committee verdict, graded as a composite of the underlying outcomes
+- [x] Tests for the weighting
 
 ### B5. Final output
-- [ ] Final report per company and quarter: verdict, each agent's reasoning, a metric table rendered by Python with source accessions
-- [ ] Name reveal at render time, only for the demo company
-- [ ] Stretch: memo (`memos/`). The LLM writes prose around `{{metric:name}}` placeholders that Python fills. A number not from the metrics engine is rejected
+- [x] Final report per company and quarter: verdict, each agent's reasoning, a metric table rendered by Python with source accessions. `python -m memos.report --runs data/runs_final --company anon_007 --quarter 2019Q2 [--metrics postgres] [--reveal]`
+- [x] Name reveal at render time, only for the demo company
+- [x] Stretch: memo (`memos/`). The LLM writes prose around `{{metric:name}}` placeholders that Python fills. A number not from the metrics engine is rejected
 
 ### B6. Dashboard (`dashboard/`, Streamlit, reads Postgres only)
-- [ ] Controls: company list (anonymous IDs with sector, plus a search box), quarter slider, Play, Step, speed, Learned vs Frozen toggle
-- [ ] Committee table with evidence drawer
-- [ ] Right or wrong results after Step
-- [ ] Correction spotlight: call, reality, lesson, Mubit update, model version before and after. Labelled "fallback" if the fake updater was used
-- [ ] Accuracy curves, learned vs frozen, COVID window shaded
-- [ ] Run live loop button for one company and quarter
-- [ ] Held-out panel reading A's `eval/out/heldout.json`
-- [ ] Disclaimer footer on every view
+- [x] Controls: company list (anonymous IDs with sector, plus a search box), quarter slider, Play, Step, speed, Learned vs Frozen toggle
+- [x] Committee table with evidence drawer
+- [x] Right or wrong results after Step
+- [x] Correction spotlight: call, reality, lesson, Mubit update, model version before and after. Labelled "fallback" if the fake updater was used
+- [x] Accuracy curves, learned vs frozen, COVID window shaded
+- [x] Run live loop button for one company and quarter
+- [x] Held-out panel reading `eval/reports/heldout_report.json` (B's, written by `python -m eval.run --live`)
+- [x] Disclaimer footer on every view
 - [ ] Stretch: Live today tab, watchlist, memo view, track record. See [user-journey.html](user-journey.html)
 
 ---
