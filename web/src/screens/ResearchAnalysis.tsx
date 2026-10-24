@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { jumpTo } from "../route";
-import { TONE, money, pctOf, type Analysis, type Check, type Lens } from "../research";
+import { TONE, money, pctOf, type Analysis, type Check, type Lens, type QuickCheck } from "../research";
 
 /* The verdict, the four investors, the value, the future: everything here is rendered from the numbers the API
    computed in Python (research/analysis.py). Nothing on this page is written by a model. */
@@ -252,6 +252,40 @@ export function EvidencePanel() {
         <li>Windows overlap from quarter to quarter. Using one window per company per year gives the same direction (Munger {ye.find((t) => t.lens === "munger")?.spearman?.toFixed(2)}, Buffett cash {ye.find((t) => t.lens === "buffett" && t.outcome.startsWith("Free-cash"))?.spearman?.toFixed(2)}).</li>
         <li>Large US companies, 2018 to 2023, includes the 2020 shock. Past performance of a method is no guarantee.</li>
       </ul>
+    </section>
+  );
+}
+
+/* ───────────────────────── the 5-minute check ───────────────────────── */
+
+export function QuickCheckBlock({ q }: { q: QuickCheck }) {
+  const color = q.score == null ? "var(--mute)" : q.score >= 0.75 ? "var(--green)" : q.score >= 0.4 ? "var(--amber)" : "var(--red)";
+  return (
+    <section className="grid gap-3">
+      <div>
+        <h2 className="text-xl font-semibold m-0">The 5-minute check: is it worth researching further?</h2>
+        <p className="mute text-sm m-0 mt-1 max-w-3xl">Five quick tests that filter out companies to avoid before you spend time on them. Meant for manufacturing and other non-financial companies.</p>
+      </div>
+      {!q.applies ? <div className="card p-5 text-sm">{q.note}</div> : (
+        <div className="card p-5 grid gap-4">
+          {q.verdict && <p className="m-0 text-lg font-semibold" style={{ color }}>{q.verdict}</p>}
+          <ul className="m-0 p-0 list-none grid gap-3">
+            {q.items.map((i) => {
+              const C = CHECK[i.result];
+              return (
+                <li key={i.key} className="flex gap-3 items-start">
+                  <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 20%, transparent)`, color: C.color }}>{C.mark}</span>
+                  <div className="grid gap-0.5 text-sm">
+                    <span className="font-medium">{i.label}: <span className="font-normal">{i.found}</span></span>
+                    <span className="mute text-xs">Look for: {i.rule}</span>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+          <p className="m-0 mute text-xs">{q.note} Source: {q.source}.</p>
+        </div>
+      )}
     </section>
   );
 }

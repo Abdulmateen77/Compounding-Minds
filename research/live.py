@@ -37,6 +37,9 @@ class LiveCompany:
     events: list[dict]
     filings: list[dict]                       # submissions rows, newest first, for the text pass
     shares: list[dict] = field(default_factory=list)   # dei shares outstanding, latest first
+    share_history: list[dict] = field(default_factory=list)   # yearly diluted share count from 10-Ks, oldest first
+    latest_filing: dict | None = None                  # the newest 10-K or 10-Q in the filing list
+    facts_through: str | None = None                   # the newest filing date of any figure we hold
     loaded_at: float = field(default_factory=time.time)
 
 
@@ -122,6 +125,39 @@ def _get(sec: SecClient, url: str):
         sec.refresh = False
 
 
+def _share_history(data: dict, years: int = 6) -> list[dict]:
+    """Diluted weighted-average shares for each fiscal year, on the newest 10-K's basis.
+
+    Each 10-K reports about three years. A stock split restates the comparatives in later 10-Ks but not the older ones,
+    so a naive series jumps ten-fold at a 10-for-1 split. Filings are chained instead: starting from the newest, each
+    older 10-K is scaled by the ratio on a year both report, so splits cancel and only real issuance or buybacks remain."""
+    from datetime import date as _d
+    rows = (data.get("facts", {}).get("us-gaap", {}).get("WeightedAverageNumberOfDilutedSharesOutstanding", {})
+            .get("units", {}).get("shares", []))
+    by_filing: dict[str, dict[str, float]] = {}
+    filed: dict[str, str] = {}
+    for e in rows:
+        if e.get("form") not in ("10-K", "10-K/A") or not e.get("start") or not e.get("end") or e.get("val") is None:
+            continue
+        if not 350 <= (_d.fromisoformat(e["end"]) - _d.fromisoformat(e["start"])).days <= 380:
+            continue
+        by_filing.setdefault(e["accn"], {})[e["end"]] = float(e["val"])
+        filed[e["accn"]] = e["filed"]
+    if not by_filing:
+        return []
+    order = sorted(by_filing, key=lambda a: filed[a], reverse=True)
+    basis = dict(by_filing[order[0]])
+    for accn in order[1:]:
+        older = by_filing[accn]
+        common = [end for end in older if end in basis and older[end] > 0]
+        if not common:
+            continue                                    # no overlap to chain on: stop rather than guess
+        k = basis[max(common)] / older[max(common)]
+        for end, v in older.items():
+            basis.setdefault(end, v * k)
+    return [{"end": end, "value": basis[end]} for end in sorted(basis)[-years:]]
+
+
 def _shares(data: dict) -> list[dict]:
     """Shares outstanding from the cover page (dei). One row per (period, class); latest first. Companies with several
     share classes (Alphabet) tag the cover page by class, which the SEC summary omits: for those, the diluted
@@ -141,11 +177,54 @@ def _shares(data: dict) -> list[dict]:
     return rows
 
 
+PERIODIC = ("10-K", "10-Q", "10-K/A", "10-Q/A")
+_checked: set[tuple[int, str]] = set()        # (cik, day): the filing list is re-read once a day per company
+
+
+def _refetch(sec: SecClient, url: str):
+    if sec.offline:
+        return sec.get_json(url)
+    sec.refresh = True
+    try:
+        return sec.get_json(url)
+    finally:
+        sec.refresh = False
+
+
+def latest_periodic(filings: list[dict]) -> dict | None:
+    rows = [f for f in filings if f.get("form") in PERIODIC and f.get("filingDate")]
+    if not rows:
+        return None
+    f = max(rows, key=lambda r: r["filingDate"])
+    return {"form": f["form"], "filed": f["filingDate"], "period": f.get("reportDate") or None,
+            "accession": f.get("accessionNumber")}
+
+
+def facts_filed_through(data: dict) -> str | None:
+    """The newest filing date of any fact in a companyfacts file: how current the file's contents really are."""
+    dates = [e["filed"] for tax in data.get("facts", {}).values() for t in tax.values()
+             for unit in t.get("units", {}).values() for e in unit if e.get("filed")]
+    return max(dates) if dates else None
+
+
 def load_company(sec: SecClient, cik: int) -> LiveCompany:
+    """A file's save time says nothing about its contents (a cache can be copied in today and still stop in April), so
+    freshness is judged by what is inside: the filing list is re-read once a day, and the figures are downloaded again
+    whenever the list shows a 10-K or 10-Q newer than the newest figure in the cached file."""
     cid = live_id(cik)
     padded = f"{int(cik):010d}"
-    facts_json = _get(sec, f"{DATA}/api/xbrl/companyfacts/CIK{padded}.json")
-    subs_json = _get(sec, f"{DATA}/submissions/CIK{padded}.json")
+    subs_url, facts_url = f"{DATA}/submissions/CIK{padded}.json", f"{DATA}/api/xbrl/companyfacts/CIK{padded}.json"
+    key = (int(cik), time.strftime("%Y-%m-%d"))
+    subs_json = _get(sec, subs_url) if key in _checked else _refetch(sec, subs_url)
+    _checked.add(key)
+    filings = subs_json["filings"]["recent"]
+    rows = [dict(zip(filings, vals)) for vals in zip(*filings.values())]
+    newest = latest_periodic(rows)
+    facts_json = _get(sec, facts_url)
+    through = facts_filed_through(facts_json)
+    if newest and (through is None or through < newest["filed"]):
+        facts_json = _refetch(sec, facts_url)
+        through = facts_filed_through(facts_json)
     subs = parse_submissions(subs_json, cid)
     events = list(subs.events)
     for name in subs.extra_files:                       # older filing pages: the risk checks look back 5 years
@@ -153,11 +232,11 @@ def load_company(sec: SecClient, cik: int) -> LiveCompany:
             events += parse_submissions({"filings": {"recent": _get(sec, f"{DATA}/submissions/{name}")}}, cid).events
         except Exception:
             continue
-    filings = subs_json["filings"]["recent"]
-    rows = [dict(zip(filings, vals)) for vals in zip(*filings.values())]
-    return LiveCompany(cid, int(cik), subs.sic, parse_companyfacts(facts_json, cid),
-                       sorted({e["accession"]: e for e in events}.values(), key=lambda e: e["filed_date"]),
-                       rows, _shares(facts_json))
+    c = LiveCompany(cid, int(cik), subs.sic, parse_companyfacts(facts_json, cid),
+                    sorted({e["accession"]: e for e in events}.values(), key=lambda e: e["filed_date"]),
+                    rows, _shares(facts_json), share_history=_share_history(facts_json))
+    c.latest_filing, c.facts_through = newest, through
+    return c
 
 
 class LiveStore:

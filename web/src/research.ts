@@ -24,7 +24,8 @@ export type Report = {
   scorecard?: Figure[]; tally?: { good: number; watch: number; warn: number };
   sections?: Section[]; risk_flags?: Flag[];
   economy?: { key: string; label: string; meaning: string; unit: string; value: number }[];
-  market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[]; analysis?: Analysis; news?: News | null;
+  market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[]; analysis?: Analysis; news?: News | null; quick_check?: QuickCheck;
+  latest_filing?: { form: string; filed: string; period: string | null; accession: string | null } | null; facts_through?: string | null; checked_at?: string;
 };
 export type Check = { id: string; principle: string; source: string; check: string; result: "pass" | "partial" | "fail" | "unknown"; shown: string };
 export type Lens = { key: string; name: string; question: string; fit: number | null; word: string; checks: Check[]; narrative?: string | null; ahead?: string | null; note?: { category: string; why: string }; backtested?: boolean; caveat?: string | null };
@@ -84,6 +85,14 @@ export type Evidence = {
 export type NewsLine = { text: string; url: string; source: string; title: string; age: string | null };
 export type NewsArticle = { title: string; url: string; source: string; age: string | null; text: string };
 export type News = { retrieved: string; lines: NewsLine[]; articles: NewsArticle[] };
+
+/** "2026-07-03" -> "Jul 2026" */
+export const monthYear = (iso: string) => new Date(`${iso}T12:00:00`).toLocaleDateString("en-GB", { month: "short", year: "numeric" });
+/** Figures that are a snapshot on a date (balance sheet), not a twelve-month total. */
+export const POINT_IN_TIME = new Set(["cash", "debt", "net_debt", "equity", "assets", "working_capital", "current_ratio"]);
+
+export type QuickItem = { key: string; label: string; rule: string; result: "pass" | "partial" | "fail" | "unknown"; found: string };
+export type QuickCheck = { applies: boolean; note?: string; items: QuickItem[]; score?: number | null; verdict?: string | null; source: string };
 
 /** What the report is doing while it is built (the first lookup takes 20 to 30 seconds). Shown by the loading screen and the investor room. */
 export const RESEARCH_STEPS = ["Finding the company's filings", "Reading the financial statements", "Reading the annual report for plans and R&D", "Reading the latest news and checking the share price"];

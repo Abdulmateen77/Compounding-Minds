@@ -4,14 +4,14 @@ import { motion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ErrorBox, Skeleton, Spark } from "../components/bits";
 import { demoMode, researchHref, go, type ResearchView } from "../route";
-import { EvidencePanel, Future, Lenses, Verdict, Worth } from "./ResearchAnalysis";
+import { EvidencePanel, Future, Lenses, QuickCheckBlock, Verdict, Worth } from "./ResearchAnalysis";
 import { CompanySearch, SearchOptions } from "../components/CompanySearch";
 import { InvestorStage } from "../components/InvestorStage";
 import { ResearchingRoom } from "../components/ResearchingRoom";
 import { recallPicked } from "../recent";
 import ProView from "./ResearchPro";
 import {
-  RESEARCH_STEPS, STEP_SECONDS, TONE, fmtValue, longDate, money, multiple, pctOf, year,
+  POINT_IN_TIME, RESEARCH_STEPS, STEP_SECONDS, TONE, fmtValue, longDate, monthYear, money, multiple, pctOf, year,
   type Candidate, type Figure, type Flag, type News, type Report, type SearchResult, type Section,
 } from "../research";
 
@@ -143,10 +143,9 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
         </div>
         <div>
           <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">{c.name}</h1>
-          <p className="mute m-0 mt-1 text-sm">
-            <span className="num">{c.ticker}</span> · {c.exchange} · United States · financial data through {longDate(r.data_through!)}
-          </p>
+          <p className="mute m-0 mt-1 text-sm"><span className="num">{c.ticker}</span> · {c.exchange} · United States</p>
         </div>
+        <DataSource r={r} />
       </header>
 
       <nav aria-label="Views of this report" className="flex gap-1 p-1 rounded-xl justify-self-start flex-wrap" style={{ background: "var(--panel2)", border: "1px solid var(--line)" }}>
@@ -162,10 +161,11 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
       {view === "report" && (<>
       {r.analysis && <Verdict a={r.analysis} name={c.name} />}
       <Summary r={r} />
+      {r.quick_check && <QuickCheckBlock q={r.quick_check} />}
       {r.news && <NewsBlock n={r.news} />}
       <TrendChart sections={sections} />
 
-      {(["growth", "profit", "cash", "balance", "reinvest"] as const).map((id) => <SectionBlock key={id} s={byId(id)} />)}
+      {(["growth", "profit", "cash", "balance", "reinvest"] as const).map((id) => <SectionBlock key={id} s={byId(id)} through={r.data_through!} />)}
 
       <RiskChecks flags={r.risk_flags ?? []} />
       {r.plans && <Plans p={r.plans} />}
@@ -265,7 +265,7 @@ function TrendChart({ sections }: { sections: Section[] }) {
   );
 }
 
-function SectionBlock({ s }: { s: Section }) {
+function SectionBlock({ s, through }: { s: Section; through: string }) {
   const shown = s.figures.filter((f) => f.value != null);
   if (shown.length === 0) return null;
   return (
@@ -274,13 +274,14 @@ function SectionBlock({ s }: { s: Section }) {
         <h2 className="text-xl font-semibold m-0">{s.title}</h2>
         {s.reading.length > 0 && <p className="m-0 mt-2 max-w-3xl leading-relaxed">{s.reading.join(" ")}</p>}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">{shown.map((f) => <FigureCard key={f.key} f={f} />)}</div>
+      <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">{shown.map((f) => <FigureCard key={f.key} f={f} through={through} />)}</div>
     </section>
   );
 }
 
-function FigureCard({ f }: { f: Figure }) {
+function FigureCard({ f, through }: { f: Figure; through: string }) {
   const h = f.history.filter((x) => x.value != null);
+  const when = POINT_IN_TIME.has(f.key) ? `on ${longDate(through)}` : `12 months to ${longDate(through)}`;
   return (
     <div className="card p-4 grid gap-1 content-start" title={f.sources.length ? `From SEC filings: ${f.sources.join(", ")}` : undefined}>
       <div className="flex items-start justify-between gap-2">
@@ -288,13 +289,33 @@ function FigureCard({ f }: { f: Figure }) {
         <ToneChip tone={f.tone} />
       </div>
       <span className="num text-2xl font-semibold">{fmtValue(f.unit, f.value)}{f.approx && <span className="mute text-sm" title="Approximate: see the notes at the bottom"> ≈</span>}</span>
+      <span className="text-[11px] mute">{when}</span>
       <span className="mute text-xs leading-snug">{f.meaning}</span>
       {h.length > 2 && (
         <div className="mt-1">
           <Spark data={h.map((x) => x.value as number)} w={220} h={34} />
-          <div className="flex justify-between mute text-[10px] num"><span>{year(h[0].end)}: {fmtValue(f.unit, h[0].value)}</span><span>{year(h[h.length - 1].end)}</span></div>
+          <div className="flex justify-between mute text-[10px] num">
+            <span>{monthYear(h[0].end)}: {fmtValue(f.unit, h[0].value)}</span>
+            <span>{monthYear(h[h.length - 1].end)}: {fmtValue(f.unit, h[h.length - 1].value)}</span>
+          </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function DataSource({ r }: { r: Report }) {
+  const lf = r.latest_filing, through = r.data_through!;
+  const behind = lf && r.facts_through && r.facts_through < lf.filed;
+  return (
+    <div className="rounded-xl px-4 py-3 text-sm grid gap-1" style={{ background: "var(--panel2)", border: "1px solid var(--line)" }}>
+      <span>
+        <b>Latest figures: the 12 months to {longDate(through)}</b>
+        {lf && !behind && <>, from {r.company.name}'s {lf.form} filed with the SEC on {longDate(lf.filed)}</>}.
+        {" "}Source: SEC EDGAR, checked {r.checked_at ? longDate(r.checked_at) : "today"}.
+      </span>
+      {behind && <span style={{ color: "var(--amber)" }}>Its newest filing ({lf!.form}, filed {longDate(lf!.filed)}) is not in the SEC's data feed yet, so these figures stop at the filing before it.</span>}
+      <span className="mute text-xs">Each card's line shows the same figure at the same point in each of the last six years, oldest on the left.</span>
     </div>
   );
 }
