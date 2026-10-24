@@ -13,6 +13,9 @@ class AgentSpec:
     claim_type: str          # binary | bucket
     answers: tuple[str, ...]
     horizon: str
+    # Extra per-agent rules, appended to the USER message. Never the system prompt: Mubit
+    # groups calls into a task by system prompt, so editing that would split the task.
+    extra_rules: tuple[str, ...] = ()
 
 
 SPECS: dict[str, AgentSpec] = {
@@ -27,5 +30,9 @@ SPECS: dict[str, AgentSpec] = {
     "scenarios": AgentSpec(
         "scenarios", "dalio", "revenue_bucket_next_4q",
         "Will revenue over the next four quarters, versus the trailing four, land in bear (<0% growth), base (0-10%) or bull (>10%)?",
-        "bucket", ("bear", "base", "bull"), "4_quarters"),
+        "bucket", ("bear", "base", "bull"), "4_quarters",
+        extra_rules=(
+            "Copy every metric name in `evidence` exactly as it is written in METRICS, prefix included "
+            "(write `revenue_macro_beta`, never `macro_beta`). Do not shorten, rename or reword metric names.",
+        )),
 }

@@ -58,7 +58,8 @@ def build_messages(agent: str, company_id: str, as_of: date, metrics: dict, less
         f"LESSONS FROM PAST MISTAKES (apply them)\n{memory}\n\n"
         f"Company: {company_id}\nQuestion ({spec.question_id}): {spec.question}\n"
         f"Allowed answers: {', '.join(spec.answers)}\nHorizon: {spec.horizon}\n"
-        f"as_of: Q0 (latest reported quarter; calendar dates are hidden)\nMETRICS\n" + "\n".join(lines)
+        + "".join(f"RULE: {r}\n" for r in spec.extra_rules)
+        + f"as_of: Q0 (latest reported quarter; calendar dates are hidden)\nMETRICS\n" + "\n".join(lines)
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
@@ -74,8 +75,11 @@ def _check_evidence(call: AgentCall, metrics: dict) -> None:
     """Evidence must match what the metrics engine returned, else the call is rejected."""
     known = {m["name"]: m["value"] for m in metrics["metrics"]}
     for e in call.evidence:
-        if e.metric not in known or abs(known[e.metric] - e.value) > 1e-9:
-            raise ValueError(f"evidence mismatch for {e.metric!r}")
+        if e.metric not in known:
+            raise ValueError(f"evidence mismatch: {e.metric!r} is not a metric name. "
+                             f"Use exactly one of: {', '.join(sorted(known))}")
+        if abs(known[e.metric] - e.value) > 1e-9:
+            raise ValueError(f"evidence mismatch: {e.metric!r} must have the exact value {known[e.metric]}")
 
 
 def _parse(raw: str, agent: str, company_id: str, as_of: date, run_id: str, metrics: dict, model: str) -> AgentCall:
