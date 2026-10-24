@@ -1,6 +1,7 @@
 """Build the held-out report and the quality report.
 
     python -m quality.cli --out quality/out                  read scored calls from DATABASE_URL
+    python -m quality.cli --runs data/runs_final --out quality/out   read a replay's JSONL output
     python -m quality.cli --demo --out quality/out           synthetic data, no database (labelled as such)
 
 Writes quality/out/heldout.json (the dashboard's contract) and quality/out/quality.md.
@@ -30,6 +31,7 @@ def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="python -m quality.cli", description=__doc__.split("\n\n")[0])
     p.add_argument("--out", default="quality/out", help="directory for heldout.json and quality.md")
     p.add_argument("--demo", action="store_true", help="use labelled synthetic data and no database")
+    p.add_argument("--runs", default=None, help="read a replay's JSONL directory (data/runs_final) instead of Postgres")
     p.add_argument("--run-id", action="append", default=None, help="only these runs (repeatable)")
     p.add_argument("--attempted", action="append", default=[], metavar="AGENT=N",
                    help="calls attempted per agent, for the valid-JSON rate (repeatable). The runner drops "
@@ -41,7 +43,13 @@ def main(argv: list[str] | None = None) -> int:
     held_out = held_out_ids()
     attempted = _parse_attempted(args.attempted)
     extra_notes: list[str] = []
-    if args.demo:
+    if args.runs:
+        from .load import load_scored_dir
+        scored = load_scored_dir(args.runs, args.run_id)
+        if not scored:
+            print(f"no graded calls in {args.runs}", file=sys.stderr)
+            return 2
+    elif args.demo:
         from .demo import DEMO_NOTE, demo_attempted, demo_scored
         scored = demo_scored(held_out=set(held_out))
         attempted = attempted or demo_attempted(scored)

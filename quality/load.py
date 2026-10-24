@@ -54,6 +54,28 @@ def row_to_scored(payload, graded_at: datetime, outcome: str, correct, brier, ev
     return Scored(call=call, grade=grade, variant=variant or "learned")
 
 
+def load_scored_dir(runs_dir, run_ids: Sequence[str] | None = None) -> list[Scored]:
+    """The same rows from a run_store JSONL directory (`grader.replay --out data/runs_final`).
+    A grade that was re-written (offline regrade) appears twice: the last line wins."""
+    from pathlib import Path
+    root = Path(runs_dir)
+
+    def rows(name):
+        path = root / f"{name}.jsonl"
+        if not path.exists():
+            return []
+        with path.open(encoding="utf-8") as f:
+            return [json.loads(line) for line in f if line.strip()]
+
+    variant = {r["run_id"]: (r.get("config") or {}).get("variant", "learned") for r in rows("runs")}
+    calls = {c["call_id"]: c for c in rows("calls") if not run_ids or c["run_id"] in run_ids}
+    grades = {g["call_id"]: g for g in rows("grades") if g["call_id"] in calls}
+    out = [row_to_scored(calls[cid]["payload"], datetime.fromisoformat(g["graded_at"]), g["outcome"],
+                         g["correct"], g["brier"], g["evidence"], variant.get(calls[cid]["run_id"], "learned"))
+           for cid, g in grades.items()]
+    return sorted(out, key=lambda s: (s.call.as_of, s.call.agent, s.call.company_id, s.call.call_id))
+
+
 def load_scored(conn, run_ids: Sequence[str] | None = None) -> list[Scored]:
     """Every graded call, optionally limited to some runs. An unresolvable grade is returned too:
     the metrics leave it out of accuracy and Brier and count it separately."""
