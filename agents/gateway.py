@@ -75,7 +75,7 @@ class MubitGateway(LLMGateway):
     """
 
     def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None,
-                 max_tokens: int = 1024, client=None):
+                 max_tokens: int = 2048, client=None):
         host = (base_url or os.environ.get("MUBIT_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
         self.model = model or os.environ.get("MUBIT_MODEL") or DEFAULT_MODEL
         self.max_tokens = max_tokens
@@ -100,8 +100,20 @@ class MubitGateway(LLMGateway):
         if kw.get("session_id"):
             # On Anthropic, metadata.user_id is the one field Mubit reads as the session.
             params["metadata"] = {"user_id": str(kw["session_id"])[:200]}
+        # Haiku 5.5 "thinks" before it answers, and the thinking counts against max_tokens. Found on the first
+        # live replay: with a cap of 1024 the visible JSON was cut off mid-list in about a third of the replies.
+        # Thinking is off by default (these are short judgements, and it is faster and cheaper); set
+        # MUBIT_THINKING=1 to turn it back on.
+        if os.environ.get("MUBIT_THINKING") != "1":
+            params["thinking"] = {"type": "disabled"}
         raw = self.client.messages.with_raw_response.create(**params)
         msg = raw.parse()
+        if getattr(msg, "stop_reason", None) == "max_tokens":   # never return (or cache) a cut-off reply
+            params["max_tokens"] = min(params["max_tokens"] * 2, 8192)
+            raw = self.client.messages.with_raw_response.create(**params)
+            msg = raw.parse()
+            if getattr(msg, "stop_reason", None) == "max_tokens":
+                raise RuntimeError(f"{agent}: reply still cut off at {params['max_tokens']} tokens")
         usage = getattr(msg, "usage", None)
         self.requests.append(MubitRequest(agent, kw.get("purpose", "call"),
                                           raw.headers.get("x-middleware-request-id"), self.model,

@@ -89,3 +89,34 @@ def test_cache_key_includes_model_version(tmp_path):
     ver["v"] = "v0"  # old entry still valid for the old version
     gw.complete("a", msgs)
     assert inner.calls == 2
+
+
+def _fingerprint(store):
+    calls = sorted((r["agent"], r["company_id"], r["as_of"], r["run_id"]) for r in store.rows("calls"))
+    grades = sorted((r["call_id"] is not None, r["outcome"]) for r in store.rows("grades"))
+    return calls, grades, len(store.rows("corrections")), len(store.rows("snapshots"))
+
+
+def test_running_model_calls_side_by_side_changes_nothing_about_the_result(tmp_path):
+    """workers > 1 is only a speedup: the same calls, grades, corrections and snapshots as sequential."""
+    seq_dir, par_dir = tmp_path / "seq", tmp_path / "par"
+    seq_dir.mkdir(), par_dir.mkdir()
+    cos, ags, quarters = ("anon_001", "anon_002", "anon_003", "anon_004"), ("fundamentals", "risk"), "2019Q1:2019Q4"
+    rp1, s1, _ = make(seq_dir, companies=cos, agents=ags)
+    rp1.workers = 1
+    r1 = rp1.run(parse_quarters(quarters))
+    rp2, s2, _ = make(par_dir, companies=cos, agents=ags)
+    rp2.workers = 6
+    r2 = rp2.run(parse_quarters(quarters))
+    assert (r1.n_calls, r1.n_graded, r1.n_corrections, r1.dropped) == (r2.n_calls, r2.n_graded, r2.n_corrections, r2.dropped)
+    assert r1.n_calls > 20
+    assert _fingerprint(s1) == _fingerprint(s2)
+
+
+def test_workers_default_comes_from_the_environment(tmp_path, monkeypatch):
+    (tmp_path / "a").mkdir()
+    (tmp_path / "b").mkdir()
+    monkeypatch.setenv("REPLAY_WORKERS", "5")
+    assert make(tmp_path / "a")[0].workers == 5
+    monkeypatch.delenv("REPLAY_WORKERS")
+    assert make(tmp_path / "b")[0].workers == 1

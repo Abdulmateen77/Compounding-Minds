@@ -66,6 +66,19 @@ companies in 55 seconds: **95,556 facts, 23,421 filing events, 29,182 macro rows
 | Not fixable from tags | Costco CF 2016 to 2019 and Nvidia FY2019 capex are absent from the SEC data; Disney and Palantir have short histories |
 | Still to do | The going-concern text pass (`python -m ingest load --filing-text`, downloads 10-K and 10-Q text), so `going_concern_hits` is real rather than 0 |
 
+## 0d. First live replay (Sat 24 Oct, ~21:30)
+
+4 companies, Fundamentals and Scenarios, the four 2019 quarters plus 4 settle quarters, real Mubit calls (`claude-haiku-5-5`).
+
+| Finding | Fix |
+|---|---|
+| **Replies were cut off mid-JSON** (a third of them, mostly Scenarios, which cites 8 metrics). The model "thinks" first and the thinking counts against `max_tokens`, so the cap of 1024 left about 300 tokens for the answer | `agents/gateway.py`: thinking off by default (`MUBIT_THINKING=1` turns it on), cap raised to 2048, and a reply that still stops at `max_tokens` is retried once with double and then raises, so a cut-off reply is never returned or cached. Cache key bumped to v2 so the old cut-off replies are not reused. Dropped calls fell from 14 to 4 |
+| **Too slow:** 526 s for 82 calls (about 6 s each, one at a time). The full replay is about 8,400 analyst calls, which would take about 15 hours | `grader/replay.py --workers N` (or `REPLAY_WORKERS`) runs the model calls of one quarter side by side. Metrics and bookkeeping stay sequential and in order, so the result is identical to a sequential run (a test proves it). **73 s with 8 workers, 7 times faster** |
+| **30 of 82 grades unresolvable**, all Fundamentals: the grader kept its own copy of the quarter logic and knew nothing of derived operating income or 52-week calendars | `grader/facts.py` now reads quarters from `metrics.context.Context`, the same code the agent's numbers come from. Re-grading the same calls: unresolvable 30 to 2 |
+| The learned arm's lessons | Specific, cite our metrics and principles (for example `dalio.04`), no company names or years; the prompt leak guard never fired |
+
+Full-replay estimate from this trial: about 1.3 calls per second with 8 workers, so about 8,400 analyst calls take roughly 2 hours (about 1 hour at 16 workers, if Mubit allows it), plus reflections. Cost depends on the Mubit credit: each call is about 700 tokens in and 700 out.
+
 ## 1. Where we are now (Sat 24 Oct, ~15:00)
 
 Read from the repo. 74 tests pass. Nothing runs on real data yet: every agent runs on three hand-written stub files.

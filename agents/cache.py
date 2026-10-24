@@ -56,7 +56,7 @@ class CachingGateway(LLMGateway):
         return getattr(self.inner, "requests", [])
 
     def key_for(self, agent: str, messages: list[dict], **kw) -> str:
-        payload = {"v": 1, "model": self.model, "agent": agent, "messages": messages,
+        payload = {"v": 2, "model": self.model, "agent": agent, "messages": messages,
                    "params": {k: v for k, v in sorted(kw.items()) if k not in _LABEL_ONLY}}
         if self.version_fn is not None:  # absent unless used, so existing keys stay valid
             payload["model_version"] = self.version_fn(agent)

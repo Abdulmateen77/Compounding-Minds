@@ -38,11 +38,13 @@ import importlib
 import inspect
 import json
 import logging
+import os
 import re
 import sys
 import tempfile
 import uuid
 from collections import defaultdict
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -200,8 +202,12 @@ class Replay:
                  gateways: dict[str, LLMGateway], updaters: dict[str, ModelUpdater],
                  outcome_fn: OutcomeFn, metrics_fn: MetricsFn, runner: Runner | None = None,
                  held_out_companies: list[str] | None = None, state_path: Path | None = None,
-                 make_corrections: Callable | None = None, fallback: bool = False):
+                 make_corrections: Callable | None = None, fallback: bool = False, workers: int | None = None):
         self.companies, self.agents, self.store, self.tag = companies, agents, store, tag
+        # Model calls inside one quarter are independent (the learned arm only changes between quarters), so
+        # they can run side by side. 1 = the original sequential behaviour. A live call takes about 6 s, so the
+        # full replay (about 8,000 calls) is only feasible with several workers.
+        self.workers = max(1, int(workers if workers is not None else os.environ.get("REPLAY_WORKERS", 1)))
         self.outcome_fn, self.metrics_fn = outcome_fn, metrics_fn
         self.runner = runner or resolve_runner()
         self.make_corrections = make_corrections or resolve_make_corrections()
@@ -277,24 +283,38 @@ class Replay:
 
     def _make_calls(self, arm: Arm, as_of: date, kind: str, res: ReplayResult) -> None:
         rid = self.run_id(arm.variant, kind)
+        # 1. metrics, one at a time: they share one database connection, and take milliseconds
+        todo = []
         for agent in self.agents:
             for company in self.companies:
                 key = (agent, company, as_of)
                 if key in arm.calls:  # resumed mid-quarter: reuse the stored call
                     continue
-                metrics = self.metrics_fn(company, agent, as_of)
-                if arm.variant == "baseline":
-                    call = baseline_call(agent, company, as_of, rid)
-                else:
-                    call = self.runner(agent, company, as_of, metrics=metrics, gateway=arm.gateway,
-                                       updater=arm.updater, run_id=rid)
-                if call is None:
-                    res.dropped += 1
-                    continue
-                arm.calls[key] = call
-                self.store.write_call(call)
-                arm.pending[call.call_id] = Pending(call, metrics)
-                res.n_calls += 1
+                todo.append((agent, company, key, self.metrics_fn(company, agent, as_of)))
+
+        # 2. the model calls: the slow part, run side by side when workers > 1
+        def one(item):
+            agent, company, _, metrics = item
+            if arm.variant == "baseline":
+                return baseline_call(agent, company, as_of, rid)
+            return self.runner(agent, company, as_of, metrics=metrics, gateway=arm.gateway,
+                               updater=arm.updater, run_id=rid)
+
+        if self.workers > 1 and arm.variant != "baseline" and len(todo) > 1:
+            with ThreadPoolExecutor(max_workers=self.workers) as pool:
+                calls = list(pool.map(one, todo))      # results come back in the original order
+        else:
+            calls = [one(item) for item in todo]
+
+        # 3. bookkeeping, in the original order, on this thread only
+        for (agent, company, key, metrics), call in zip(todo, calls):
+            if call is None:
+                res.dropped += 1
+                continue
+            arm.calls[key] = call
+            self.store.write_call(call)
+            arm.pending[call.call_id] = Pending(call, metrics)
+            res.n_calls += 1
 
     def _grade(self, arm: Arm, as_of: date, res: ReplayResult) -> list[tuple[Pending, Grade]]:
         out = []
@@ -392,6 +412,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="run_store target: a directory, or 'postgres'")
     ap.add_argument("--runner", help="module:function replacing the stub-backed runner (Person A's)")
     ap.add_argument("--fresh", action="store_true", help="ignore saved progress and lessons for this tag")
+    ap.add_argument("--workers", type=int, default=None,
+                    help="model calls to run side by side within a quarter (default 1, or $REPLAY_WORKERS)")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(message)s")
@@ -417,7 +439,7 @@ def main(argv: list[str] | None = None) -> int:
     store = open_store(a.out)
     rp = Replay(companies, agents, store, tag=a.tag, gateways=gws, updaters=ups, outcome_fn=outcome_fn,
                 metrics_fn=metrics_fn, runner=resolve_runner(a.runner), held_out_companies=held,
-                state_path=root / "state.json", fallback=a.offline)
+                state_path=root / "state.json", fallback=a.offline, workers=a.workers)
     if a.offline:
         print("OFFLINE: stub metrics, scripted LLM, stub outcome rule, FALLBACK updater (not Mubit). Not real results.")
     res = rp.run(quarters, a.settle)
