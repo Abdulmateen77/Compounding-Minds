@@ -18,8 +18,9 @@ from store.concepts import CONCEPTS
 
 from .quarters import Q, discrete_quarters, instants
 
-# Consecutive quarter ends are about 91 days apart (52/53 week calendars vary a little).
-MIN_GAP, MAX_GAP = 75, 110
+# Consecutive quarter ends are about 91 days apart. 52/53-week calendars vary: a retailer such as Costco has
+# three 12-week quarters (84 days) and a 16-week fourth quarter (112 days).
+MIN_GAP, MAX_GAP = 75, 120
 
 
 @dataclass(frozen=True)
@@ -63,9 +64,35 @@ class Context:
     def quarters(self, concept: str) -> dict[date, Q]:
         if concept not in self._quarters:
             fs = self.facts(concept)
-            self._quarters[concept] = (instants(fs) if CONCEPTS[concept].kind == "instant"
-                                       else discrete_quarters(fs))
+            q = instants(fs) if CONCEPTS[concept].kind == "instant" else discrete_quarters(fs)
+            if concept == "operating_income":
+                q = {**self._derived_operating_income(), **q}   # a directly tagged quarter always wins
+            self._quarters[concept] = dict(sorted(q.items()))
         return self._quarters[concept]
+
+    def _derived_operating_income(self) -> dict[date, Q]:
+        """Operating income for filers that never tag it (most pharma and energy names, Nike, Nucor).
+
+        First choice: revenue minus total costs and expenses. Second: pre-tax income plus interest
+        expense, which is EBIT. Both are approximations of the reported figure, used only where the
+        company has no operating-income line of its own."""
+        out: dict[date, Q] = {}
+        rev, costs = self.quarters("revenue"), discrete_quarters(self.facts("costs_and_expenses"))
+        for end in sorted(set(rev) & set(costs)):
+            r, c = rev[end], costs[end]
+            out[end] = Q(end, r.value - c.value, r.accessions | c.accessions, max(r.available, c.available))
+        pretax = discrete_quarters(self.facts("pretax_income"))
+        interest = discrete_quarters(self.facts("interest_expense"))
+        never_paid_interest = not self.has("interest_expense")
+        for end, p in sorted(pretax.items()):
+            if end in out:
+                continue
+            if end in interest:
+                i = interest[end]
+                out[end] = Q(end, p.value + i.value, p.accessions | i.accessions, max(p.available, i.available))
+            elif never_paid_interest:
+                out[end] = Q(end, p.value, p.accessions, p.available)
+        return out
 
     def events(self) -> list[Event]:
         if self._events is None:

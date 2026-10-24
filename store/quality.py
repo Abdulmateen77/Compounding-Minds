@@ -12,7 +12,9 @@ import psycopg
 
 # Needed by the MVP metrics for essentially every operating company. Absence is a data problem.
 REQUIRED = ("revenue", "operating_income", "op_cash_flow", "capex", "depreciation_amortization",
-            "current_assets", "current_liabilities", "cash", "equity", "income_tax_expense", "pretax_income")
+            "current_assets", "current_liabilities", "cash", "equity", "income_tax_expense")
+# operating_income is satisfied by any of these: metrics/context.py derives it when it is not tagged
+OPERATING_INCOME_SOURCES = ("operating_income", "costs_and_expenses", "pretax_income")
 # Legitimately absent for some companies (no dividends, no interest expense, no short-term debt).
 OPTIONAL = ("dividends_paid", "dividends_per_share", "interest_expense", "long_term_debt", "short_term_debt")
 # 5-year statistics at the first replay quarter (2018Q1) need revenue back to about 2013.
@@ -37,7 +39,8 @@ def coverage(conn: psycopg.Connection) -> list[dict]:
     out = []
     for company_id in ids:
         have = by_company[company_id]
-        missing = [c for c in REQUIRED if c not in have]
+        missing = [c for c in REQUIRED if c not in have
+                   and not (c == "operating_income" and any(s in have for s in OPERATING_INCOME_SOURCES))]
         rev = have.get("revenue")
         limit = SHORT_HISTORY_MAX_START if company_id in short else HISTORY_NEEDED_FROM
         shallow = bool(rev) and rev[1] > limit

@@ -85,14 +85,45 @@ def test_before_the_10k_the_latest_quarter_is_q3_not_q4(company):
     close(metric(b, "operating_margin"), ttm(opinc, 22) / ttm(rev, 22))
 
 
-def test_debt_is_not_counted_twice_when_long_term_debt_includes_the_current_part():
-    facts = F.build_facts()
-    for f in facts:
-        if f["concept"] == "long_term_debt":
-            f["source_tag"] = "LongTermDebt"             # this tag already contains the current portion
-    F.install(facts)
+def test_a_reported_total_debt_is_used_instead_of_adding_the_parts():
+    # parts are 100 + 20 = 120, but the company reports one total of 130: the total wins
+    F.install(F.build_facts(total_debt=lambda i: 130))
+    close(metric(get_metrics("anon_001", "fundamentals", AFTER), "debt_to_ebitda"), 130 / (ttm(opinc, 23) + 20))
+
+
+def test_debt_parts_are_added_when_there_is_no_total_and_a_missing_part_counts_as_none():
+    F.install(F.build_facts(short_term_debt=None))      # this company never reports current debt
+    close(metric(get_metrics("anon_001", "fundamentals", AFTER), "debt_to_ebitda"), 100 / (ttm(opinc, 23) + 20))
+
+
+def test_operating_income_is_derived_from_revenue_minus_costs_when_it_is_not_tagged():
+    F.install(F.build_facts(operating_income=None, costs_and_expenses=lambda i: rev(i) - opinc(i)))
     b = get_metrics("anon_001", "fundamentals", AFTER)
-    close(metric(b, "debt_to_ebitda"), 100 / (ttm(opinc, 23) + 20))      # short-term debt NOT added
+    close(metric(b, "operating_margin"), ttm(opinc, 23) / ttm(rev, 23))
+    assert metric(b, "roic") is not None and metric(b, "debt_to_ebitda") is not None
+
+
+def test_operating_income_is_derived_from_pretax_plus_interest_as_the_last_resort():
+    # pre-tax is opinc - 2 and interest is 2, so EBIT = pre-tax + interest = the original operating income
+    F.install(F.build_facts(operating_income=None))
+    close(metric(get_metrics("anon_001", "fundamentals", AFTER), "operating_margin"), ttm(opinc, 23) / ttm(rev, 23))
+
+
+def test_a_company_that_never_paid_interest_uses_pretax_as_ebit():
+    F.install(F.build_facts(operating_income=None, interest_expense=None, pretax_income=lambda i: 20 + i))
+    close(metric(get_metrics("anon_001", "fundamentals", AFTER), "operating_margin"), ttm(opinc, 23) / ttm(rev, 23))
+
+
+def test_a_directly_tagged_operating_income_beats_the_derived_one():
+    F.install(F.build_facts(costs_and_expenses=lambda i: 0))      # nonsense costs must be ignored
+    close(metric(get_metrics("anon_001", "fundamentals", AFTER), "operating_margin"), ttm(opinc, 23) / ttm(rev, 23))
+
+
+def test_roic_uses_the_statutory_rate_when_pretax_income_is_not_reported():
+    F.install(F.build_facts(pretax_income=None))                  # e.g. McDonald's: domestic/foreign split only
+    ic = lambda i: (500 + 10 * i) + 120 - 50                      # noqa: E731
+    close(metric(get_metrics("anon_001", "fundamentals", AFTER), "roic"),
+          ttm(opinc, 23) * (1 - 0.21) / ((ic(23) + ic(19)) / 2))
 
 
 def test_negative_ebitda_gives_the_cap_not_a_negative_multiple():
@@ -262,3 +293,30 @@ def test_the_gate_is_the_only_door(company, monkeypatch):
     monkeypatch.setattr(queries, "get_facts", spy)
     get_metrics("anon_001", "fundamentals", BEFORE)
     assert seen and set(seen) == {BEFORE}
+
+
+def test_a_retailer_with_a_16_week_fourth_quarter_still_has_an_unbroken_chain():
+    """Quarter ends 84, 84, 84, 112 days apart (Costco): a trailing-year sum must work across the long quarter."""
+    from datetime import timedelta
+    from metrics.context import Context
+    from schemas import Fact
+    rows, start = [], date(2016, 9, 4)
+    for year in range(4):                                           # four 52-week fiscal years
+        fy = start + timedelta(days=364 * year)
+        qs = [(fy, fy + timedelta(days=83)), (fy + timedelta(days=84), fy + timedelta(days=167)),
+              (fy + timedelta(days=168), fy + timedelta(days=251))]
+        for k, (s_, e_) in enumerate(qs):                           # 12-week quarters, reported as 3-month facts
+            rows.append(dict(company_id="anon_001", concept="revenue", value=100.0, unit="USD", period_start=s_,
+                             period_end=e_, fiscal_period=f"Q{k + 1}", form="10-Q", accession=f"R{year}{k}",
+                             filed_date=e_ + timedelta(days=30)))
+        end = fy + timedelta(days=363)                              # the 52-week year: Q4 is derived as FY - (Q1+Q2+Q3)
+        rows.append(dict(company_id="anon_001", concept="revenue", value=520.0, unit="USD", period_start=fy,
+                         period_end=end, fiscal_period="FY", form="10-K", accession=f"R{year}F",
+                         filed_date=end + timedelta(days=30)))
+    F.install(rows)
+    ctx = Context("anon_001", date(2020, 12, 31))
+    assert ctx.q0 is not None
+    gaps = [(b - a).days for a, b in zip(ctx.timeline, ctx.timeline[1:])]
+    assert 112 in gaps and max(gaps) == 112                          # the 16-week quarter is really there
+    total = ctx.ttm("revenue", ctx.q0)
+    assert total is not None and total.value == 520.0               # 100 + 100 + 100 + 220 (16-week Q4)

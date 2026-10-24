@@ -53,6 +53,19 @@ What the merge found, and what was done. 499 tests pass on the merged branch (4 
 
 Held-out reporting: B's dashboard reads B's `heldout_report.json` (segments `all_companies`, `seen_companies`, `unseen_companies`). Hermes's `quality/` writes a different format with an extra time slice; it feeds `quality.md` and the README results section, not the dashboard.
 
+## 0c. First real data (Sat 24 Oct evening)
+
+Keys are in `.env` and verified (`python -m store.envcheck --ping`: SEC, FRED, Mubit all answer). B's downloader loaded all 50
+companies in 55 seconds: **95,556 facts, 23,421 filing events, 29,182 macro rows** in the development Postgres.
+
+| Result on real data | Detail |
+|---|---|
+| Metrics engine works on real Apple filings | Plausible numbers (operating margin 25%, FCF margin 23%, ROIC 31%); a quarter that had not been filed by `as_of` is correctly invisible; prompt leak check clean |
+| Usable bundles (of 50 companies), 2018 to 2023 | Risk 47 to 50, Scenarios 47 to 50, Fundamentals 28 (early 2018) rising to 38 to 46 |
+| Fixed because of real data | Operating income fallback, total-debt concept, extra depreciation / dividend / capex / revenue tags, 52-week calendars, a FRED request that was rejected (market series must not ask for vintages), ExxonMobil replaced by Chevron. Details in `metrics/SPEC.md` section 1b |
+| Not fixable from tags | Costco CF 2016 to 2019 and Nvidia FY2019 capex are absent from the SEC data; Disney and Palantir have short histories |
+| Still to do | The going-concern text pass (`python -m ingest load --filing-text`, downloads 10-K and 10-Q text), so `going_concern_hits` is real rather than 0 |
+
 ## 1. Where we are now (Sat 24 Oct, ~15:00)
 
 Read from the repo. 74 tests pass. Nothing runs on real data yet: every agent runs on three hand-written stub files.

@@ -85,3 +85,25 @@ def test_a_missing_quarter_leaves_a_gap_rather_than_a_guess():
     q = _quarters("op_cash_flow", AFTER_FY2018)
     assert date(2018, 6, 30) not in q
     assert date(2018, 9, 30) not in q                   # Q3 needs the 6M figure it was differenced from
+
+
+def test_52_week_calendar_period_lengths_are_recognised():
+    # Costco-style: 12-week quarters (84 days), year-to-date of 24 and 36 weeks, a 52-week year
+    start = date(2017, 9, 4)
+    assert months(start, date(2017, 11, 26)) == 3        # 84 days
+    assert months(start, date(2018, 2, 18)) == 6         # 168 days
+    assert months(start, date(2018, 5, 13)) == 9         # 252 days
+    assert months(start, date(2018, 9, 2)) == 12         # 364 days
+    assert months(start, date(2018, 9, 8)) == 12         # a 53-week year, 370 days
+    assert months(start, date(2017, 12, 31)) is None     # 119 days: not a reporting period
+
+
+def test_a_retailer_calendar_cash_flow_derives_four_quarters():
+    start = date(2017, 9, 4)
+    cum = [(date(2017, 11, 26), 100.0, "Q1"), (date(2018, 2, 18), 250.0, "Q2"),
+           (date(2018, 5, 13), 420.0, "Q3"), (date(2018, 9, 2), 600.0, "FY")]
+    facts = [Fact(company_id="anon_001", concept="op_cash_flow", value=v, unit="USD", period_start=start,
+                  period_end=end, fiscal_period=fp, form="10-K" if fp == "FY" else "10-Q", accession=f"A-{fp}",
+                  filed_date=end) for end, v, fp in cum]
+    q = discrete_quarters(facts)
+    assert [q[end].value for end, _, _ in cum] == [100.0, 150.0, 170.0, 180.0]

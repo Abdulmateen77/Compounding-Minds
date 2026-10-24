@@ -42,6 +42,23 @@ compares copied values to the engine's output.
 **Units.** Ratios are fractions (0.142, not 14.2). Multiples are `x`. Counts are `count`. Rates from FRED are
 divided by 100 so 3.6% is 0.036.
 
+## 1b. Fallbacks learned from the first real load (Sat 24 Oct)
+
+Running the engine on all 50 companies' real filings showed that filers do not all tag the same things. These
+rules were added, each driven by a company that failed without them:
+
+| Problem on real data | Rule |
+|---|---|
+| Many filers (Merck, Pfizer, Lilly, Nike, Nucor, ConocoPhillips) never tag `OperatingIncomeLoss` | Operating income is **derived**: first revenue minus `CostsAndExpenses` / `OperatingCostsAndExpenses`, then pre-tax income plus interest expense (EBIT). A directly tagged quarter always wins. A filer that never reports interest uses pre-tax income as EBIT. These are approximations of the reported figure |
+| Debt is tagged three ways (a total, or non-current plus current parts) | `total_debt` is used when the company reports one for that date, otherwise `long_term_debt` + `short_term_debt` |
+| Depreciation is often tagged `Depreciation` alone | Accepted as D&A. It understates D&A slightly (intangible amortization is separate), which makes debt/EBITDA a little high |
+| McDonald's reports pre-tax income only split into domestic and foreign | ROIC uses the 21% US statutory rate when pre-tax income is absent |
+| Retailers use 52/53-week calendars (Costco: 12-week quarters, a 16-week fourth quarter, 24 and 36 week year-to-date figures) | Period lengths are matched in day windows (3 months: 75 to 105 days, 6: 165 to 200, 9: 250 to 290, 12: 355 to 385) and consecutive quarter ends may be up to 120 days apart |
+| ExxonMobil's SEC data under its current identifier starts in 2025 | Replaced by Chevron in the universe, same anonymous ID |
+
+Known data limits that no tag can fix: Costco has no 10-Q cash-flow facts in the SEC data for 2016 to 2019, and
+Nvidia's FY2019 10-K carries no capital-expenditure figure. Those company-dates are skipped (bundle not usable).
+
 ## 2. Fundamentals (Buffett)
 
 | Metric | Unit | Formula |

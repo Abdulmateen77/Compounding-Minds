@@ -37,15 +37,18 @@ class Q:
     start: date | None = None       # first day of the quarter (None for balance-sheet values)
 
 
-SLACK_DAYS = 12   # 52/53-week calendars put a "quarter" anywhere from 84 to 98 days; a year at 364 or 371
+# Length in days of a reporting period, by its nominal months. Wide enough for 52/53-week calendars: a
+# retailer such as Costco reports 12-week quarters (84 days) and year-to-date figures of 24 and 36 weeks
+# (168 and 252 days), which a "within 12 days of the nominal length" rule rejected.
+WINDOWS = {3: (75, 105), 6: (165, 200), 9: (250, 290), 12: (355, 385)}
 
 
 def months(start: date, end: date) -> int | None:
     """Length of a reporting period in months, if it really is a 3, 6, 9 or 12 month period."""
     days = (end - start).days + 1
-    m = round(days / DAYS_PER_MONTH / 3) * 3
-    if m in (3, 6, 9, 12) and abs(days - m * DAYS_PER_MONTH) <= SLACK_DAYS:
-        return m
+    for m, (lo, hi) in WINDOWS.items():
+        if lo <= days <= hi:
+            return m
     return None
 
 
