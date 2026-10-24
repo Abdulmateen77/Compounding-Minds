@@ -181,21 +181,38 @@ LENS = {"key": "buffett", "name": "Warren Buffett", "question": "Is it durable?"
 
 class _Seq:
     def __init__(self, *replies):
-        self.replies, self.calls = list(replies), 0
+        self.replies, self.calls, self.systems = list(replies), 0, []
 
     def complete(self, agent, messages, **kw):
         self.calls += 1
+        self.systems.append(messages[0]["content"])
         return self.replies.pop(0)
 
 
-def test_a_paragraph_with_only_known_numbers_is_kept():
-    gw = _Seq('{"paragraph": "Buffett sees 0.92 dollars of free cash for each dollar of profit, and 3 of 5 checks pass."}')
-    assert "0.92" in narrative.write(gw, LENS, "Co", "Mixed")
+def _ok(view="Buffett sees 0.92 dollars of free cash for each dollar of profit, and 3 of 5 checks pass.", ahead="He would watch whether that holds."):
+    return json.dumps({"view": view, "ahead": ahead})
 
 
-def test_an_invented_number_is_sent_back_once_then_dropped():
-    bad = '{"paragraph": "Buffett notes a 41% return on capital."}'
+def test_a_view_and_a_look_ahead_with_only_known_numbers_are_kept():
+    got = narrative.write(_Seq(_ok()), LENS, "Co", "Mixed")
+    assert "0.92" in got["view"] and got["ahead"]
+
+
+def test_numbers_that_are_in_the_investors_guide_are_allowed_but_invented_ones_are_not():
+    guide_number = narrative.numbers(narrative.guide_text("buffett")).pop()
+    assert narrative.write(_Seq(_ok(ahead=f"He wants a margin of {guide_number}.")), LENS, "Co", "Mixed")
+    bad = _ok(ahead="He expects a 41.37% return.")
     assert narrative.write(_Seq(bad, bad), LENS, "Co", "Mixed") is None
-    gw = _Seq(bad, '{"paragraph": "Buffett sees 0.92 dollars of free cash per dollar of profit."}')
+    gw = _Seq(bad, _ok())
     assert narrative.write(gw, LENS, "Co", "Mixed") and gw.calls == 2
     assert narrative.write(_Seq("not json"), LENS, "Co", "Mixed") is None
+    assert narrative.write(_Seq(json.dumps({"view": "only a view"})), LENS, "Co", "Mixed") is None
+
+
+def test_the_system_prompt_carries_the_investors_guide_and_is_the_same_each_time():
+    gw = _Seq(_ok(), _ok())
+    narrative.write(gw, LENS, "Tesla", "Mixed")
+    narrative.write(gw, LENS, "Coca-Cola", "Weak")
+    assert gw.systems[0] == gw.systems[1] and "Background on how Warren Buffett thinks" in gw.systems[0]
+    assert "owner earnings" in gw.systems[0].lower()
+    assert "## Checks" not in gw.systems[0]

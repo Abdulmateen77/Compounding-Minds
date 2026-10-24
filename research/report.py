@@ -205,6 +205,7 @@ def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, sha
         fig("net_debt", "Net debt", "Debt minus cash; negative means more cash than debt", "usd", lambda b: b.net_debt),
         fig("equity", "Shareholders' equity", "What belongs to shareholders on the books", "usd", lambda b: b.equity),
         fig("assets", "Total assets", "Everything the company owns", "usd", lambda b: b.assets),
+        fig("working_capital", "Working capital", "Short-term assets minus bills due within a year", "usd", lambda b: _sub(b.cur_assets, b.cur_liab)),
         fig("current_ratio", "Short-term cushion", "Short-term assets divided by bills due within a year", "x", lambda b: _div(b.cur_assets, b.cur_liab), "current_ratio"),
         fig("debt_to_ebitda", "Debt vs earnings", "Years of EBITDA it would take to repay all debt", "x",
             lambda b: (_div(b.debt, _pos(b.ebitda)) if b.debt is not None and b.debt.value > 0 else

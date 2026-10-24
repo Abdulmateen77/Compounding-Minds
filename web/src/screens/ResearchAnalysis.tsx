@@ -47,8 +47,8 @@ export function Lenses({ lenses }: { lenses: Lens[] }) {
   return (
     <section className="grid gap-4">
       <div>
-        <h2 className="text-xl font-semibold m-0">How four great investors would read it</h2>
-        <p className="mute text-sm m-0 mt-1 max-w-3xl">Each investor's habits of mind, written as checks in our own words and run against this company's numbers. Every line cites where the idea comes from.</p>
+        <h2 className="text-xl font-semibold m-0">How six great investors would read it</h2>
+        <p className="mute text-sm m-0 mt-1 max-w-3xl">Each investor's habits of mind, distilled from their own books and written as checks in our own words, run against this company's numbers. Every line cites where the idea comes from.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">{lenses.map((l) => <LensCard key={l.key} l={l} />)}</div>
     </section>
@@ -63,14 +63,29 @@ function LensCard({ l }: { l: Lens }) {
         <div><h3 className="text-lg font-semibold m-0">{l.name}</h3><p className="mute text-sm m-0">{l.question}</p></div>
         <span className="chip shrink-0" style={{ color: c, borderColor: c }}>{l.word}</span>
       </div>
+      {l.note && (
+        <div className="rounded-xl p-3 text-sm" style={{ background: "var(--panel2)" }}>
+          <b>Looks like a {l.note.category.toLowerCase()}.</b> <span className="mute">{l.note.why}.</span>
+        </div>
+      )}
       {l.narrative && (
-        <div className="grid gap-1">
+        <div className="grid gap-2">
           <p className="m-0 text-sm leading-relaxed">{l.narrative}</p>
-          <span className="mute text-[11px]">Summarised by an AI from the checks below. Every number in it is checked against them.</span>
+          {l.ahead && (
+            <div className="grid gap-1 pl-3" style={{ borderLeft: "3px solid var(--blue)" }}>
+              <span className="text-xs font-semibold">Looking ahead</span>
+              <p className="m-0 text-sm leading-relaxed">{l.ahead}</p>
+            </div>
+          )}
+          <span className="mute text-[11px]">Summarised by an AI from this investor's books and the checks below. Every number in it is checked against them.</span>
         </div>
       )}
       {l.fit != null && <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--line)" }}><div style={{ width: `${Math.round(l.fit * 100)}%`, height: "100%", background: c }} /></div>}
       <ul className="m-0 p-0 list-none grid gap-3">{l.checks.map((k) => <CheckRow key={k.id} k={k} />)}</ul>
+      <p className="m-0 mute text-[11px]">
+        {l.backtested ? "Tested against what happened next at 50 companies: see below." : "Not back-tested: we hold no historical prices to test the price checks, so treat this view as a way of thinking, not a track record."}
+        {l.caveat ? ` ${l.caveat}` : ""}
+      </p>
     </article>
   );
 }

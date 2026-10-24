@@ -51,7 +51,7 @@ def test_decimal_metric_values_that_look_like_years_do_not_trip_it(value):
 def test_no_universe_ticker_or_name_appears_in_any_principles_file():
     from pathlib import Path
     for f in (Path(__file__).resolve().parents[2] / "principles").glob("*.md"):
-        text = f.read_text()
+        text = f.read_text(encoding="utf-8")        # SOURCES.md has curly quotes: the Windows default codec cannot read it
         bad = [p for p in find_leaks(text) if not p.startswith("year")]   # citations name years, e.g. a 1986 letter
         assert bad == [], f"{f.name}: {bad}"
 

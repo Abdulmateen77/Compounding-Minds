@@ -27,7 +27,7 @@ export type Report = {
   market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[]; analysis?: Analysis;
 };
 export type Check = { id: string; principle: string; source: string; check: string; result: "pass" | "partial" | "fail" | "unknown"; shown: string };
-export type Lens = { key: string; name: string; question: string; fit: number | null; word: string; checks: Check[]; narrative?: string | null };
+export type Lens = { key: string; name: string; question: string; fit: number | null; word: string; checks: Check[]; narrative?: string | null; ahead?: string | null; note?: { category: string; why: string }; backtested?: boolean; caveat?: string | null };
 export type Scenario = { name: string; start_growth: number; value_per_share: number | null; equity_value: number; fcf_path: number[]; revenue_path: number[] | null };
 export type Valuation = {
   available: boolean; reason?: string; normalised_fcf?: number; discount_rate?: number; long_run_growth?: number; years?: number;

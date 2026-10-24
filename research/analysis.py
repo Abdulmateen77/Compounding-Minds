@@ -36,19 +36,52 @@ CITATION = {
 INVESTORS = [("buffett", "Warren Buffett", "Is it a durable business that turns profit into cash?"),
              ("munger", "Charlie Munger", "How could this business fail?"),
              ("graham", "Benjamin Graham", "Is there a margin of safety in the price?"),
-             ("dalio", "Ray Dalio", "How exposed is it to the economic cycle?")]
+             ("lynch", "Peter Lynch", "What kind of stock is it, and is the price fair for its growth?"),
+             ("dalio", "Ray Dalio", "How exposed is it to the cycle, and what is the range of outcomes?"),
+             ("jhunjhunwala", "Rakesh Jhunjhunwala", "A long-term outperformer with honest leadership, cash and high returns?")]
+# Lenses tested against what happened next (research/backtest.py). The others are shown without that claim.
+BACKTESTED = {"buffett", "munger"}
+CAVEAT = {"jhunjhunwala": "From your notes on his interview. The figures there are the speaker's claims and are unverified."}
+
+
+GUIDES_DIR = PRINCIPLES_DIR / "guides"
+
+
+def _find_line(pid: str) -> list[str] | None:
+    """The `id | rule | how we check | source` line for a principle: the guide first, then the agents' file."""
+    name = pid.split(".")[0]
+    for folder in (GUIDES_DIR, PRINCIPLES_DIR):
+        try:
+            for line in (folder / f"{name}.md").read_text(encoding="utf-8").splitlines():
+                if line.startswith(pid + " |"):
+                    return [x.strip() for x in line.split("|")]
+        except OSError:
+            continue
+    return None
 
 
 def principle_text(pid: str) -> str:
-    """The rule in our own words, from principles/<investor>.md."""
-    name = pid.split(".")[0]
+    """The rule in our own words."""
+    row = _find_line(pid)
+    return row[1] if row and len(row) > 1 else pid
+
+
+def principle_source(pid: str) -> str:
+    row = _find_line(pid)
+    return row[3] if row and len(row) > 3 else ""
+
+
+def guide_text(key: str) -> str:
+    """A guide without its machine-readable checks and source map: what the model is given to write from."""
     try:
-        for line in (PRINCIPLES_DIR / f"{name}.md").read_text(encoding="utf-8").splitlines():
-            if line.startswith(pid + " |"):
-                return line.split("|")[1].strip()
+        text = (GUIDES_DIR / f"{key}.md").read_text(encoding="utf-8")
     except OSError:
-        pass
-    return pid
+        return ""
+    for marker in ("## Checks", "## Source map"):
+        i = text.find(marker)
+        if i != -1:
+            text = text[:i]
+    return text.strip()
 
 
 class Facts:
@@ -74,7 +107,7 @@ class Facts:
 
 
 def _check(pid: str, what: str, result: str, shown: str) -> dict:
-    return {"id": pid, "principle": principle_text(pid), "source": CITATION.get(pid, ""), "check": what,
+    return {"id": pid, "principle": principle_text(pid), "source": CITATION.get(pid) or principle_source(pid), "check": what,
             "result": result, "shown": shown}
 
 
@@ -164,46 +197,201 @@ def munger(f: Facts) -> list[dict]:
 
 
 # ---- Graham --------------------------------------------------------------------------------------------------
+def _pe3(f: Facts) -> float | None:
+    m, ni = f.market, f.hist("net_income")
+    if m and m.get("market_cap") and len(ni) >= 3 and sum(ni[-3:]) > 0:
+        return m["market_cap"] / (sum(ni[-3:]) / 3)
+    return None
+
+
+def money_short(x: float) -> str:
+    a = abs(x)
+    s = f"${a / 1e12:.1f}T" if a >= 1e12 else f"${a / 1e9:.1f}B" if a >= 1e9 else f"${a / 1e6:.0f}M"
+    return ("-" if x < 0 else "") + s
+
+
 def graham(f: Facts) -> list[dict]:
-    val, m = f.val, f.market
-    out = []
-    pos = val.get("position") if val.get("available") else None
-    pv = val.get("price_vs_base")
-    out.append(_check("graham.01", "Does the price leave a cushion against being wrong?",
-                      {"below_bear": "pass", "below_base": "pass", "near_base": "partial", "above_base": "fail", "above_bull": "fail"}.get(pos or "", "unknown"),
-                      "n/a" if pv is None else (f"price is {pv + 1:.1f}× the base-case value" if pv > 1 else
-                                                f"price is {abs(pv) * 100:.0f}% {'above' if pv > 0 else 'below'} the base-case value")))
-    ig, g0 = val.get("implied_growth"), (val["scenarios"][1]["start_growth"] if val.get("available") else None)
-    if ig is not None and g0 is not None:
-        r = "pass" if ig <= g0 else "partial" if ig <= g0 + 0.03 else "fail"
-        out.append(_check("graham.02", "Is it paying for growth the business has not delivered?", r,
-                          f"price assumes {_pct(ig)} a year; the company has delivered about {_pct(g0)}"))
-    elif g0 is not None and pos == "above_bull":
-        out.append(_check("graham.02", "Is it paying for growth the business has not delivered?", "fail",
-                          f"the price assumes more than 45% a year; the company has delivered about {_pct(g0)}"))
-    else:
-        out.append(_check("graham.02", "Is it paying for growth the business has not delivered?", "unknown", "not available"))
-    ni, gm = f.hist("net_income"), f.hist("revenue_growth")
+    """Graham's seven tests for a cautious investor (Intelligent Investor ch. 14) and the margin of safety (ch. 20)."""
+    val, m, out = f.val, f.market, []
+    cr, wc, debt = f.v("current_ratio"), f.v("working_capital"), f.v("debt")
+    if cr is not None:
+        r = "pass" if cr >= 2 else "partial" if cr >= 1.5 else "fail"
+        if wc is not None and debt is not None and debt > wc:
+            r = _worst(r, "partial")
+        shown = f"short-term cushion {cr:.2f}×"
+        if wc is not None and debt is not None:
+            shown += f"; debt {money_short(debt)} against working capital {money_short(wc)}"
+        out.append(_check("graham.g2", "Strong financial condition: current ratio of at least 2, debt within working capital", r, shown))
+    ni = f.hist("net_income")
     if len(ni) >= 4:
         loss = any(x <= 0 for x in ni[-5:])
-        out.append(_check("graham.03", "Steady earnings across the years?", "fail" if loss else "pass",
+        out.append(_check("graham.g3", "Earnings stability: a profit in every year", "fail" if loss else "pass",
                           "a loss year in the last five" if loss else "profitable in each of the last five years"))
-    pe3 = None
-    if m and m.get("market_cap") and len(ni) >= 3 and sum(ni[-3:]) > 0:
-        pe3 = m["market_cap"] / (sum(ni[-3:]) / 3)
-    out.append(_check("graham.04", "Price against three-year average earnings, not one year",
-                      "unknown" if pe3 is None else "pass" if pe3 <= 20 else "partial" if pe3 <= 30 else "fail",
-                      "n/a" if pe3 is None else f"{pe3:.1f}× average profit of the last three years"))
-    cr = f.v("current_ratio")
-    out.append(_check("graham.05", "A defensive company has a strong balance sheet",
-                      _worst("pass" if cr is not None and cr >= 2 else "partial" if cr is not None and cr >= 1.5 else "fail" if cr is not None else "unknown",
-                             _tone_result(f.tone("debt_to_ebitda"))),
-                      f"short-term cushion {'n/a' if cr is None else f'{cr:.2f}×'}"))
-    div = f.hist("dividends")
-    dc = f.flags.get("dividend_cuts")
+    div, dc = f.hist("dividends"), f.flags.get("dividend_cuts")
     if div:
-        out.append(_check("graham.06", "An unbroken dividend record", "pass" if dc and dc["value"] == 0 and all(x > 0 for x in div[-5:]) else "partial",
-                          "pays a dividend with no cuts in five years" if dc and dc["value"] == 0 else "dividend has been cut"))
+        ok = dc is not None and dc["value"] == 0 and all(x > 0 for x in div[-5:])
+        out.append(_check("graham.g4", "Dividend record: unbroken payments", "pass" if ok else "partial",
+                          "pays a dividend with no cuts in five years (Graham asked for twenty)" if ok else "the dividend has been cut or interrupted"))
+    if len(ni) >= 6 and sum(ni[:3]) > 0:
+        gr = sum(ni[-3:]) / sum(ni[:3]) - 1
+        out.append(_check("graham.g5", "Earnings growth of at least a third over the period",
+                          "pass" if gr >= 1 / 3 else "partial" if gr > 0 else "fail",
+                          f"profit up {gr * 100:.0f}% between the first and last three years we have (about six years; Graham used ten)"))
+    pe3 = _pe3(f)
+    out.append(_check("graham.g6", "Price no more than 15 times the average of the last three years' profit",
+                      "unknown" if pe3 is None else "pass" if pe3 <= 15 else "partial" if pe3 <= 22.5 else "fail",
+                      "n/a" if pe3 is None else f"{pe3:.1f}× average profit of the last three years"))
+    eq = f.v("equity")
+    if m and m.get("market_cap") and eq and eq > 0:
+        pb = m["market_cap"] / eq
+        prod = None if pe3 is None else pe3 * pb
+        ok = pb <= 1.5 or (prod is not None and prod <= 22.5)
+        out.append(_check("graham.g7", "Price no more than 1.5 times book value (or P/E times P/B no more than 22.5)",
+                          "pass" if ok else "partial" if (prod is not None and prod <= 45) or pb <= 3 else "fail",
+                          f"{pb:.1f}× book value" + ("" if prod is None else f"; P/E times P/B = {prod:.0f}")))
+    pos = val.get("position") if val.get("available") else None
+    pv = val.get("price_vs_base")
+    if pv is None:
+        shown = "n/a"
+    elif pv > 1:
+        shown = f"price is {pv + 1:.1f}× the base-case value"
+    else:
+        shown = f"price is {abs(pv) * 100:.0f}% {'above' if pv > 0 else 'below'} the base-case value"
+    out.append(_check("graham.g8", "Margin of safety: a price well below a cautious estimate of value",
+                      {"below_bear": "pass", "below_base": "pass", "near_base": "partial", "above_base": "fail", "above_bull": "fail"}.get(pos or "", "unknown"),
+                      shown))
+    ig = val.get("implied_growth")
+    g0 = val["scenarios"][1]["start_growth"] if val.get("available") else None
+    if ig is not None and g0 is not None:
+        out.append(_check("graham.g8b", "Is it paying for growth the business has not delivered?",
+                          "pass" if ig <= g0 else "partial" if ig <= g0 + 0.03 else "fail",
+                          f"price assumes {_pct(ig)} a year; the company has delivered about {_pct(g0)}"))
+    elif g0 is not None and pos == "above_bull":
+        out.append(_check("graham.g8b", "Is it paying for growth the business has not delivered?", "fail",
+                          f"the price assumes more than 45% a year; the company has delivered about {_pct(g0)}"))
+    return out
+
+
+# ---- Lynch ---------------------------------------------------------------------------------------------------
+CYCLICAL_SIC = ("10", "12", "13", "15", "16", "17", "24", "26", "29", "30", "33", "37", "40", "45")
+
+
+def lynch_category(f: Facts, sic: str | None) -> tuple[str, str]:
+    """Lynch's six kinds of stock, as far as the financial statements can tell. A best guess with the reason."""
+    ni, om, rg = f.hist("net_income"), f.hist("operating_margin"), f.hist("revenue_growth")
+    g3, g5 = f.v("revenue_cagr_3y"), f.v("revenue_cagr_5y")
+    g = g3 if g3 is not None else g5
+    latest_ni = f.v("net_income")
+    if latest_ni is not None and latest_ni <= 0 and any(x > 0 for x in ni[:-1]):
+        return "Turnaround", "profit has turned negative after profitable years; the question is whether it survives and recovers"
+    if ni and all(x <= 0 for x in ni[-4:]):
+        return "No profits yet", "it has not made a profit in recent years, so none of Lynch's six kinds fits well"
+    swings = len(om) >= 4 and (max(om[-5:]) - min(om[-5:])) >= 0.10
+    falls = sum(1 for x in rg[-6:] if x < 0)
+    if (sic and sic[:2] in CYCLICAL_SIC) or falls >= 2 or swings:
+        if sic and sic[:2] in CYCLICAL_SIC:
+            why = "its industry rises and falls with the economy"
+        elif falls >= 2:
+            why = f"sales fell in {falls} of the last {len(rg[-6:])} years"
+        else:
+            why = f"its operating margin has swung by {(max(om[-5:]) - min(om[-5:])) * 100:.0f} points"
+        return "Cyclical", why
+    if g is None:
+        return "Unclear", "not enough revenue history"
+    if g >= 0.15:
+        return "Fast grower", f"sales have grown {g * 100:.0f}% a year, close to Lynch's 20 to 25 percent territory"
+    if g >= 0.05:
+        return "Stalwart", f"sales have grown {g * 100:.0f}% a year: a large steady company in the 10 to 12 percent range"
+    return "Slow grower", f"sales have grown only {g * 100:.0f}% a year, about the pace of the economy"
+
+
+def lynch(f: Facts, sic: str | None = None) -> tuple[list[dict], dict]:
+    m, out = f.market, []
+    cat, why = lynch_category(f, sic)
+    mcap = (m or {}).get("market_cap")
+    pe = (m or {}).get("pe")
+    ni = f.hist("net_income")
+    growth = None
+    if len(ni) >= 4 and ni[-4] > 0 and ni[-1] > 0:
+        growth = (ni[-1] / ni[-4]) ** (1 / 3) - 1                  # profit growth over the last three years
+    elif f.v("revenue_cagr_3y") is not None:
+        growth = f.v("revenue_cagr_3y")
+    note = {"category": cat, "why": why}
+    if pe is None or growth is None:
+        r, shown = "unknown", "n/a"
+    elif growth <= 0:
+        r, shown = ("fail" if pe > 15 else "partial"), f"P/E {pe:.1f} with no profit growth"
+    else:
+        ratio = pe / (growth * 100)
+        r = "pass" if ratio <= 1 else "partial" if ratio <= 2 else "fail"
+        shown = f"P/E {pe:.1f} against growth of {growth * 100:.1f}% a year (ratio {ratio:.2f})"
+    out.append(_check("lynch.g2", "Is the P/E near the growth rate? (half is very good, double is a warning)", r, shown))
+    dy = (m or {}).get("dividend_yield") or 0.0
+    if pe is not None and growth is not None and pe > 0:
+        r3 = (growth * 100 + dy * 100) / pe
+        out.append(_check("lynch.g3", "(Growth plus dividend yield) over P/E: 2 or better is good, under 1 is poor",
+                          "pass" if r3 >= 2 else "partial" if r3 >= 1 else "fail", f"{r3:.2f}"))
+    eq, debt, cash = f.v("equity"), f.v("debt"), f.v("cash")
+    if eq is not None and debt is not None and eq + debt > 0:
+        share = debt / (eq + debt)
+        out.append(_check("lynch.g4", "Balance sheet: debt a small share of capital (a normal company is about a quarter)",
+                          "pass" if share <= 0.25 else "partial" if share <= 0.5 else "fail", f"debt is {share * 100:.0f}% of equity plus debt"))
+    if mcap and cash is not None and debt is not None:
+        nc = (cash - debt) / mcap
+        out.append(_check("lynch.g5", "Cash net of debt lowers the price you really pay",
+                          "pass" if nc > 0 else "partial" if nc >= -0.25 else "fail",
+                          f"{'net cash' if nc > 0 else 'net debt'} equal to {abs(nc) * 100:.1f}% of market value"))
+    now, c5 = f.v("revenue_growth"), f.v("revenue_cagr_5y")
+    if pe is not None and now is not None:
+        hot = pe >= 50
+        shown = f"P/E {pe:.0f}; growth now {_pct(now)}" + ("" if c5 is None else f" against {_pct(c5)} a year over five years")
+        out.append(_check("lynch.g6", "Beware the hot stock: a very high P/E with growth that is slowing",
+                          "fail" if hot and c5 is not None and now < c5 else "partial" if hot else "pass", shown))
+    om = f.hist("operating_margin")
+    lev = f.v("debt_to_ebitda")
+    if cat == "Cyclical" and len(om) >= 4:
+        peak = om[-1] >= max(om[-5:]) - 0.01
+        out.append(_check("lynch.g7", "Cyclicals: beware buying at peak earnings, when the P/E looks lowest",
+                          "fail" if peak else "pass",
+                          "operating margin is at the top of its five-year range" if peak else "operating margin is below its five-year high"))
+    elif cat == "Fast grower":
+        fm = f.v("fcf_margin")
+        fin = "pass" if debt is not None and eq is not None and debt <= eq * 0.33 else "partial"
+        cashr = "pass" if fm is not None and fm > 0 else "fail" if fm is not None else "unknown"
+        out.append(_check("lynch.g7", "Fast growers: strong enough finances to fund the expansion", _worst(fin, cashr),
+                          f"free-cash-flow margin {_pct(fm)}"))
+    elif cat == "Turnaround":
+        ic = f.flags.get("interest_coverage")
+        out.append(_check("lynch.g7", "Turnarounds: survival decides everything, and debt decides survival",
+                          _worst(_tone_result(f.tone("debt_to_ebitda")), _tone_result(ic["tone"] if ic else None)),
+                          "debt " + ("n/a" if lev is None else f"{lev:.1f}× EBITDA")))
+    return out, note
+
+
+# ---- Jhunjhunwala --------------------------------------------------------------------------------------------
+def jhunjhunwala(f: Facts) -> list[dict]:
+    m, out = f.market, []
+    g3, pe, roic = f.v("revenue_cagr_3y"), (m or {}).get("pe"), f.v("roic")
+    cc, lev = f.v("cash_conversion"), f.v("debt_to_ebitda")
+    out.append(_check("jhunjhunwala.g1", "Growth well above the market's, sustained for years",
+                      "unknown" if g3 is None else "pass" if g3 >= 0.20 else "partial" if g3 >= 0.12 else "fail",
+                      "n/a" if g3 is None else f"sales have grown {g3 * 100:.1f}% a year over three years (market pace about 12%)"))
+    out.append(_check("jhunjhunwala.g2", "Price matters more than popularity: avoid very high P/Es",
+                      "unknown" if pe is None else "pass" if pe <= 20 else "partial" if pe <= 50 else "fail",
+                      "n/a" if pe is None else f"P/E {pe:.1f} (the note says to compare within the sector)"))
+    out.append(_check("jhunjhunwala.g3", "Strong free cash flow",
+                      _worst(_tone_result(f.tone("fcf_margin")), _tone_result(f.tone("cash_conversion"))),
+                      f"free-cash-flow margin {_pct(f.v('fcf_margin'))}; cash conversion " + ("n/a" if cc is None else f"{cc:.2f}")))
+    out.append(_check("jhunjhunwala.g4", "Return on capital employed above about 20 percent",
+                      "unknown" if roic is None else "pass" if roic >= 0.20 else "partial" if roic >= 0.12 else "fail",
+                      "n/a" if roic is None else f"return on capital {roic * 100:.1f}%"))
+    ic = f.flags.get("interest_coverage")
+    shown = "debt " + ("n/a" if lev is None else f"{lev:.1f}× EBITDA") + (f", interest cover {ic['value']:.1f}×" if ic else "")
+    out.append(_check("jhunjhunwala.g5", "Avoid heavy or unmanaged debt",
+                      _worst(_tone_result(f.tone("debt_to_ebitda")), _tone_result(ic["tone"] if ic else None)), shown))
+    out.append(_check("jhunjhunwala.g6", "Promoters hold more than about half; institutions high, retail low", "unknown",
+                      "ownership data is not in the filings we load"))
+    out.append(_check("jhunjhunwala.g7", "A near-monopoly with a large order book", "unknown", "needs the reader's judgement of the business"))
     return out
 
 
@@ -232,7 +420,7 @@ def dalio(f: Facts) -> list[dict]:
     return out
 
 
-LENS = {"buffett": buffett, "munger": munger, "graham": graham, "dalio": dalio}
+LENS = {"buffett": buffett, "munger": munger, "graham": graham, "dalio": dalio, "jhunjhunwala": jhunjhunwala}
 
 
 def fit(checks: list[dict]) -> float | None:
@@ -287,16 +475,21 @@ def analyse(report: dict) -> dict:
     f0 = Facts(report, {})
     shares = (report.get("market") or {}).get("shares")
     price = (report.get("market") or {}).get("price")
-    nd = f0.v("net_debt")
     val = V.build(fcf_history=f0.hist("fcf"), revenue=f0.v("revenue"), cagr3=f0.v("revenue_cagr_3y"), cagr5=f0.v("revenue_cagr_5y"),
-                  net_debt=nd, shares=shares, price=price)
+                  net_debt=f0.v("net_debt"), shares=shares, price=price)
     if val.get("position"):
         val["position_text"] = V.POSITION_TEXT[val["position"]]
     f = Facts(report, val)
     lenses, fits = [], {}
     for key, name, question in INVESTORS:
-        checks = LENS[key](f)
+        extra = {}
+        if key == "lynch":
+            checks, note = lynch(f, (report.get("company") or {}).get("sic"))
+            extra["note"] = note
+        else:
+            checks = LENS[key](f)
         x = fit(checks)
         fits[key] = x
-        lenses.append({"key": key, "name": name, "question": question, "fit": x, "word": fit_word(x, key), "checks": checks})
+        lenses.append({"key": key, "name": name, "question": question, "fit": x, "word": fit_word(x, key), "checks": checks,
+                       "backtested": key in BACKTESTED, "caveat": CAVEAT.get(key), **extra})
     return {"valuation": val, "lenses": lenses, "overall": overall(fits, val), "future": future(val)}

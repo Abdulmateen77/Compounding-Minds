@@ -66,6 +66,7 @@ class ResearchService:
         profile = ({"name": listing.name, "ticker": listing.ticker, "exchange": listing.exchange, "market": "US"}
                    if listing else {"name": f"CIK {cik}", "ticker": None, "exchange": None, "market": "US"})
         profile["cik"] = cik
+        profile["sic"] = c.sic
         today = date.today()
         plans = text.read_plans(self.sec, cik, c.filings, self._gw())
         quote = market.quote(profile["ticker"]) if profile["ticker"] else None
