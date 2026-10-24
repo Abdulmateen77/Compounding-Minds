@@ -179,3 +179,55 @@ def test_committee_graded_as_composite_of_underlying_outcomes(tmp_path):
     assert grade_committee(com, bad).correct is False
     none = [(c, gr.model_copy(update={"correct": None, "outcome": "unresolvable"})) for c, gr in good]
     assert grade_committee(com, none).correct is None
+
+
+def _quarter(company, as_of, answers, outcomes, resolved):
+    """One (company, quarter): calls with the given answers, graded against the given outcomes."""
+    rows = []
+    for (agent, ans), out in zip(answers.items(), outcomes):
+        c = call(agent, ans, 0.8, as_of=as_of, company=company)
+        g = None if out is None else Grade(call_id=c.call_id, graded_at=datetime.now(timezone.utc),
+                                           resolution_date=resolved, outcome=out, correct=out == ans, brier=0.1)
+        rows.append((c, g))
+    return rows
+
+
+GOOD = {"fundamentals": "yes", "risk": "no", "scenarios": "bull"}
+
+
+def test_calibration_pairs_are_point_in_time():
+    from agents.synthesizer import calibration_pairs
+    past, later = date(2018, 12, 31), date(2019, 3, 31)
+    h = _quarter("anon_001", past, GOOD, ["yes", "no", "bull"], date(2019, 3, 31))     # right, resolved in time
+    h += _quarter("anon_002", past, GOOD, ["no", "yes", "bear"], date(2019, 3, 31))    # wrong, resolved in time
+    h += _quarter("anon_003", past, GOOD, ["yes", "no", "bull"], date(2019, 9, 30))    # resolves after as_of
+    h += _quarter("anon_004", past, GOOD, ["yes", None, "bull"], date(2019, 3, 31))    # one call not graded yet
+    h += _quarter("anon_005", later, GOOD, ["yes", "no", "bull"], date(2019, 3, 31))   # quarter not before as_of
+    pairs = calibration_pairs(h, date(2019, 3, 31))
+    assert sorted(hit for _, hit in pairs) == [False, True]
+    assert all(s > THRESHOLD for s, _ in pairs)
+    assert calibration_pairs(h, date(2019, 3, 31), exclude={"anon_002"}) == [p for p in pairs if p[1]]
+    assert calibration_pairs(h, date(2019, 3, 31), fit_until=date(2018, 6, 30)) == []
+
+
+def test_calibrate_needs_enough_pairs_then_reports_the_hit_rate():
+    from agents.synthesizer import calibrate
+    as_of, past = date(2021, 3, 31), date(2019, 12, 31)
+    h = []
+    for i in range(30):  # 24 right, 6 wrong, all confident
+        h += _quarter(f"anon_{i + 1:03d}", past, GOOD,
+                      ["yes", "no", "bull"] if i < 24 else ["no", "yes", "bear"], date(2020, 12, 31))
+    cal, n = calibrate(h, as_of)
+    assert n == 30 and cal is not None
+    assert cal.confidence(0.6) == pytest.approx((24 + 1) / (30 + 2), abs=1e-3)
+    assert calibrate(h, as_of, min_pairs=31) == (None, 30)
+    v = synthesize([call("fundamentals", "yes", as_of=as_of), call("risk", "no", as_of=as_of)], [],
+                   None, None, calibration=cal)
+    assert v.claim.answer == "attractive" and v.claim.probability == cal.confidence(v.evidence[0].value)
+
+
+def test_synthesize_without_gateway_is_pure_python():
+    from agents.synthesizer import PYTHON_MODEL
+    v = synthesize([call("fundamentals", "yes"), call("risk", "no")], [], None, None)
+    assert v.model == PYTHON_MODEL and v.claim.answer == "attractive"
+    assert v.reasoning[0].startswith(("fundamentals", "risk"))
