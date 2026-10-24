@@ -2,4 +2,10 @@ pydantic>=2.6
 pytest>=8
 python-dotenv>=1.0
 # added when their owners need them:
-# psycopg[binary]  fastapi  edgartools  fredapi  pandas  mcp  streamlit
+# edgartools  fredapi  mcp
+# investor API (api/), also what the Vercel function installs
+fastapi>=0.115
+uvicorn>=0.30
+httpx>=0.27
+pandas>=2.2
+# Streamlit view (dashboard/): pip install -r requirements-dashboard.txt

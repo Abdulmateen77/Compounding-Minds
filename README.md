@@ -415,6 +415,8 @@ Streamlit by default (fast to build). Reads only from Postgres, never calls live
 
 A disclaimer footer is always visible: "Research tool, not financial advice."
 
+**Built:** `streamlit run dashboard/app.py`. Reads Postgres when `DATABASE_URL` is reachable, otherwise the JSONL tables in `data/runs` (`python -m eval.run --agents fundamentals,risk,scenarios,valuation,moat --curves --save data/runs`); force one with `DASHBOARD_SOURCE=postgres|<dir>`. All six views above are in, plus the corrections-per-quarter chart. Stub runs show a NOT RESULTS banner and the FakeModelUpdater is labelled as fallback. The synthesizer verdict reuses `agents/synthesizer.py` scoring, so no LLM is called. Data layer tests in `dashboard/tests/`.
+
 ---
 
 ## 11b. Analyst workflow layer (stretch)
