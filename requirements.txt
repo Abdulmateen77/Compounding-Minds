@@ -1,6 +1,7 @@
 pydantic>=2.6
 pytest>=8
 python-dotenv>=1.0
+anthropic>=0.40            # the Mubit gateway (agents/gateway.py) calls the provider through it
 psycopg[binary]>=3.1
 # added when their owners need them:
 # edgartools  fredapi  mcp

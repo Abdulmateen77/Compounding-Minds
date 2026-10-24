@@ -53,24 +53,20 @@ What the merge found, and what was done. 499 tests pass on the merged branch (4 
 
 Held-out reporting: B's dashboard reads B's `heldout_report.json` (segments `all_companies`, `seen_companies`, `unseen_companies`). Hermes's `quality/` writes a different format with an extra time slice; it feeds `quality.md` and the README results section, not the dashboard.
 
-## 1. Where we are now (Sat 24 Oct, ~15:00)
+## 1. Where we are now (Sat 24 Oct, ~19:00)
 
-Read from the repo. 74 tests pass. Nothing runs on real data yet: every agent runs on three hand-written stub files.
+Checked against the repo and the local Postgres. 531 tests pass (4 skip). Postgres holds the 50-company universe: 97,591 facts and 23,788 events. `.env` has `USE_STUBS=0` and `USE_FAKE_UPDATER=0`. `MUBIT_BASE_URL` is empty in `.env`.
 
 | Area | State | Owner |
 |---|---|---|
-| `agents/`: runner, specs for Fundamentals, Risk and Scenarios, masking, reflection, Mubit gateway | Built | A |
-| `principles/`: all four investor files | Exist, need a content review | A |
-| `schemas/`: call, grade, correction models | Built | Shared |
-| `store/schema.sql`, `store/queries.py` (date gate, in-memory backend), leakage test, stub metrics | Built. Postgres backend is a TODO | A |
-| `agents/synthesizer.py`, `correction_loop.py`, `cache.py`, `mubit_batch.py`, `offline.py` | Built | B |
-| `grader/`: Brier scoring, `grade()`, Risk going-concern rule (via Sapling) | Built. Fundamentals and Scenarios rules are stubs | B |
-| `video/`: Remotion showcase clip | Built | Shared |
-| `ingest/` | Empty | B |
-| `metrics/`, `tools/` | Empty | A |
-| `eval/` | Empty | A |
-| `dashboard/`, `memos/` | Empty | B |
-| Replay orchestrator (`grader/replay.py`) | Not started | B |
+| `ingest/` | Built and loaded: universe, facts, events (50 companies) | B |
+| `store/`: schema, date gate, Postgres backend, leakage test | Built | A |
+| `metrics/`, `tools/` | Built (engine, quarters, composites, MCP tools) | A |
+| `agents/`, `principles/`, `schemas/` | Built. Citations in `principles/SOURCES.md` still to verify | A / Shared |
+| `grader/` and `grader/replay.py` | Built. Replay has uncommitted work in progress (parallel workers) | B |
+| `eval/`, `quality/`, `dashboard/`, `api/`, `web/` | Built. Run on stub data so far | A / B |
+| **Real held-out result (`heldout.json`, handoff 9)** | **Not produced.** `data/eval_preview/` is stub output marked NOT RESULTS | A / B |
+| **Mubit corrections-to-update path** | **Open.** No public endpoint known (`data/mubit_docs/`); ask at office hours. The labelled fallback updater is the plan B | A |
 
 ---
 

@@ -1,4 +1,6 @@
 """Replay: smoke (1 company, 1 agent, 2 quarters, a correction), point-in-time grading, resume, cache version."""
+import threading
+import time
 from datetime import date
 
 from agents.cache import CachingGateway
@@ -10,13 +12,13 @@ from grader.replay import Replay, parse_quarters, resolve_by
 from store.stubs import get_metrics_stub
 
 
-def make(tmp_path, store=None, companies=("anon_001",), agents=("fundamentals",), held=()):
+def make(tmp_path, store=None, companies=("anon_001",), agents=("fundamentals",), held=(), workers=1, runner=None):
     store = store or MemoryRunStore()
     gw = ScriptedGateway(scripted_llm)
     ups = {"learned": FakeModelUpdater(tmp_path / "mem"), "frozen": FrozenUpdater()}
     rp = Replay(list(companies), list(agents), store, tag="t", gateways={"learned": gw, "frozen": gw},
                 updaters=ups, outcome_fn=demo_reality, metrics_fn=get_metrics_stub,
-                held_out_companies=list(held), state_path=tmp_path / "state.json")
+                held_out_companies=list(held), state_path=tmp_path / "state.json", workers=workers, runner=runner)
     return rp, store, ups
 
 
@@ -89,3 +91,73 @@ def test_cache_key_includes_model_version(tmp_path):
     ver["v"] = "v0"  # old entry still valid for the old version
     gw.complete("a", msgs)
     assert inner.calls == 2
+
+
+# ---- concurrency: companies and agents within a quarter run in parallel, output is unchanged -------------
+
+def _digest(store):
+    """Everything a run wrote except the random ids, in write order."""
+    calls = [(r["payload"]["agent"], r["payload"]["company_id"], r["payload"]["as_of"], r["payload"]["claim"]["answer"])
+             for r in store.rows("calls")]
+    grades = sorted((r["outcome"], r["correct"], round(r["brier"], 9)) for r in store.rows("grades"))
+    snaps = [(r["run_id"], r["agent"], r["as_of"], r["n_calls"], r["accuracy"]) for r in store.rows("snapshots")]
+    return calls, grades, snaps, len(store.rows("corrections"))
+
+
+BIG = dict(companies=tuple(f"anon_{i:03d}" for i in range(1, 7)), agents=("fundamentals", "risk", "scenarios"))
+
+
+def test_parallel_replay_is_identical_to_serial(tmp_path):
+    a, sa, _ = make(tmp_path / "a", workers=1, **BIG)
+    b, sb, _ = make(tmp_path / "b", workers=8, **BIG)
+    qs = parse_quarters("2019Q1:2019Q4")
+    ra, rb = a.run(qs, settle=4), b.run(qs, settle=4)
+    assert (ra.n_calls, ra.n_graded, ra.n_corrections) == (rb.n_calls, rb.n_graded, rb.n_corrections)
+    assert _digest(sa) == _digest(sb)
+
+
+def test_model_calls_really_overlap_but_quarters_do_not(tmp_path):
+    lock, state = threading.Lock(), {"now": 0, "peak": 0, "quarters_seen_together": False, "current": None}
+
+    def runner(agent, company, as_of, *, metrics, gateway, updater, run_id):
+        with lock:
+            state["now"] += 1
+            state["peak"] = max(state["peak"], state["now"])
+            if state["current"] not in (None, as_of) and state["now"] > 1:
+                state["quarters_seen_together"] = True
+            state["current"] = as_of
+        time.sleep(0.02)
+        with lock:
+            state["now"] -= 1
+        from grader.replay import stub_backed_runner
+        return stub_backed_runner(agent, company, as_of, metrics=metrics, gateway=gateway, updater=updater, run_id=run_id)
+
+    rp, _, _ = make(tmp_path, workers=6, runner=runner, **BIG)
+    rp.run(parse_quarters("2019Q1:2019Q3"))
+    assert state["peak"] > 1, "calls never ran in parallel"
+    assert state["peak"] <= 6
+    assert not state["quarters_seen_together"], "two quarters ran at the same time"
+
+
+def test_one_failed_call_does_not_lose_the_others_and_the_run_can_resume(tmp_path):
+    from grader.replay import stub_backed_runner
+    boom = {"on": True}
+
+    def runner(agent, company, as_of, **kw):
+        if boom["on"] and company == "anon_003" and agent == "risk":
+            raise RuntimeError("429 starter_credit_busy")
+        return stub_backed_runner(agent, company, as_of, **kw)
+
+    store = MemoryRunStore()
+    rp, _, _ = make(tmp_path, store=store, workers=4, runner=runner, **BIG)
+    qs = parse_quarters("2019Q2:2019Q2")
+    try:
+        rp.run(qs)
+        raise AssertionError("the failure should have surfaced")
+    except RuntimeError as e:
+        assert "starter_credit_busy" in str(e)
+    stored = [r for r in store.rows("calls") if r["run_id"] == "t-learned-train"]
+    assert len(stored) == 6 * 3 - 1                       # every other call of the learned arm was kept
+    boom["on"] = False
+    rp.run(qs)                                            # resume: only the missing call is asked for
+    assert len([r for r in store.rows("calls") if r["run_id"] == "t-learned-train"]) == 6 * 3

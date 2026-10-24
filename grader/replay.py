@@ -19,6 +19,12 @@ Arms
 
 `runs` rows: one per (arm, kind), run_id "<tag>-<arm>-<train|heldout>".
 
+Concurrency: within a quarter the calls are independent (every call sees the lessons as they stood
+when the quarter began; lessons change only after the quarter's calls, in `_learn`), so `workers` > 1
+runs the model calls of one quarter in parallel threads. Quarters stay sequential. Only the model call
+runs in a worker: metrics (Postgres), store writes, grading and reflection stay on the main thread, in
+the same order as a serial run, so a run with 1 worker and a run with 16 give identical output.
+
 Determinism: the Anthropic API stopped accepting `temperature` (400 on every model from
 2026-10-21), so replay cannot pin temperature 0. Determinism comes from the reply cache instead:
 CachingGateway keys on prompt hash + gateway model + the agent's model version. Run once with
@@ -42,6 +48,7 @@ import re
 import sys
 import tempfile
 import uuid
+from concurrent.futures import ThreadPoolExecutor
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
@@ -200,7 +207,8 @@ class Replay:
                  gateways: dict[str, LLMGateway], updaters: dict[str, ModelUpdater],
                  outcome_fn: OutcomeFn, metrics_fn: MetricsFn, runner: Runner | None = None,
                  held_out_companies: list[str] | None = None, state_path: Path | None = None,
-                 make_corrections: Callable | None = None, fallback: bool = False):
+                 make_corrections: Callable | None = None, fallback: bool = False, workers: int = 1):
+        self.workers = max(1, int(workers))
         self.companies, self.agents, self.store, self.tag = companies, agents, store, tag
         self.outcome_fn, self.metrics_fn = outcome_fn, metrics_fn
         self.runner = runner or resolve_runner()
@@ -277,24 +285,45 @@ class Replay:
 
     def _make_calls(self, arm: Arm, as_of: date, kind: str, res: ReplayResult) -> None:
         rid = self.run_id(arm.variant, kind)
+        todo = []                                # (key, metrics), in the serial order: agent, then company
         for agent in self.agents:
             for company in self.companies:
                 key = (agent, company, as_of)
                 if key in arm.calls:  # resumed mid-quarter: reuse the stored call
                     continue
-                metrics = self.metrics_fn(company, agent, as_of)
-                if arm.variant == "baseline":
-                    call = baseline_call(agent, company, as_of, rid)
-                else:
-                    call = self.runner(agent, company, as_of, metrics=metrics, gateway=arm.gateway,
-                                       updater=arm.updater, run_id=rid)
-                if call is None:
+                todo.append((key, self.metrics_fn(company, agent, as_of)))   # main thread: shares the DB connection
+
+        def ask(item):
+            (agent, company, _), metrics = item
+            return self.runner(agent, company, as_of, metrics=metrics, gateway=arm.gateway,
+                               updater=arm.updater, run_id=rid)
+
+        errors: list[BaseException] = []
+        if arm.variant == "baseline":
+            calls = [baseline_call(k[0], k[1], as_of, rid) for k, _ in todo]
+        elif self.workers > 1 and len(todo) > 1:
+            def safe(item):                      # a failed call must not lose the others (the reply cache keeps them)
+                try:
+                    return ask(item)
+                except BaseException as e:       # noqa: BLE001  re-raised below, after the finished calls are stored
+                    errors.append(e)
+                    return None
+            with ThreadPoolExecutor(self.workers, thread_name_prefix="replay") as pool:
+                calls = list(pool.map(safe, todo))      # map keeps the input order
+        else:
+            calls = [ask(item) for item in todo]
+
+        for (key, metrics), call in zip(todo, calls):    # main thread, serial order
+            if call is None:
+                if not errors:
                     res.dropped += 1
-                    continue
-                arm.calls[key] = call
-                self.store.write_call(call)
-                arm.pending[call.call_id] = Pending(call, metrics)
-                res.n_calls += 1
+                continue
+            arm.calls[key] = call
+            self.store.write_call(call)
+            arm.pending[call.call_id] = Pending(call, metrics)
+            res.n_calls += 1
+        if errors:
+            raise errors[0]
 
     def _grade(self, arm: Arm, as_of: date, res: ReplayResult) -> list[tuple[Pending, Grade]]:
         out = []
@@ -388,6 +417,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--quarters", default="2018Q1:2024Q4")
     ap.add_argument("--held-out", type=int, default=None, help="companies never learned from (default N//5, max 10)")
     ap.add_argument("--settle", type=int, default=0, help="extra grade-only quarters after the last one")
+    ap.add_argument("--workers", type=int, default=8,
+                    help="parallel model calls within a quarter (quarters stay sequential). 1 = serial. "
+                         "Mubit allowed 16 at once in a probe; a 429 starter_credit_busy means lower it")
     ap.add_argument("--tag", default="replay")
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="run_store target: a directory, or 'postgres'")
     ap.add_argument("--runner", help="module:function replacing the stub-backed runner (Person A's)")
@@ -417,7 +449,7 @@ def main(argv: list[str] | None = None) -> int:
     store = open_store(a.out)
     rp = Replay(companies, agents, store, tag=a.tag, gateways=gws, updaters=ups, outcome_fn=outcome_fn,
                 metrics_fn=metrics_fn, runner=resolve_runner(a.runner), held_out_companies=held,
-                state_path=root / "state.json", fallback=a.offline)
+                state_path=root / "state.json", fallback=a.offline, workers=a.workers)
     if a.offline:
         print("OFFLINE: stub metrics, scripted LLM, stub outcome rule, FALLBACK updater (not Mubit). Not real results.")
     res = rp.run(quarters, a.settle)

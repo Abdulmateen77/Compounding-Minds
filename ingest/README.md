@@ -77,7 +77,8 @@ with db.connect() as conn:
 ```python
 from store.quality import coverage, drop_candidates
 rep = coverage(conn)
-print(drop_candidates(rep))     # companies missing a required concept, or with under ~5 years of revenue
+print(drop_candidates(rep))     # companies missing a required concept, or with under ~5 years of revenue,
+                                # and not accepted in store.quality.KNOWN_GAPS (store.quality.known_gaps lists those)
 ```
 
 A company in that list cannot get the Fundamentals, Risk or Scenarios metrics. Tell Person A: it is either

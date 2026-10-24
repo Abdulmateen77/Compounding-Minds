@@ -56,9 +56,10 @@ class FredClient(_Cached):
         cached = (self.dir / "fred" / name).is_file()
         if not cached and not self.api_key:
             raise MacroSkipped("FRED_API_KEY not set and series not cached")
-        q = urllib.parse.urlencode({"series_id": series_id, "api_key": self.api_key or "x",
-                                    "file_type": "json", "realtime_start": "1776-07-04",
-                                    "realtime_end": "9999-12-31"})
+        params = {"series_id": series_id, "api_key": self.api_key or "x", "file_type": "json"}
+        if series_id in VINTAGED_SERIES:  # unrevised market series: FRED rejects the all-vintages window (HTTP 400)
+            params.update(realtime_start="1776-07-04", realtime_end="9999-12-31")
+        q = urllib.parse.urlencode(params)
         return json.loads(self._fetch("fred", name, f"{FRED_URL}?{q}"))  # key never in the cache path
 
     def series(self, series_id: str, vintaged: bool | None = None) -> list[dict]:
