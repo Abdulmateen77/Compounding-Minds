@@ -1,4 +1,4 @@
-# CLAUDE.md: Time Machine Committee
+# CLAUDE.md: Compounding Minds
 
 Project context for Claude Code. Read this first, then `README.md` (full spec) and `TASKS.md` (team split).
 

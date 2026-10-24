@@ -1,6 +1,6 @@
-# Time Machine Committee: Full Spec
+# Compounding Minds: Full Spec
 
-A team of AI analysts that grades itself against reality and improves every time it's wrong.
+A team of AI analysts that grades itself against reality and compounds from every mistake.
 
 Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026). Code freeze **Sun 25 Oct 10:00**.
 Companion files: [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
@@ -11,7 +11,7 @@ Companion files: [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who
 
 Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t`, it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings actually reported. Wrong calls become **corrections**. **Mubit** turns corrections into per-agent model updates, so the next round is better.
 
-The demo replays 2018-2024 quarter by quarter. The audience watches accuracy climb, the COVID crash (2020) break the agents, then recovery as corrections accumulate.
+The demo's **Time Machine** replay runs 2018-2024 quarter by quarter. The audience watches accuracy climb, the COVID crash (2020) break the agents, then recovery as corrections accumulate.
 
 **Why it's different:** most "AI analyst" demos make claims nobody checks. Ours is falsifiable, point-in-time honest, and visibly learns.
 
