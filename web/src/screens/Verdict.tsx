@@ -1,127 +1,189 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { LABELS, STANCE_COLOR, api, pct, type AgentView, type MubitState } from "../api/client";
-import { ErrorBox, Revision, Skeleton, Spark, StubChip, VoteBar, Ring, fmt } from "../components/bits";
+import { api, pct, type AgentView, type MubitState } from "../api/client";
+import { ErrorBox, Skeleton, Spark, StubChip } from "../components/bits";
 import { mubitHref } from "../route";
+import {
+  AGENTS, HEADLINE, METRICS, SIGNAL, bottomLine, certainty, humanize, longDate, metricLabel, metricValue, plainAnswer,
+} from "../plain";
 
 export default function Verdict({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
   const q = useQuery({ queryKey: ["assessment", id], queryFn: () => api.assessment(id) });
-  if (q.isLoading) return <div className="grid gap-4"><Skeleton h={200} /><div className="grid gap-3 md:grid-cols-2"><Skeleton /><Skeleton /></div></div>;
+  if (q.isLoading) return <div className="grid gap-4"><Skeleton h={200} /><div className="grid gap-3"><Skeleton /><Skeleton /></div></div>;
   if (q.isError || !q.data) return <div className="grid gap-3"><ErrorBox msg="Could not load this assessment." onRetry={() => q.refetch()} /><a className="btn ghost justify-self-start no-underline" href="#/">← Another company</a></div>;
-  const a = q.data, L = LABELS[a.label];
+  const a = q.data, H = HEADLINE[a.label], name = a.company.name, when = longDate(a.as_of);
+  const settled = a.committee.filter((v) => v.correct != null);
+  const right = settled.filter((v) => v.correct).length;
+  const tone = a.label === "investable" ? "var(--green)" : a.label === "not_investable" ? "var(--red)" : "var(--amber)";
 
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-8">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <a className="btn ghost no-underline" href="#/">← Another company</a>
         <button className="btn ghost" onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }); }}>
-          {copied ? "Link copied" : "Copy link to this verdict"}
+          {copied ? "Link copied" : "Copy link"}
         </button>
       </div>
 
-      <motion.section initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} className="card p-6 md:p-8 grid gap-6 md:grid-cols-[auto_1fr] items-center"
-        style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${L.color} 14%, var(--panel)), var(--panel))`, borderColor: `color-mix(in srgb, ${L.color} 45%, var(--line))` }}>
-        <Ring value={a.confidence} color={L.color} />
-        <div>
-          <div className="mute text-sm flex items-center gap-2 flex-wrap">{a.company.name} · as of <span className="num">{a.as_of}</span>{a.stub && <StubChip />}</div>
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight my-1" style={{ color: L.color }}>{L.text}</h1>
-          <p className="mute m-0 mb-4 text-sm">An evidence assessment from the committee, not investment advice or a recommendation to trade.</p>
-          <div className="max-w-md"><VoteBar for_={a.votes.for} neutral={a.votes.neutral} against={a.votes.against} /></div>
+      {/* 1. Where we are in time, and the bottom line */}
+      <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
+        <div className="px-6 md:px-8 py-3 text-sm flex items-center gap-2 flex-wrap" style={{ background: "var(--panel2)", borderBottom: "1px solid var(--line)" }}>
+          <span className="font-semibold">Back to {when}.</span>
+          <span className="mute">Three AI analysts studied {name} using only the filings public on that day. Below is what they concluded, then what really happened.</span>
+          {a.stub && <StubChip />}
+        </div>
+        <div className="p-6 md:p-8 grid gap-5">
+          <div>
+            <p className="mute m-0 text-sm">Does the evidence in {name}'s filings support investing?</p>
+            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mt-1 mb-2" style={{ color: tone }}>{H.text}</h1>
+            <p className="m-0 text-base md:text-lg max-w-3xl leading-relaxed">{bottomLine(a.committee)}</p>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-3">
+            {a.committee.map((v) => {
+              const p = plainAnswer(v.agent, v.answer), S = SIGNAL[p.signal];
+              return (
+                <a key={v.agent} href={`#card-${v.agent}`} className="rounded-xl p-3 no-underline grid gap-1"
+                  style={{ background: `color-mix(in srgb, ${S.color} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${S.color} 35%, var(--line))`, color: "var(--text)" }}>
+                  <span className="text-xs mute">{AGENTS[v.agent]?.topic ?? v.agent} · {v.investor}</span>
+                  <span className="font-semibold">{p.text}</span>
+                  <span className="text-xs" style={{ color: S.color }}>{S.word}</span>
+                </a>
+              );
+            })}
+          </div>
+          <div className="flex items-center gap-x-6 gap-y-2 flex-wrap text-sm">
+            <span><span className="font-semibold">{certainty(a.confidence)}</span> <span className="mute num">({pct(a.confidence)})</span></span>
+            {settled.length > 0 && <span><span className="font-semibold">Checked against reality:</span> <span className="mute">{right} of {settled.length} predictions came true</span></span>}
+          </div>
+          <p className="mute text-xs m-0">A reading of business evidence in public filings, not advice to buy or sell. Every number here was computed in Python from SEC filings; the analysts only judge them.</p>
         </div>
       </motion.section>
 
-      {a.dissent.length > 0 && (
-        <section className="card p-5">
-          <h2 className="text-sm uppercase tracking-wider mute m-0 mb-2">Where the committee disagrees</h2>
-          <ul className="m-0 pl-5 grid gap-1 text-sm">{a.dissent.map((d) => <li key={d}>{d}</li>)}</ul>
-        </section>
-      )}
-
-      <section>
-        <h2 className="text-sm uppercase tracking-wider mute mb-3">The committee</h2>
-        <div className="grid gap-3 md:grid-cols-2">{a.committee.map((v) => <AgentCard key={v.agent} v={v} m={a.mubit.find((x) => x.agent === v.agent)} />)}</div>
+      {/* 2. Each prediction, sealed on the day, opened later */}
+      <section className="grid gap-4">
+        <h2 className="text-xl font-semibold m-0">The three predictions, and what happened</h2>
+        {a.committee.map((v, i) => <Prediction key={v.agent} v={v} m={a.mubit.find((x) => x.agent === v.agent)} when={when} delay={i * 0.06} />)}
       </section>
 
-      <section>
-        <h2 className="text-sm uppercase tracking-wider mute mb-3">Metrics behind the calls <span className="normal-case">(computed in Python)</span></h2>
-        {a.metrics.length === 0 && <p className="mute text-sm">No metrics stored for this quarter.</p>}
-        <div className="grid gap-3 grid-cols-2 md:grid-cols-4">
-          {a.metrics.map((m) => (
-            <div key={m.name} className="card p-4">
-              <div className="mute text-xs">{m.name.replaceAll("_", " ")}</div>
-              <div className="num text-xl font-semibold my-1">{fmt(m.value, m.unit)}</div>
-              <Spark data={m.trend} />
-              <div className="mute text-[10px] mt-1 truncate" title={m.accessions?.[0]}>{m.accessions?.[0] ? `Filing ${m.accessions?.[0]}` : "Python-computed"}</div>
-            </div>
-          ))}
+      {/* 3. The numbers, in words */}
+      <section className="grid gap-3">
+        <div>
+          <h2 className="text-xl font-semibold m-0">The numbers they were given</h2>
+          <p className="mute text-sm m-0 mt-1">As known on {when}. The line shows each figure's history up to that day.</p>
         </div>
-      </section>
-
-      <div className="grid gap-6 md:grid-cols-2">
-        <section className="card p-5">
-          <h2 className="text-sm uppercase tracking-wider mute m-0 mb-3">Risks</h2>
-          {a.risks.length ? <ul className="m-0 pl-5 grid gap-1 text-sm">{a.risks.map((r) => <li key={r}>{r}</li>)}</ul> : <p className="mute m-0 text-sm">No distress signals raised.</p>}
-        </section>
-        <section className="card p-5">
-          <h2 className="text-sm uppercase tracking-wider mute m-0 mb-3">Scenario view</h2>
-          {a.scenarios.length === 0 && <p className="mute m-0 text-sm">No scenario call at this date.</p>}
-          {a.scenarios.map((s) => (
-            <div key={s.bucket}>
-              <div className="flex gap-2 mb-3">
-                {["bear", "base", "bull"].map((b) => (
-                  <div key={b} className="flex-1 text-center py-2 rounded-lg text-sm capitalize"
-                    style={{ background: b === s.bucket ? "var(--blue)" : "var(--panel2)", color: b === s.bucket ? "#fff" : "var(--mute)" }}>{b}</div>
-                ))}
-              </div>
-              <div className="text-sm mute">Revenue bucket at <span className="num">{pct(s.probability)}</span> confidence</div>
-              <ul className="m-0 mt-2 pl-5 text-sm">{s.reasoning.map((r) => <li key={r}>{r}</li>)}</ul>
+        {a.metrics.length === 0 && <p className="mute text-sm">No metrics stored for this quarter.</p>}
+        {groups(a.committee, a.metrics).map(([topic, cards]) => (
+          <div key={topic} className="grid gap-2">
+            <h3 className="text-sm font-semibold m-0 mt-2 mute">{topic}</h3>
+            <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+              {cards.map((m) => (
+                <div key={m.name} className="card p-4 grid gap-1" title={m.accessions?.[0] ? `SEC filing ${m.accessions[0]}` : "Computed in Python from stored filings"}>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <span className="text-sm font-medium">{metricLabel(m.name)}</span>
+                    <span className="num text-lg font-semibold">{metricValue(m.name, m.value)}</span>
+                  </div>
+                  <span className="mute text-xs leading-snug">{METRICS[m.name]?.meaning}</span>
+                  {m.trend.length > 1 && <Spark data={m.trend} w={200} h={30} />}
+                </div>
+              ))}
             </div>
-          ))}
-        </section>
-      </div>
+          </div>
+        ))}
+      </section>
 
       <a href={mubitHref()} className="card p-5 flex items-center justify-between gap-4 flex-wrap no-underline" style={{ color: "var(--text)" }}>
         <span>
-          <span className="font-semibold block">How these analysts learn</span>
-          <span className="mute text-sm">Track records, learned versus frozen curves and the corrections behind each model version live on the Mubit page.</span>
+          <span className="font-semibold block">How these analysts learn from their mistakes</span>
+          <span className="mute text-sm">Every wrong prediction becomes a lesson the analyst reads next time. An identical copy that never learns runs alongside, so you can see whether the lessons help.</span>
         </span>
-        <span className="chip" style={{ color: "var(--blue)", borderColor: "var(--blue)" }}>Open Mubit</span>
+        <span className="chip" style={{ color: "var(--blue)", borderColor: "var(--blue)" }}>See the track records</span>
       </a>
     </div>
   );
 }
 
-function AgentCard({ v, m }: { v: AgentView; m?: MubitState }) {
-  const color = STANCE_COLOR[v.stance];
+function Prediction({ v, m, when, delay }: { v: AgentView; m?: MubitState; when: string; delay: number }) {
+  const [open, setOpen] = useState(false);
+  const p = plainAnswer(v.agent, v.answer), S = SIGNAL[p.signal];
+  const reasons = v.reasoning.map(humanize);
+  const verdict = v.correct == null ? null : v.correct
+    ? { word: "Came true", color: "var(--green)", mark: "✓" }
+    : { word: "Did not come true", color: "var(--red)", mark: "✗" };
+
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="card p-5">
-      <div className="flex items-center justify-between gap-2">
-        <div className="font-semibold">{v.investor} <span className="mute font-normal text-sm">· {v.agent}</span></div>
-        <span className="chip" style={{ color, borderColor: color }}>{v.stance}</span>
+    <motion.article id={`card-${v.agent}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
+      className="card grid md:grid-cols-[1fr_minmax(220px,0.55fr)] overflow-hidden">
+      <div className="p-5 md:p-6 grid gap-3 content-start">
+        <div className="flex items-center gap-2 flex-wrap text-sm">
+          <span className="font-semibold">{v.investor}</span>
+          <span className="mute">on {AGENTS[v.agent]?.topic.toLowerCase() ?? v.agent}</span>
+          {m && (
+            <a href={mubitHref(v.agent)} className="chip no-underline" title="This analyst's full track record">
+              {m.accuracy == null ? "no track record yet" : `right ${pct(m.accuracy)} of the time so far`}
+              {m.corrections_applied > 0 && ` · learned from ${m.corrections_applied} mistakes`}
+            </a>
+          )}
+        </div>
+        <p className="m-0 mute">{AGENTS[v.agent]?.question ?? v.question}</p>
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <span className="text-2xl font-bold">{p.text}</span>
+          <span className="chip" style={{ color: S.color, borderColor: S.color }}>{S.word}</span>
+          <span className="mute text-sm num">{pct(v.confidence)} sure</span>
+        </div>
+        <div className="grid gap-1 text-sm">
+          <span className="font-medium">Why</span>
+          <ul className="m-0 pl-5 grid gap-1">{(open ? reasons : reasons.slice(0, 2)).map((r) => <li key={r}>{r}</li>)}</ul>
+          {reasons.length > 2 && (
+            <button className="justify-self-start text-sm mt-1" style={{ color: "var(--blue)", background: "none", border: 0, padding: 0, cursor: "pointer" }}
+              onClick={() => setOpen(!open)} aria-expanded={open}>
+              {open ? "Show less" : `Show all ${reasons.length} reasons`}
+            </button>
+          )}
+        </div>
+        {v.evidence.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {v.evidence.map((e) => (
+              <span key={e.metric} className="chip" title={e.accession ? `SEC filing ${e.accession}` : "Computed in Python from stored filings"}>
+                {metricLabel(e.metric)} <span className="num" style={{ color: "var(--text)" }}>{metricValue(e.metric, e.value)}</span>
+              </span>
+            ))}
+          </div>
+        )}
       </div>
-      <div className="mute text-sm mt-1">{v.question}</div>
-      {m && (
-        <a href={mubitHref(v.agent)} className="chip num mt-2 no-underline" title="See this analyst's track record on the Mubit page" aria-label={`${v.investor} model ${m.model_version ?? "version n/a"}, ${m.accuracy == null ? "accuracy n/a" : pct(m.accuracy) + " accuracy"}. Open Mubit page`}
-          style={{ color: "var(--green)", borderColor: "color-mix(in srgb, var(--green) 50%, var(--line))" }}>
-          {m.model_version ?? "version n/a"} · {m.accuracy == null ? "n/a" : pct(m.accuracy)} accurate
-        </a>
-      )}
-      <div className="mt-3 flex items-center flex-wrap gap-x-2 gap-y-1">
-        <span className="text-xl font-bold capitalize">{v.answer}</span>
-        <span className="num mute text-sm">{pct(v.confidence)} confident · weight {v.weight.toFixed(2)}</span>
-        <Revision from={v.revised_from} to={v.probability} />
+
+      <div className="p-5 md:p-6 grid gap-2 content-start" style={{ background: "var(--panel2)", borderLeft: "1px dashed var(--line)" }}>
+        <span className="text-xs mute">What actually happened</span>
+        {verdict ? (
+          <>
+            <span className="text-xl font-bold flex items-center gap-2" style={{ color: verdict.color }}>
+              <span aria-hidden className="inline-grid place-items-center w-7 h-7 rounded-full text-base" style={{ background: `color-mix(in srgb, ${verdict.color} 18%, transparent)` }}>{verdict.mark}</span>
+              {verdict.word}
+            </span>
+            {v.what_happened && <p className="m-0 text-sm leading-relaxed">{v.what_happened}</p>}
+            {v.resolved_on && <span className="mute text-xs">Settled by the filing of {longDate(v.resolved_on)}</span>}
+          </>
+        ) : (
+          <>
+            <span className="text-lg font-semibold mute">Not settled yet</span>
+            <p className="m-0 text-sm mute">The filings that decide this were not in the replay yet, or the company did not report the figures needed to check it.</p>
+          </>
+        )}
+        <span className="mute text-xs mt-auto">Predicted on {when}</span>
       </div>
-      <ul className="m-0 mt-2 pl-5 text-sm grid gap-1">{v.reasoning.map((r) => <li key={r}>{r}</li>)}</ul>
-      <div className="flex flex-wrap gap-2 mt-3">
-        {v.evidence.map((e) => (
-          <span key={e.metric} className="chip num" title={e.accession ? `Filing accession ${e.accession}` : "Computed in Python from stored filings"}>
-            {e.metric.replaceAll("_", " ")} {fmt(e.value)}{e.accession ? <span style={{ color: "var(--blue)" }}> · {e.accession}</span> : null}
-          </span>
-        ))}
-        {v.principles.map((p) => <span key={p} className="chip" style={{ color: "var(--purple)" }}>{p}</span>)}
-      </div>
-    </motion.div>
+    </motion.article>
   );
+}
+
+/** Metric cards grouped under the analyst topic that used them, in committee order. */
+function groups(views: AgentView[], metrics: { name: string; value: number; trend: number[]; accessions?: string[] }[]) {
+  const owner = new Map<string, string>();
+  for (const v of views) for (const e of v.evidence) if (!owner.has(e.metric)) owner.set(e.metric, AGENTS[v.agent]?.topic ?? v.agent);
+  const out = new Map<string, typeof metrics>(views.map((v) => [AGENTS[v.agent]?.topic ?? v.agent, []]));
+  for (const m of metrics) {
+    const t = owner.get(m.name) ?? "Other";
+    out.set(t, [...(out.get(t) ?? []), m]);
+  }
+  return [...out.entries()].filter(([, cards]) => cards.length > 0);
 }

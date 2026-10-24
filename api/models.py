@@ -42,6 +42,11 @@ class AgentView(BaseModel):
     principles: list[str]
     model: str
     revised_from: float | None = None
+    # What reality said, from the reality grader (Python). None while the outcome is not settled yet.
+    outcome: str | None = None
+    correct: bool | None = None
+    resolved_on: str | None = None   # filing date that settled it
+    what_happened: str | None = None  # one plain sentence written by Python from the grader's evidence
 
 
 class MetricCard(BaseModel):
