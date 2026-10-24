@@ -5,6 +5,7 @@ import { demoMode, useReducedMotion } from "../route";
 import InvestorPanel from "../scene/InvestorPanel";
 import { pickFaceOffs, surname } from "../scene/lenses";
 import { hasWebGL } from "../scene/support";
+import { InvestorCards } from "./InvestorCards";
 import { InvestorRoster } from "./InvestorRoster";
 
 // three + react-three-fiber are their own chunk, so the rest of the report stays light.
@@ -90,6 +91,7 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
         <button className="btn ghost" onClick={present} title="Full-screen, for showing to a room">Present</button>
       </div>
       {scene(false)}
+      <InvestorCards lenses={a.lenses} />
     </section>
   );
 }
@@ -131,6 +133,8 @@ function Plain({ r, why, onPlay }: { r: Report; why: string; onPlay?: () => void
           </div>
         ))}
       </div>
+
+      <InvestorCards lenses={lenses} />
 
       {sel != null && (
         <InvestorPanel key={key} inline cik={r.company.cik} lens={lenses[sel]} onClose={() => setSel(null)}

@@ -39,6 +39,29 @@ INVESTORS = [("buffett", "Warren Buffett", "Is it a durable business that turns 
              ("lynch", "Peter Lynch", "What kind of stock is it, and is the price fair for its growth?"),
              ("dalio", "Ray Dalio", "How exposed is it to the cycle, and what is the range of outcomes?"),
              ("jhunjhunwala", "Rakesh Jhunjhunwala", "A long-term outperformer with honest leadership, cash and high returns?")]
+# What each investor looks for, three points each, distilled from principles/guides/<investor>.md, and the book it is from.
+LOOKS_FOR = {
+    "buffett": ["A simple business with a durable moat and a long, consistent record",
+                "High returns on capital without leaning on debt, and profit that turns into cash",
+                "A price clearly below a conservative value, for a ten-year hold"],
+    "munger": ["Every way the business could fail, checked before any upside",
+               "Interest cover, cash runway and debt that is not rising against earnings",
+               "Honest, owner-minded managers and a clean record (auditors, dividends)"],
+    "graham": ["A margin of safety: price well below a cautious value",
+               "Current ratio of 2 or more and debt within working capital",
+               "Profits every year and a price under 15 times average earnings"],
+    "lynch": ["Which of six kinds of stock it is, judged by that kind's numbers",
+              "A P/E no higher than the growth rate",
+              "Low debt and net cash, and no hot-stock hype"],
+    "dalio": ["The range of outcomes, not a single forecast",
+              "How strongly sales move with the economy and where the cycle stands",
+              "A bet that survives the bad case"],
+    "jhunjhunwala": ["Growth well above the market's, for years",
+                     "Return on capital above 20% and strong free cash flow",
+                     "Honest leadership, low debt and a sensible P/E"],
+}
+BOOK = {"buffett": "The Warren Buffett Way", "munger": "Poor Charlie's Almanack", "graham": "The Intelligent Investor",
+        "lynch": "One Up on Wall Street", "dalio": "Principles", "jhunjhunwala": "your notes on his interview"}
 # Lenses tested against what happened next (research/backtest.py). The others are shown without that claim.
 BACKTESTED = {"buffett", "munger"}
 CAVEAT = {"jhunjhunwala": "From your notes on his interview. The figures there are the speaker's claims and are unverified."}
@@ -491,5 +514,6 @@ def analyse(report: dict) -> dict:
         x = fit(checks)
         fits[key] = x
         lenses.append({"key": key, "name": name, "question": question, "fit": x, "word": fit_word(x, key), "checks": checks,
-                       "backtested": key in BACKTESTED, "caveat": CAVEAT.get(key), **extra})
+                       "backtested": key in BACKTESTED, "caveat": CAVEAT.get(key), "looks_for": LOOKS_FOR.get(key, []),
+                       "book": BOOK.get(key), **extra})
     return {"valuation": val, "lenses": lenses, "overall": overall(fits, val), "future": future(val)}
