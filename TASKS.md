@@ -89,7 +89,7 @@ The product is now a report on any US-listed company as it stands today (README 
 | Report: growth, profit, cash, balance sheet, R&D, risk, plans in the company's own words, price and multiples | Done; every figure names its filings; approximations marked |
 | Six investor lenses from the books in `principles/guides/` | Done; each check cites its source; only Buffett and Munger are back-tested, and the page says so |
 | Valuation range, what the price assumes, ten-year scenarios, overall reading | Done; assumptions on the page; not a price target, not advice |
-| Back-test of the Buffett and Munger checks | Done: Munger's failure checks work (3% vs 45% distress); Buffett's predict cash margin, not sales growth |
+| Back-test of the Buffett and Munger checks | Done: Munger's failure checks point the right way but modestly (13% vs 2%; an earlier 45% vs 3% was an artefact of dividend timing, fixed); Buffett's predict cash margin (typical 14% vs 4%), not sales growth |
 | Demo script and judge Q&A | `docs/DEMO.md`; replay numbers to fill in |
 | Not done | UK and European listings; banks and insurers only partly covered; price checks not back-tested (no historical prices) |
 

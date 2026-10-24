@@ -220,6 +220,7 @@ export function EvidencePanel() {
   if (!q.data) return null;
   const e = q.data, all = e.all_quarters.tests, ye = e.year_end_only.tests, ho = e.held_out_year_end.tests;
   const find = (ts: EvidenceTest[], lens: string, k: string) => ts.find((t) => t.lens === lens && t.outcome.startsWith(k))!;
+  const hoM = ho.find((t) => t.lens === "munger");
   const m = find(all, "munger", "Auditor"), b = find(all, "buffett", "Free-cash"), g = find(all, "buffett", "Revenue");
   return (
     <section className="grid gap-3">
@@ -232,7 +233,10 @@ export function EvidencePanel() {
           <span className="font-semibold">Munger's “how could it fail?” checks</span>
           <span className="mute text-xs">Share of companies that cut the dividend or changed auditor within the next year</span>
           <Bars t={m} value={(x) => x.mean} color="var(--red)" fmt={(x) => pc(x, 1)} />
-          <p className="m-0 text-sm">The checks separated them well: companies passing few had a distress event about {Math.round((m.buckets[2].mean ?? 0) / Math.max(m.buckets[0].mean ?? 1, 0.001))}× as often as those passing most. The link holds on the 10 companies kept out of everything else (rank correlation {ho.find((t) => t.lens === "munger")?.spearman?.toFixed(2)}, small sample).</p>
+          <p className="m-0 text-sm">
+            In the right direction, but modest: companies passing few of the checks had one of these events in {pc(m.buckets[2].mean, 0)} of cases, against {pc(m.buckets[0].mean, 0)} for those passing most. These events are rare, so the group passing few is small ({m.buckets[2].n} cases).
+            {" "}{hoM && hoM.p != null && hoM.p < 0.05 ? `It also holds on the 10 companies kept out of everything else (rank correlation ${hoM.spearman?.toFixed(2)}).` : `On the 10 held-out companies there are too few cases to tell either way.`}
+          </p>
         </div>
         <div className="card p-5 grid gap-3 content-start">
           <span className="font-semibold">Buffett's “quality” checks</span>
