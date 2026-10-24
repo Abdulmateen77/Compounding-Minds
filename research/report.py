@@ -15,7 +15,7 @@ from typing import Callable
 from metrics import fundamentals, risk, scenarios
 from metrics.context import Context, Result, combine
 
-from . import dividends
+from . import dividends, quick_check
 from .analysis import analyse
 
 STALE_DAYS = 500            # a last revenue quarter older than this means we cannot read the company's revenue
@@ -36,7 +36,7 @@ TONE: dict[str, Callable[[float], str]] = {
     "operating_margin": _hi(0.15, 0.05), "net_margin": _hi(0.10, 0.02), "gross_margin": _hi(0.40, 0.20),
     "fcf_margin": _hi(0.10, 0.0), "cash_conversion": _hi(0.8, 0.3),
     "current_ratio": _hi(1.5, 1.0), "debt_to_ebitda": _lo(2.0, 4.0), "interest_cover": _hi(8.0, 3.0),
-    "roic": _hi(0.15, 0.08), "roe": _hi(0.15, 0.08),
+    "roic": _hi(0.15, 0.08), "roe": _hi(0.15, 0.08), "roce": _hi(0.20, 0.10),
 }
 LABEL_TONE = {"good": "Strength", "watch": "Worth watching", "warn": "Concern"}
 
@@ -135,7 +135,7 @@ def _years(ctx: Context) -> list[date]:
     return sorted(ends)
 
 
-def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, shares=None, plans=None) -> dict:
+def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, shares=None, plans=None, share_history=None) -> dict:
     """`profile`: name, ticker, exchange, market, cik. `quote`: research.market.Quote or None.
     `shares`: (count, period_end, accession) or None. `plans`: research.text.Plans or None."""
     ctx = Context(company_id, as_of)
@@ -217,6 +217,8 @@ def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, sha
         fig("rnd_share", "R&D as a share of sales", "Research spending per dollar of sales", "pct", lambda b: _div(b.rnd, _pos(b.revenue))),
         fig("capex_share", "Capital spending as a share of sales", "Spending on facilities per dollar of sales", "pct", lambda b: _div(b.capex, _pos(b.revenue))),
         fig("roic", "Return on capital", "Operating profit after tax per dollar of capital invested", "pct", lambda b: _roic(ctx, b), "roic"),
+        fig("roce", "Return on capital employed", "Operating profit per dollar of capital employed (total assets less short-term bills)", "pct",
+            lambda b: _div(b.op_income, _pos(_sub(b.assets, b.cur_liab))), "roce", cur.op_approx),
         fig("roe", "Return on equity", "Net profit per dollar of shareholders' equity", "pct", lambda b: _div(b.net_income, _pos(b.equity)), "roe"),
     ]
     if cur.dividends is not None:
@@ -253,10 +255,11 @@ def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, sha
         "scorecard": [f for f in all_figs if f["key"] in ("revenue_growth", "operating_margin", "fcf_margin", "debt_to_ebitda", "roic", "current_ratio")],
         "tally": {t: sum(1 for f in toned if f["tone"] == t) for t in ("good", "watch", "warn")},
         "sections": sections, "risk_flags": flags, "economy": economy, "market": market,
-        "plans": None if plans is None else plans.as_dict(), "notes": notes,
+        "plans": None if plans is None else plans.as_dict(), "notes": notes, "share_history": share_history or [],
         "missing": [f["label"] for f in all_figs if f["value"] is None],
     }
     out["analysis"] = analyse(out)
+    out["quick_check"] = quick_check.run(out)
     return out
 
 

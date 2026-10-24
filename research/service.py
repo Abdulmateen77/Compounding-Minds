@@ -81,7 +81,7 @@ class ResearchService:
         shares = market.shares_outstanding(c.shares)
         if shares and date.fromisoformat(shares[1]) < today - timedelta(days=SHARES_MAX_AGE_DAYS):
             shares = None
-        report = build_report(c.company_id, today, profile, quote=quote, shares=shares, plans=plans)
+        report = build_report(c.company_id, today, profile, quote=quote, shares=shares, plans=plans, share_history=c.share_history)
         report["news"] = news
         report["latest_filing"] = c.latest_filing
         report["facts_through"] = c.facts_through

@@ -4,7 +4,7 @@ import { motion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ErrorBox, Skeleton, Spark } from "../components/bits";
 import { researchHref, go } from "../route";
-import { EvidencePanel, Future, Lenses, Verdict, Worth } from "./ResearchAnalysis";
+import { EvidencePanel, Future, Lenses, QuickCheckBlock, Verdict, Worth } from "./ResearchAnalysis";
 import {
   POINT_IN_TIME, TONE, fmtValue, longDate, monthYear, money, multiple, pctOf, year,
   type Candidate, type Figure, type Flag, type News, type Report, type SearchResult, type Section,
@@ -155,6 +155,7 @@ function ReportPage({ cik }: { cik: string }) {
 
       {r.analysis && <Verdict a={r.analysis} name={c.name} />}
       <Summary r={r} />
+      {r.quick_check && <QuickCheckBlock q={r.quick_check} />}
       {r.news && <NewsBlock n={r.news} />}
       <TrendChart sections={sections} />
 
