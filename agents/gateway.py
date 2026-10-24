@@ -64,6 +64,18 @@ class MubitRequest:
     output_tokens: int | None = None
 
 
+class ReplyTruncated(ValueError):
+    """The model hit its output cap, so the reply is cut off mid-JSON. A ValueError so the runner treats it as an
+    invalid reply (one repair retry, then a logged drop), and so the reply cache never stores it."""
+
+
+# Why 4096 and not 1024: haiku-5-5 reasons before it answers, and that hidden reasoning counts toward
+# max_tokens. At 1024, 9 of 14 Scenarios replies were cut off mid-JSON, and with the learned arm's lessons in
+# the prompt (about 2,900 input tokens instead of 1,100) all 21 of 21 were. A normal reply needs 800 to 1,350.
+DEFAULT_MAX_TOKENS = 4096
+MAX_OUTPUT_TOKENS = 16000
+
+
 class MubitGateway(LLMGateway):
     """Every LLM call goes through Mubit's Anthropic-compatible proxy.
 
@@ -75,7 +87,7 @@ class MubitGateway(LLMGateway):
     """
 
     def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None,
-                 max_tokens: int = 2048, client=None):
+                 max_tokens: int = DEFAULT_MAX_TOKENS, client=None):
         host = (base_url or os.environ.get("MUBIT_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
         self.model = model or os.environ.get("MUBIT_MODEL") or DEFAULT_MODEL
         self.max_tokens = max_tokens
@@ -95,35 +107,34 @@ class MubitGateway(LLMGateway):
     def complete(self, agent, messages, **kw):
         system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
         convo = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "system"]
-        params = {"model": self.model, "max_tokens": kw.get("max_tokens", self.max_tokens),
-                  "system": system, "messages": convo}
-        if kw.get("session_id"):
-            # On Anthropic, metadata.user_id is the one field Mubit reads as the session.
-            params["metadata"] = {"user_id": str(kw["session_id"])[:200]}
-        # Haiku 5.5 "thinks" before it answers, and the thinking counts against max_tokens. Found on the first
-        # live replay: with a cap of 1024 the visible JSON was cut off mid-list in about a third of the replies.
-        # Thinking is off by default (these are short judgements, and it is faster and cheaper); set
-        # MUBIT_THINKING=1 to turn it back on.
-        if os.environ.get("MUBIT_THINKING") != "1":
-            params["thinking"] = {"type": "disabled"}
-        raw = self.client.messages.with_raw_response.create(**params)
-        msg = raw.parse()
-        if getattr(msg, "stop_reason", None) == "max_tokens":   # never return (or cache) a cut-off reply
-            params["max_tokens"] = min(params["max_tokens"] * 2, 8192)
+        cap = kw.get("max_tokens", self.max_tokens)
+        while True:
+            params = {"model": self.model, "max_tokens": cap, "system": system, "messages": convo}
+            if kw.get("session_id"):
+                # On Anthropic, metadata.user_id is the one field Mubit reads as the session.
+                params["metadata"] = {"user_id": str(kw["session_id"])[:200]}
             raw = self.client.messages.with_raw_response.create(**params)
             msg = raw.parse()
-            if getattr(msg, "stop_reason", None) == "max_tokens":
-                raise RuntimeError(f"{agent}: reply still cut off at {params['max_tokens']} tokens")
-        usage = getattr(msg, "usage", None)
-        self.requests.append(MubitRequest(agent, kw.get("purpose", "call"),
-                                          raw.headers.get("x-middleware-request-id"), self.model,
-                                          getattr(usage, "input_tokens", None),
-                                          getattr(usage, "output_tokens", None)))
+            usage = getattr(msg, "usage", None)
+            self.requests.append(MubitRequest(agent, kw.get("purpose", "call"),
+                                              raw.headers.get("x-middleware-request-id"), self.model,
+                                              getattr(usage, "input_tokens", None),
+                                              getattr(usage, "output_tokens", None)))
+            if getattr(msg, "stop_reason", None) != "max_tokens":
+                break
+            if cap >= MAX_OUTPUT_TOKENS:
+                raise ReplyTruncated(f"{agent}: reply still cut off at max_tokens={cap}")
+            cap = min(cap * 4, MAX_OUTPUT_TOKENS)     # rare at 4096; costs one more call, not a dropped one
         return "".join(getattr(b, "text", "") for b in msg.content)
 
 
+# How many lessons go into one prompt. The file keeps every lesson (and the model version counts them all);
+# the prompt gets the most recent ones, so it stays about 3,400 tokens instead of growing to ~17,000 by 2022.
+MAX_LESSONS_IN_PROMPT = 40
+
+
 class LessonMemory:
-    """Per-agent lesson file. The runner puts these lessons into the agent's prompt."""
+    """Per-agent lesson file. The runner puts the most recent lessons into the agent's prompt."""
 
     def __init__(self, memory_dir: Path | str):
         self.dir = Path(memory_dir)
@@ -136,8 +147,12 @@ class LessonMemory:
         p = self._mem(agent)
         return [json.loads(l) for l in p.read_text().splitlines()] if p.exists() else []
 
-    def lessons(self, agent: str) -> list[str]:
+    def all_lessons(self, agent: str) -> list[str]:
         return [r["lesson"] for r in self._rows(agent)]
+
+    def lessons(self, agent: str) -> list[str]:
+        """What goes into the prompt: the MAX_LESSONS_IN_PROMPT most recent, oldest first."""
+        return self.all_lessons(agent)[-MAX_LESSONS_IN_PROMPT:]
 
     def _append(self, agent: str, corrections: list[Correction]) -> list[str]:
         """Store lessons; return the Mubit request ids of the reflection calls that wrote them."""
@@ -168,11 +183,11 @@ class MubitUpdater(LessonMemory, ModelUpdater):
 
     def submit_corrections(self, agent, corrections):
         ids = self._append(agent, corrections)
-        ref = ",".join(ids) or f"lessons:{agent}:{len(self.lessons(agent))}"
+        ref = ",".join(ids) or f"lessons:{agent}:{len(self.all_lessons(agent))}"
         return UpdateRef(agent, ref, fallback=False)
 
     def get_model_version(self, agent):
-        return f"mubit:{self.model}+{agent}-lessons-v{len(self.lessons(agent))}"
+        return f"mubit:{self.model}+{agent}-lessons-v{len(self.all_lessons(agent))}"
 
     def status(self, ref):
         return UpdateStatus("applied", self.get_model_version(ref.agent))
@@ -186,10 +201,10 @@ class FakeModelUpdater(LessonMemory, ModelUpdater):
 
     def submit_corrections(self, agent, corrections):
         self._append(agent, corrections)
-        return UpdateRef(agent, f"fake:{agent}:{len(self.lessons(agent))}", fallback=True)
+        return UpdateRef(agent, f"fake:{agent}:{len(self.all_lessons(agent))}", fallback=True)
 
     def get_model_version(self, agent):
-        return f"fallback/{agent}-v{len(self.lessons(agent))}"
+        return f"fallback/{agent}-v{len(self.all_lessons(agent))}"
 
     def status(self, ref):
         return UpdateStatus("applied", self.get_model_version(ref.agent))

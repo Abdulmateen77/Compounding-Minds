@@ -27,6 +27,31 @@ for their period, as the date gate returns them. If a restatement changes the 3-
 that day would also get. A period counts as a 3, 6, 9 or 12 month period only if its length is within 12 days
 of the nominal one, which covers 52/53-week calendars.
 
+**1b. Concepts reported only as parts.** Some filers give no total line for a concept, only its components.
+Two are handled, by adding the components quarter by quarter (`store.concepts.COMPOSITES`, applied in
+`metrics/context.py`):
+
+| Concept | Where a quarter has no reported value, it is | Seen at |
+|---|---|---|
+| `depreciation_amortization` | `depreciation` (`Depreciation`) + `amortization_intangibles` (`AmortizationOfIntangibleAssets`) | MSFT, TXN, ABT, ORCL, NUE |
+| `pretax_income` | `pretax_income_domestic` + `pretax_income_foreign` | MCD |
+
+Rules: a directly reported value for a quarter always wins over the sum. A quarter missing any one component
+is missing, never half a value. The components go through the same quarter derivation as any flow concept
+(cash-flow items are year-to-date) and the date gate, so the sum is visible only once every part is public,
+and the metric's `inputs` cite the filings of all parts. **Known limit:** the two D&A tags may not cover every
+amortization line a company's cash-flow statement adds back (for example software or lease amortization), so a
+summed D&A can be somewhat below the cash-flow figure. The metrics that use it (`debt_to_ebitda`,
+`leverage_trend_8q`) are least sensitive for firms with small debt; this is accepted, not hidden.
+
+**Operating income is never derived.** COP, MRK, NKE, XOM, NUE, PFE and LLY report no `OperatingIncomeLoss`
+line; HON tags it only from 2021 (its annual figure first appears in a 2025 filing); JNJ has no operating line; GE's
+tag stops in 2014. Pretax income plus interest would also include non-operating items, so it is not used as a stand-in.
+For these companies `operating_margin`, `roic`, `debt_to_ebitda`, `interest_coverage` and `leverage_trend_8q`
+are missing, the rule above (3 or more missing) usually makes their bundles unusable, and the Fundamentals
+outcome rule (which needs operating margin) returns `unresolvable`. `store/quality.py::OPERATING_INCOME_EXEMPT`
+lists them so the data-quality report does not flag them as a data error.
+
 **TTM** = sum of the last 4 discrete quarters. **Latest quarter (Q0)** = the most recent period end visible
 at `as_of`. Q-1, Q-2 ... are the quarters before it. Prompts only ever say Q0, Q-1 and so on.
 

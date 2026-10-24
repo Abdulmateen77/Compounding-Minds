@@ -1,5 +1,5 @@
 """The grader and the metrics engine must see the same quarters, or an agent is marked on numbers it was
-never shown. Found on real data: the grader knew nothing of derived operating income and 52-week calendars."""
+never shown. Found on real data: the grader knew nothing of 52-week calendars."""
 from datetime import date
 
 import pytest
@@ -36,16 +36,9 @@ def test_the_grader_reads_the_same_quarters_as_the_metrics_engine():
         assert grader_view == engine_view, concept
 
 
-def test_a_company_that_never_tags_operating_income_is_still_gradable():
-    F.install(F.build_facts(operating_income=None))        # EBIT is derived from pre-tax + interest
-    outcome, info = rules_outcome(_call())
-    assert outcome in ("yes", "no"), info
-
-
-def test_derived_operating_income_gives_the_same_verdict_as_a_tagged_one():
-    F.install(F.build_facts())
-    tagged = rules_outcome(_call())
+def test_a_company_that_never_tags_operating_income_is_unresolvable_not_guessed():
+    # Policy (store/quality.py OPERATING_INCOME_EXEMPT): no approximated operating income, in either place
     F.install(F.build_facts(operating_income=None))
-    derived = rules_outcome(_call())
-    assert tagged[0] == derived[0]
-    assert tagged[1]["q0"] == pytest.approx(derived[1]["q0"]) and tagged[1]["q1"] == pytest.approx(derived[1]["q1"])
+    assert Context("anon_001", AS_OF).quarters("operating_income") == {}
+    outcome, info = rules_outcome(_call())
+    assert outcome == "unresolvable", info

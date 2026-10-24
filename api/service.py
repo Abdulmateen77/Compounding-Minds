@@ -6,8 +6,8 @@ scoring, so the verdict matches the rest of the system. Numbers come from stored
 from __future__ import annotations
 
 import json
+import threading
 from datetime import date
-from functools import lru_cache
 from pathlib import Path
 
 import pandas as pd
@@ -54,12 +54,7 @@ class Service:
         return out
 
     def _held_out(self) -> set[str]:
-        runs = self.bundle.runs
-        for cfg in runs["config"]:
-            held = (cfg or {}).get("split", {}).get("held_out_companies")
-            if held:
-                return set(held)
-        return set()
+        return self.bundle.held_out_companies()  # eval.run's split or grader.replay's top-level list
 
     def companies(self) -> list[M.Company]:
         if self.bundle.empty:
@@ -259,11 +254,17 @@ class Service:
         board = D.scoreboard(b, as_of).set_index("agent")
         row = board.loc[agent] if agent in board.index else None
         corr = self._corrections_upto(agent, as_of)
+        # Start at the first quarter with a graded call: before that there is no accuracy, not 0% accuracy.
+        acc = pd.DataFrame({"as_of": learned["as_of"].values, "learned": learned["rolling_accuracy"].values}).merge(
+            pd.DataFrame({"as_of": frozen["as_of"].values, "frozen": frozen["rolling_accuracy"].values}),
+            on="as_of", how="left")
+        seen = acc[["learned", "frozen"]].notna().any(axis=1)
+        acc = acc[seen.cummax()].ffill().fillna(0)
         return M.TrackRecord(
             agent=agent, investor=D.INVESTOR.get(agent, agent), as_of=as_of.isoformat(),
-            learned=[float(x) for x in learned["rolling_accuracy"].fillna(0)],
-            frozen=[float(x) for x in frozen["rolling_accuracy"].fillna(0)],
-            quarters=[q.isoformat() for q in learned["as_of"]],
+            learned=[float(x) for x in acc["learned"]],
+            frozen=[float(x) for x in acc["frozen"]],
+            quarters=[q.isoformat() for q in acc["as_of"]],
             model_version=D.model_version_at(b, agent, as_of),
             accuracy=None if row is None else float(row["accuracy"]),
             brier=None if row is None or pd.isna(row["brier"]) else float(row["brier"]),
@@ -285,6 +286,17 @@ def _ans(d: dict | None, key: str) -> str | None:
     return None if not d else str(d.get(key))
 
 
-@lru_cache(maxsize=1)
+_svc: tuple[float, Service] | None = None
+_svc_lock = threading.Lock()
+
+
 def get_service() -> Service:
-    return Service()
+    """One Service per state of the run files: a replay still writing (each quarter rewrites the JSONL) shows up
+    on the next request instead of after a restart. Postgres has no stamp, so it loads once."""
+    global _svc
+    stamp = D.source_stamp(D.resolve_source(None))
+    if _svc is None or _svc[0] != stamp:
+        with _svc_lock:
+            if _svc is None or _svc[0] != stamp:
+                _svc = (stamp, Service())
+    return _svc[1]

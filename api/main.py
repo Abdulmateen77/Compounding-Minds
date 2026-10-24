@@ -1,7 +1,8 @@
 """Investor UI API (INVESTOR_UI_PLAN.md). Demo mode: replays stored runs, no live calls, no LLM.
 
     .venv/bin/uvicorn api.main:app --port 8000
-    DASHBOARD_SOURCE=data/runs|postgres to pick the data source (same switch as the Streamlit view).
+    DASHBOARD_SOURCE=data/runs|data/runs_final|postgres to pick the data source (same switch as the
+    Streamlit view; a relative directory resolves against the repo root).
 """
 from __future__ import annotations
 
@@ -117,6 +118,16 @@ def track_record(agent: str, as_of: str | None = Query(None), s: Service = Depen
         raise _nf(e)
     except ValueError:
         raise HTTPException(422, "as_of must be YYYY-MM-DD")
+
+
+@app.get("/api/heldout")
+def heldout():
+    """The held-out report (eval/reports/heldout_report.json, else the stub preview with its banner), as written."""
+    from dashboard.data import ROOT, find_heldout_report
+    path, report, why = find_heldout_report()
+    if report is None:
+        raise HTTPException(404, f"no held-out report yet ({why})")
+    return {"path": str(path.relative_to(ROOT)), "report": report}
 
 
 # Built front end (npm run build in web/). Absent in dev, where Vite serves the UI and proxies /api.

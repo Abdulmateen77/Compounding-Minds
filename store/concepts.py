@@ -32,7 +32,7 @@ CONCEPTS: dict[str, Concept] = {c.key: c for c in [
     # ---- income statement: 10-Qs report discrete 3-month facts, so no derivation needed
     _c("revenue", ["Revenues", "RevenueFromContractWithCustomerExcludingAssessedTax",
                    "RevenueFromContractWithCustomerIncludingAssessedTax", "SalesRevenueNet",
-                   "SalesRevenueGoodsNet"]),
+                   "SalesRevenueGoodsNet"]),     # JNJ tagged its revenue this way until 2016
     _c("cost_of_revenue", ["CostOfRevenue", "CostOfGoodsAndServicesSold", "CostOfGoodsSold"]),
     _c("gross_profit", ["GrossProfit"], note="if missing: revenue - cost_of_revenue, decided in metrics/"),
     _c("operating_income", ["OperatingIncomeLoss"],
@@ -42,21 +42,28 @@ CONCEPTS: dict[str, Concept] = {c.key: c for c in [
     _c("net_income", ["NetIncomeLoss"]),
     _c("pretax_income", ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesExtraordinaryItemsNoncontrollingInterest",
                          "IncomeLossFromContinuingOperationsBeforeIncomeTaxesMinorityInterestAndIncomeLossFromEquityMethodInvestments"]),
+    _c("pretax_income_domestic", ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesDomestic"],
+       note="component: pretax_income = domestic + foreign when a filer reports no total (MCD)"),
+    _c("pretax_income_foreign", ["IncomeLossFromContinuingOperationsBeforeIncomeTaxesForeign"],
+       note="component: see pretax_income_domestic"),
     _c("income_tax_expense", ["IncomeTaxExpenseBenefit"]),
     _c("interest_expense", ["InterestExpense", "InterestExpenseDebt", "InterestAndDebtExpense"]),
     _c("rnd_expense", ["ResearchAndDevelopmentExpense"], note="Moat agent only"),
     _c("sga_expense", ["SellingGeneralAndAdministrativeExpense"], note="Moat agent only"),
     # ---- cash flow: 10-Qs report year-to-date (3, 6, 9 months), Q4 = full year - 9 months
     _c("op_cash_flow", ["NetCashProvidedByUsedInOperatingActivities",
-                        "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"], cum=True),
+                        "NetCashProvidedByUsedInOperatingActivitiesContinuingOperations"], cum=True),  # COST, 2013 to 2019
     _c("capex", ["PaymentsToAcquirePropertyPlantAndEquipment", "PaymentsToAcquireProductiveAssets",
                  "PaymentsToAcquireOtherPropertyPlantAndEquipment"], cum=True,
        note="reported as a positive outflow; FCF = op_cash_flow - capex"),
     _c("depreciation_amortization", ["DepreciationDepletionAndAmortization", "DepreciationAndAmortization",
-                                     "DepreciationAmortizationAndAccretionNet", "DepreciationAmortizationAndOther",
-                                     "Depreciation"], cum=True,
-       note="Depreciation alone understates D&A a little (amortization is separate); it beats having no figure"),
-    _c("dividends_paid", ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"], cum=True),
+                                     "DepreciationAmortizationAndAccretionNet", "DepreciationAmortizationAndOther"],
+       cum=True),
+    _c("depreciation", ["Depreciation"], cum=True,
+       note="component: depreciation_amortization = depreciation + amortization_intangibles when a filer reports no total"),
+    _c("amortization_intangibles", ["AmortizationOfIntangibleAssets"], cum=True, note="component: see depreciation"),
+    _c("dividends_paid", ["PaymentsOfDividends", "PaymentsOfDividendsCommonStock", "PaymentsOfOrdinaryDividends"],
+       cum=True),
     _c("dividends_per_share", ["CommonStockDividendsPerShareDeclared", "CommonStockDividendsPerShareCashPaid"],
        unit="USD/shares", note="cross-check for dividend cuts; not every filer tags it"),
     # ---- balance sheet: point-in-time (instant) values
@@ -78,6 +85,14 @@ CONCEPTS: dict[str, Concept] = {c.key: c for c in [
                            "LongTermDebtAndCapitalLeaseObligationsCurrent", "CommercialPaper"], kind="instant",
        note="the current part: current maturities plus short-term borrowings"),
 ]}
+
+# Concepts a filer may report only as parts. Where a quarter has no directly reported value, the metrics
+# engine (metrics/context.py) uses the sum of these components for that quarter. Never a substitute for a
+# reported total: a directly reported quarter always wins. Documented in metrics/SPEC.md.
+COMPOSITES: dict[str, tuple[str, ...]] = {
+    "depreciation_amortization": ("depreciation", "amortization_intangibles"),
+    "pretax_income": ("pretax_income_domestic", "pretax_income_foreign"),
+}
 
 TAG_TO_CONCEPT: dict[str, str] = {tag: c.key for c in CONCEPTS.values() for tag in c.tags}
 ALL_TAGS: frozenset[str] = frozenset(TAG_TO_CONCEPT)

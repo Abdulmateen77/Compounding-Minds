@@ -22,7 +22,7 @@ Multi-agent design, data flow and the reasoning behind both. Companions: [PROJEC
 | Supervisor / LLM orchestrator | The orchestrator is plain code that always runs the same agents in the same order. This keeps replays deterministic and leakage-safe. |
 | Hierarchical, Router, Planner–Executor–Evaluator | No manager agents, routing or LLM-generated plans. Fixed `question_id`s are what make calls gradable. |
 | Peer-to-peer | Agents see no peer output before they commit. Independence preserves diversity and makes attribution per agent possible. |
-| LLM-as-judge | The grader must stay objective and non-LLM. Ground truth from filings is the project's strongest asset. |
+| LLM-as-judge | The grader must stay objective: outcomes come from fixed rules over filed numbers. Ground truth from filings is the project's strongest asset. The one model in the grader, Sapling, only classifies going-concern text for the Risk rule; it never produces a number or a grade. |
 
 ---
 
@@ -78,7 +78,7 @@ Multi-agent design, data flow and the reasoning behind both. Companions: [PROJEC
 | Metrics engine | Python | Compute every number with accession traceability | Call an LLM |
 | MCP tools | Read-only servers | Drill-down (metric series, events, macro snapshot, peer compare), capped at about 5 calls per run | Bypass `store/queries.py` |
 | Synthesizer | Python weights + LLM rationale | Combine calls into a verdict, with weights from `grades` | Let an LLM set weights or confidence |
-| Reality grader | Pure Python, one exception: Mubit's Sapling verifier judges going-concern passages for the Risk rule (cached, replayed offline) | Resolve each `question_id` from later filings, compute Brier. Facts are read as known on the resolution date (a later restatement is ignored); `unresolvable` is excluded and logged | Use any other LLM, guess on missing data, grade a restated value the system could not yet have seen |
+| Reality grader | Pure Python, one exception: Mubit's Sapling verifier classifies going-concern passages for the Risk rule (cached, replayed offline). The rule still sets the verdict and every number | Resolve each `question_id` from later filings, compute Brier. Facts are read as known on the resolution date (a later restatement is ignored); `unresolvable` is excluded and logged | Use any other LLM, guess on missing data, grade a restated value the system could not yet have seen |
 | Correction maker | Python + reflection LLM | Select corrections (rate-limited), write lesson text | Name companies in lessons |
 | ModelUpdater | Mubit client / fallback | Submit corrections per agent, expose model version | Leak lessons across agents |
 | Store gate | `store/queries.py` | Enforce `filed_date <= as_of` | Filter by `period_end` |
@@ -123,7 +123,7 @@ act (AgentCall) -> verify (Python grader vs filings) -> reflect (lesson) -> upda
 ```
 
 What makes it different from typical LLM self-critique:
-- **The verifier is not an LLM.** It uses filed numbers.
+- **The verifier is rules, not an LLM judge.** It uses filed numbers. The single exception: Sapling classifies going-concern text for the Risk rule, and the rule turns that label into the grade.
 - **The reward is delayed and objective.** It arrives with the next filing.
 - **Learning persists.** Lessons change the agent's model (Mubit) or principles and few-shot memory (`FakeModelUpdater`).
 - **Updates are per agent.** An error attributes to one agent and one set of principles (`principle_refs`).

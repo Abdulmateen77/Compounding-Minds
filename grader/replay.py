@@ -19,10 +19,20 @@ Arms
 
 `runs` rows: one per (arm, kind), run_id "<tag>-<arm>-<train|heldout>".
 
+Concurrency: within a quarter the calls are independent (every call sees the lessons as they stood
+when the quarter began; lessons change only after the quarter's calls, in `_learn`), so `workers` > 1
+runs the model calls of one quarter in parallel threads. Quarters stay sequential. Only the model call
+runs in a worker: metrics (Postgres), store writes, grading and reflection stay on the main thread, in
+the same order as a serial run, so a run with 1 worker and a run with 16 give identical output.
+
 Determinism: the Anthropic API stopped accepting `temperature` (400 on every model from
 2026-10-21), so replay cannot pin temperature 0. Determinism comes from the reply cache instead:
 CachingGateway keys on prompt hash + gateway model + the agent's model version. Run once with
 live calls, then re-run with --replay-only and get identical output with zero API calls.
+
+Resume: the store and state.json are saved after each arm of a quarter, so a crash in the frozen arm never
+replays the learned arm (whose lessons are already applied). Lessons in the updater with no saved correction
+(a crash before that save, or a replay from before per-arm saves) are set aside on resume, not learned twice.
 
 Run (resumable; re-run the same command after a crash):
     python -m grader.replay --offline --companies 5 --quarters 2019Q1:2019Q4
@@ -38,13 +48,12 @@ import importlib
 import inspect
 import json
 import logging
-import os
 import re
 import sys
 import tempfile
 import uuid
-from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor
+from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date
 from pathlib import Path
@@ -202,12 +211,9 @@ class Replay:
                  gateways: dict[str, LLMGateway], updaters: dict[str, ModelUpdater],
                  outcome_fn: OutcomeFn, metrics_fn: MetricsFn, runner: Runner | None = None,
                  held_out_companies: list[str] | None = None, state_path: Path | None = None,
-                 make_corrections: Callable | None = None, fallback: bool = False, workers: int | None = None):
+                 make_corrections: Callable | None = None, fallback: bool = False, workers: int = 1):
+        self.workers = max(1, int(workers))
         self.companies, self.agents, self.store, self.tag = companies, agents, store, tag
-        # Model calls inside one quarter are independent (the learned arm only changes between quarters), so
-        # they can run side by side. 1 = the original sequential behaviour. A live call takes about 6 s, so the
-        # full replay (about 8,000 calls) is only feasible with several workers.
-        self.workers = max(1, int(workers if workers is not None else os.environ.get("REPLAY_WORKERS", 1)))
         self.outcome_fn, self.metrics_fn = outcome_fn, metrics_fn
         self.runner = runner or resolve_runner()
         self.make_corrections = make_corrections or resolve_make_corrections()
@@ -217,6 +223,7 @@ class Replay:
                      "frozen": Arm("frozen", gateways["frozen"], updaters["frozen"]),
                      "baseline": Arm("baseline", None, None)}
         self.done: set[str] = set()
+        self.partial: dict[str, list[str]] = {}  # quarter -> arms finished in it (a quarter cut short)
         self._run_to_arm: dict[str, str] = {}
         self._resume()
 
@@ -239,10 +246,13 @@ class Replay:
     # resume --------------------------------------------------------------
     def _resume(self) -> None:
         if self.state_path and self.state_path.exists():
-            self.done = set(json.loads(self.state_path.read_text()).get("done_quarters", []))
+            state = json.loads(self.state_path.read_text())
+            self.done = set(state.get("done_quarters", []))
+            self.partial = {q: arms for q, arms in (state.get("partial") or {}).items() if q not in self.done}
         rows = getattr(self.store, "rows", None)
         if rows is None:
             return
+        self._drop_orphan_lessons(rows)
         for kind in ("train", "heldout"):
             for arm in ARMS:
                 self._run_to_arm[self.run_id(arm, kind)] = arm
@@ -257,12 +267,43 @@ class Replay:
                 a = self.arms[arm]
                 a.pending[call.call_id] = Pending(call, self.metrics_fn(call.company_id, call.agent, call.as_of))
 
-    def _checkpoint(self, as_of: date) -> None:
-        self.done.add(as_of.isoformat())
+    def _drop_orphan_lessons(self, rows) -> None:
+        """Lessons the learned updater holds but the store has no correction for came from a quarter that
+        crashed before it was saved. That quarter is replayed, so they would be learned twice and would move
+        the model version (every reply-cache key of the redo). Set them aside in <agent>.jsonl.orphans."""
+        upd = self.arms["learned"].updater
+        if not (hasattr(upd, "_rows") and hasattr(upd, "_mem")):
+            return
+        known = {r["correction_id"] for r in rows("corrections")}
+        for agent in self.agents:
+            lessons = upd._rows(agent)
+            keep = [r for r in lessons if r.get("correction_id") in known]
+            if len(keep) == len(lessons):
+                continue
+            path = upd._mem(agent)
+            with path.with_name(path.name + ".orphans").open("a") as f:
+                f.writelines(json.dumps(r) + "\n" for r in lessons if r.get("correction_id") not in known)
+            path.write_text("".join(json.dumps(r) + "\n" for r in keep))
+            log.warning("resume: set aside %d unsaved lesson(s) for %s", len(lessons) - len(keep), agent)
+
+    def _save_state(self) -> None:
         self.store.flush() if hasattr(self.store, "flush") else None
         if self.state_path:
             self.state_path.parent.mkdir(parents=True, exist_ok=True)
-            self.state_path.write_text(json.dumps({"tag": self.tag, "done_quarters": sorted(self.done)}))
+            state = {"tag": self.tag, "done_quarters": sorted(self.done)}
+            if self.partial:
+                state["partial"] = self.partial
+            self.state_path.write_text(json.dumps(state))
+
+    def _arm_done(self, as_of: date, variant: str) -> None:
+        """Save after each arm, so a crash in a later arm never replays this one (its lessons are applied)."""
+        self.partial.setdefault(as_of.isoformat(), []).append(variant)
+        self._save_state()
+
+    def _checkpoint(self, as_of: date) -> None:
+        self.done.add(as_of.isoformat())
+        self.partial.pop(as_of.isoformat(), None)
+        self._save_state()
 
     # one quarter ---------------------------------------------------------
     def step(self, as_of: date, make_calls: bool = True, res: ReplayResult | None = None) -> None:
@@ -271,50 +312,61 @@ class Replay:
             return
         kind = kind_for(as_of)
         self._start_runs({kind})
+        finished = self.partial.get(as_of.isoformat(), [])
         for arm in self.arms.values():
+            if arm.variant in finished:  # resumed: this arm completed the quarter before the crash
+                continue
             if make_calls:
                 self._make_calls(arm, as_of, kind, res)
             graded = self._grade(arm, as_of, res)
             if arm.variant == "learned":
                 self._learn(arm, graded, res)
             self._snapshot(arm, as_of, kind, graded)
+            self._arm_done(as_of, arm.variant)
         self._checkpoint(as_of)
         res.quarters_done.append(as_of)
 
     def _make_calls(self, arm: Arm, as_of: date, kind: str, res: ReplayResult) -> None:
         rid = self.run_id(arm.variant, kind)
-        # 1. metrics, one at a time: they share one database connection, and take milliseconds
-        todo = []
+        todo = []                                # (key, metrics), in the serial order: agent, then company
         for agent in self.agents:
             for company in self.companies:
                 key = (agent, company, as_of)
                 if key in arm.calls:  # resumed mid-quarter: reuse the stored call
                     continue
-                todo.append((agent, company, key, self.metrics_fn(company, agent, as_of)))
+                todo.append((key, self.metrics_fn(company, agent, as_of)))   # main thread: shares the DB connection
 
-        # 2. the model calls: the slow part, run side by side when workers > 1
-        def one(item):
-            agent, company, _, metrics = item
-            if arm.variant == "baseline":
-                return baseline_call(agent, company, as_of, rid)
+        def ask(item):
+            (agent, company, _), metrics = item
             return self.runner(agent, company, as_of, metrics=metrics, gateway=arm.gateway,
                                updater=arm.updater, run_id=rid)
 
-        if self.workers > 1 and arm.variant != "baseline" and len(todo) > 1:
-            with ThreadPoolExecutor(max_workers=self.workers) as pool:
-                calls = list(pool.map(one, todo))      # results come back in the original order
+        errors: list[BaseException] = []
+        if arm.variant == "baseline":
+            calls = [baseline_call(k[0], k[1], as_of, rid) for k, _ in todo]
+        elif self.workers > 1 and len(todo) > 1:
+            def safe(item):                      # a failed call must not lose the others (the reply cache keeps them)
+                try:
+                    return ask(item)
+                except BaseException as e:       # noqa: BLE001  re-raised below, after the finished calls are stored
+                    errors.append(e)
+                    return None
+            with ThreadPoolExecutor(self.workers, thread_name_prefix="replay") as pool:
+                calls = list(pool.map(safe, todo))      # map keeps the input order
         else:
-            calls = [one(item) for item in todo]
+            calls = [ask(item) for item in todo]
 
-        # 3. bookkeeping, in the original order, on this thread only
-        for (agent, company, key, metrics), call in zip(todo, calls):
+        for (key, metrics), call in zip(todo, calls):    # main thread, serial order
             if call is None:
-                res.dropped += 1
+                if not errors:
+                    res.dropped += 1
                 continue
             arm.calls[key] = call
             self.store.write_call(call)
             arm.pending[call.call_id] = Pending(call, metrics)
             res.n_calls += 1
+        if errors:
+            raise errors[0]
 
     def _grade(self, arm: Arm, as_of: date, res: ReplayResult) -> list[tuple[Pending, Grade]]:
         out = []
@@ -338,9 +390,12 @@ class Replay:
                     and c.company_id not in self.held_out):
                 by_agent[c.agent].append(GradedCall(c, g, p.metrics))
         seen = {r["call_id"] for r in getattr(self.store, "rows", lambda t: [])("corrections")}
+        # Write every lesson first (reflection calls can fail), then submit: a failure leaves the updater untouched.
+        made: dict[str, list[Correction]] = {}
         for agent, items in by_agent.items():
             items = [i for i in items if i.call.call_id not in seen]
-            corrs: list[Correction] = self.make_corrections(items, arm.gateway) if items else []
+            made[agent] = self.make_corrections(items, arm.gateway) if items else []
+        for agent, corrs in made.items():
             if not corrs:
                 continue
             ref = arm.updater.submit_corrections(agent, corrs)
@@ -408,12 +463,13 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--quarters", default="2018Q1:2024Q4")
     ap.add_argument("--held-out", type=int, default=None, help="companies never learned from (default N//5, max 10)")
     ap.add_argument("--settle", type=int, default=0, help="extra grade-only quarters after the last one")
+    ap.add_argument("--workers", type=int, default=8,
+                    help="parallel model calls within a quarter (quarters stay sequential). 1 = serial. "
+                         "Mubit allowed 16 at once in a probe; a 429 starter_credit_busy means lower it")
     ap.add_argument("--tag", default="replay")
     ap.add_argument("--out", default=str(DEFAULT_OUT), help="run_store target: a directory, or 'postgres'")
     ap.add_argument("--runner", help="module:function replacing the stub-backed runner (Person A's)")
     ap.add_argument("--fresh", action="store_true", help="ignore saved progress and lessons for this tag")
-    ap.add_argument("--workers", type=int, default=None,
-                    help="model calls to run side by side within a quarter (default 1, or $REPLAY_WORKERS)")
     ap.add_argument("-v", "--verbose", action="store_true")
     a = ap.parse_args(argv)
     logging.basicConfig(level=logging.INFO if a.verbose else logging.WARNING, format="%(message)s")

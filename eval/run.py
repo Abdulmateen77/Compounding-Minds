@@ -49,14 +49,24 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--memory-dir", help="learned-agent lesson memory (default: a fresh temp dir)")
     ap.add_argument("--out", help="output directory (default: preview dir for stub runs, eval/reports otherwise)")
     ap.add_argument("--force", action="store_true", help="overwrite an existing official report")
+    ap.add_argument("--from-replay", metavar="DIR", help="score a finished grader.replay run directory (no LLM calls)")
+    ap.add_argument("--tag", default="final", help="with --from-replay: the replay's --tag")
     args = ap.parse_args(argv)
 
     agents = [a for a in args.agents.split(",") if a]
     for a in agents:
         if a not in SPECS:
             ap.error(f"unknown agent {a!r}")
-    companies = (args.companies.split(",") if args.companies
-                 else sorted({c for a in agents for c, _ in list_stub_cases(a)}))
+    if args.from_replay:
+        return _from_replay(args, agents)
+    from .metrics_source import real_inputs
+    if args.companies:
+        companies = args.companies.split(",")
+    elif real_inputs():  # the real universe, not the five stub companies
+        from ingest.universe import load_universe
+        companies = sorted(c["company_id"] for c in load_universe())
+    else:
+        companies = sorted({c for a in agents for c, _ in list_stub_cases(a)})
     n_held = args.held_out or (10 if len(companies) >= 30 else 1)
     split = make_split(companies, n_held)
 
@@ -72,6 +82,9 @@ def main(argv: list[str] | None = None) -> int:
     from grader.grade import stub_outcome
     from .metrics_source import metrics_fn, real_inputs
     outcome_fn = stub_outcome
+    if args.live and real_inputs():  # real metrics are graded by the real rules, never the hash stub
+        from grader.rules import rules_outcome
+        outcome_fn = rules_outcome
     memory_root = Path(args.memory_dir) if args.memory_dir else Path(tempfile.mkdtemp(prefix="cm-eval-"))
     frontier_gw = None
     if args.live:
@@ -124,6 +137,18 @@ def main(argv: list[str] | None = None) -> int:
         store.close()
     print(render_markdown(report))
     print(f"wrote {js} and {md}" + (f"; saved runs {train_run} and {heldout_run} to {args.save}" if store else ""))
+    return 0
+
+
+def _from_replay(args, agents: list[str]) -> int:
+    from .from_replay import build
+    split, results = build(args.from_replay, args.tag, agents)
+    provenance = {"real_results": True, "offline_demo": False, "metrics": "store", "outcome_rule": "grader.rules",
+                  "llm": "mubit", "frontier_model": None, "source": f"grader.replay {args.from_replay} tag {args.tag}"}
+    report = build_report(split, results, provenance)
+    js, md = write_report(report, Path(args.out) if args.out else OFFICIAL_DIR, force=args.force)
+    print(render_markdown(report))
+    print(f"wrote {js} and {md}")
     return 0
 
 

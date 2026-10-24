@@ -21,16 +21,24 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import Callable
 
+from ingest.events import strip_html
+from ingest.sec import raw_root
 from schemas import AgentCall, Event
 from store import queries
 
 from .config import (DIVIDEND_CUT_THRESHOLD, GOING_CONCERN_KEYWORDS, GOING_CONCERN_MAX_EVIDENCE_CHARS,
                      GOING_CONCERN_SNIPPET_CHARS, RISK_TEXT_FORMS, SAPLING_MIN_PROB_WHEN_UNSURE)
 from .facts import Quarter, discrete_quarters, ttm
-from .sapling import LABELS, SaplingClient, Verdict
+from .sapling import LABELS, SaplingClient, SaplingError, Verdict
 
 QUESTION_ID = "distress_event_12m"
 DEFAULT_FILINGS_DIR = Path(__file__).resolve().parent.parent / "data" / "filings"
+
+
+def filing_dirs() -> list[Path]:
+    """Where `Event.text_ref` resolves: B's raw SEC cache first (ingest stores text_ref as
+    `<cik>/<accession>/<doc>` under Archives/edgar/data), then the legacy data/filings/."""
+    return [raw_root() / "sec" / "www.sec.gov" / "Archives" / "edgar" / "data", DEFAULT_FILINGS_DIR]
 
 GOING_CONCERN_POLICY = (
     "A filing contains going-concern language only if management or the independent auditor "
@@ -56,16 +64,19 @@ def window_end(as_of: date) -> date:
         return as_of.replace(year=as_of.year + 1, day=28)
 
 
-def file_text_loader(filings_dir: Path | str = DEFAULT_FILINGS_DIR) -> TextLoader:
-    """Event.text_ref is a path to the filing's plain text, absolute or under data/filings/."""
-    base = Path(filings_dir)
+def file_text_loader(filings_dir: Path | str | None = None) -> TextLoader:
+    """Event.text_ref is a path to the filing, absolute or under one of `filing_dirs()` (or `filings_dir`).
+    SEC documents are HTML, so tags are stripped: the keyword filter and Sapling see the words only."""
+    bases = [Path(filings_dir)] if filings_dir else filing_dirs()
 
     def load(event: Event) -> str | None:
         if not event.text_ref:
             return None
         p = Path(event.text_ref)
-        p = p if p.is_absolute() else base / p
-        return p.read_text(errors="ignore") if p.is_file() else None
+        for f in [p] if p.is_absolute() else [b / p for b in bases]:
+            if f.is_file():
+                return strip_html(f.read_text(errors="ignore"))
+        return None
 
     return load
 
@@ -164,7 +175,12 @@ def check_going_concern(events: list[Event], sapling: SaplingClient,
             row["result"] = "no"  # no keyword at all: no need to ask Sapling
         else:
             evidence = f"Excerpts from a {e.form} filed on {e.filed_date}:\n{excerpts}"
-            v = sapling.verify(GOING_CONCERN_POLICY, evidence, GOING_CONCERN_CLAIM)
+            try:
+                v = sapling.verify(GOING_CONCERN_POLICY, evidence, GOING_CONCERN_CLAIM)
+            except SaplingError as err:  # endpoint down, or replay_only with no saved verdict
+                row["result"], row["reason"], unresolved = "unresolvable", f"Sapling unavailable: {err}", True
+                per_filing.append(row)
+                continue
             row["result"], row["sapling"] = verdict_to_outcome(v), v.as_dict()
             if row["result"] == "yes":
                 per_filing.append(row)
