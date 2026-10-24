@@ -1,0 +1,6 @@
+{
+  "observations": [
+    {"realtime_start": "2021-01-04", "realtime_end": "9999-12-31", "date": "2019-03-22", "value": "0.14"},
+    {"realtime_start": "2021-01-04", "realtime_end": "9999-12-31", "date": "2019-03-25", "value": "."}
+  ]
+}

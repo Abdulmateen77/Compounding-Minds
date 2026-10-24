@@ -1,0 +1,35 @@
+{
+  "cik": 1234567,
+  "entityName": "Sample Corp",
+  "facts": {
+    "us-gaap": {
+      "Revenues": {"units": {"USD": [
+        {"start": "2017-01-01", "end": "2017-12-31", "val": 1000, "accn": "0000000001-18-000010", "fy": 2017, "fp": "FY", "form": "10-K", "filed": "2018-02-15"}
+      ], "EUR": [
+        {"start": "2017-01-01", "end": "2017-12-31", "val": 900, "accn": "0000000001-18-000010", "fy": 2017, "fp": "FY", "form": "10-K", "filed": "2018-02-15"}
+      ]}},
+      "RevenueFromContractWithCustomerExcludingAssessedTax": {"units": {"USD": [
+        {"start": "2017-01-01", "end": "2017-12-31", "val": 1010, "accn": "0000000001-19-000020", "fy": 2018, "fp": "FY", "form": "10-K", "filed": "2019-02-14"},
+        {"start": "2018-01-01", "end": "2018-12-31", "val": 1200, "accn": "0000000001-19-000020", "fy": 2018, "fp": "FY", "form": "10-K", "filed": "2019-02-14"}
+      ]}},
+      "OperatingIncomeLoss": {"units": {"USD": [
+        {"start": "2018-04-01", "end": "2018-06-30", "val": 40, "accn": "0000000001-18-000050", "fy": 2018, "fp": "Q2", "form": "10-Q", "filed": "2018-08-01"},
+        {"start": "2018-01-01", "end": "2018-06-30", "val": 75, "accn": "0000000001-18-000050", "fy": 2018, "fp": "Q2", "form": "10-Q", "filed": "2018-08-01"}
+      ]}},
+      "NetCashProvidedByUsedInOperatingActivities": {"units": {"USD": [
+        {"start": "2018-01-01", "end": "2018-03-31", "val": 50, "accn": "0000000001-18-000030", "fy": 2018, "fp": "Q1", "form": "10-Q", "filed": "2018-05-02"},
+        {"start": "2018-01-01", "end": "2018-06-30", "val": 120, "accn": "0000000001-18-000050", "fy": 2018, "fp": "Q2", "form": "10-Q", "filed": "2018-08-01"},
+        {"start": "2018-01-01", "end": "2018-06-30", "val": 999, "accn": "0000000001-18-000060", "fy": 2018, "fp": "Q2", "form": "8-K", "filed": "2018-08-02"}
+      ]}},
+      "AssetsCurrent": {"units": {"USD": [
+        {"end": "2018-06-30", "val": 500, "accn": "0000000001-18-000050", "fy": 2018, "fp": "Q2", "form": "10-Q", "filed": "2018-08-01"}
+      ]}},
+      "SomethingTheMapDoesNotKnow": {"units": {"USD": [
+        {"start": "2018-01-01", "end": "2018-12-31", "val": 1, "accn": "0000000001-19-000020", "fy": 2018, "fp": "FY", "form": "10-K", "filed": "2019-02-14"}
+      ]}},
+      "PaymentsOfDividends": {"units": {"USD": [
+        {"end": "2018-12-31", "val": 5, "accn": "0000000001-19-000020", "fy": 2018, "fp": "FY", "form": "10-K", "filed": "2019-02-14"}
+      ]}}
+    }
+  }
+}

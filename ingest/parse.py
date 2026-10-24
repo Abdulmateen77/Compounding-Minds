@@ -34,16 +34,19 @@ def parse_companyfacts(company_id: str, data: dict, concept_map: dict[str, Conce
 
 
 def _resolve(by_tag: dict[str, list[dict]], tags: tuple[str, ...]) -> list[dict]:
-    """Same rule as store.concepts.resolve_concept: per (period_start, period_end) the best-ranked
-    tag that has the period wins; all of that tag's rows (restatements) are kept."""
+    """Same rule as store.concepts.resolve_concept: within ONE filing and ONE period the best-ranked
+    tag wins, but every filing keeps its own row. Choosing per period alone would drop a restatement
+    filed under a different tag (the 2018 revenue-recognition change moved many filers from
+    `Revenues` to `RevenueFromContract...`, so the old and restated values sit under different tags)."""
     rank = {t: i for i, t in enumerate(tags)}
     best: dict[tuple, str] = {}
     for tag, rows in by_tag.items():
         for r in rows:
-            k = (r["period_start"], r["period_end"])
+            k = (r["period_start"], r["period_end"], r["accession"])
             if k not in best or rank[tag] < rank[best[k]]:
                 best[k] = tag
-    return [r for tag, rows in by_tag.items() for r in rows if best[(r["period_start"], r["period_end"])] == tag]
+    return [r for tag, rows in by_tag.items() for r in rows
+            if best[(r["period_start"], r["period_end"], r["accession"])] == tag]
 
 
 def _tag_rows(company_id, concept, tag, unit, entries, forms) -> list[dict]:

@@ -43,3 +43,19 @@ def test_validator_reports_every_problem_at_once():
         universe.validate(bad)
     msg = str(e.value)
     assert "expected 50" in msg and "bad covid_group" in msg and "not supported" in msg
+
+
+def test_ids_are_contiguous():
+    ids = sorted(c["company_id"] for c in universe.load_universe())
+    assert ids == [f"anon_{i:03d}" for i in range(1, 51)]
+
+
+def test_the_requested_tech_names_are_in_and_private_companies_are_not():
+    tickers = {c["ticker"] for c in universe.load_universe()}
+    assert {"TSLA", "NVDA", "PLTR"} <= tickers
+    assert not tickers & {"SPCX", "XAI", "SPACEX"}  # no SEC filings to grade against
+
+
+def test_palantir_is_flagged_short_history_and_nothing_else_is():
+    flagged = [c["ticker"] for c in universe.load_universe() if c["short_history"]]
+    assert flagged == ["PLTR"]

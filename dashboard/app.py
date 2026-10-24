@@ -465,7 +465,7 @@ with tabs[3]:
         er = bundle.eval_results.sort_values("generated_at").iloc[-1]
         rep, hpath = er["report"], None
     if rep is None:
-        st.info("No held-out report yet. Expected `eval/out/heldout.json` (or run "
+        st.info("No held-out report yet. Expected `eval/reports/heldout_report.json` (or run "
                 "`python -m eval.run --save data/runs`).")
         if why and why != "no report file found":
             st.warning(f"A report file exists but could not be read: {why}")

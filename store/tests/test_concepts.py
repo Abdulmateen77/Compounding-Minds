@@ -75,3 +75,25 @@ def test_resolve_keeps_restated_rows_for_the_date_gate():
 def test_resolve_ignores_tags_that_are_not_in_the_concept():
     p = (date(2019, 1, 1), date(2019, 12, 31))
     assert resolve_concept("revenue", {"NotATag": [_row(p, 1.0, date(2020, 1, 1))]}) == []
+
+
+def test_a_restatement_under_a_different_tag_is_kept():
+    """2018 revenue-recognition: the old filing used `Revenues`, the restating one the new tag."""
+    p = (date(2017, 1, 1), date(2017, 12, 31))
+    rows = {
+        "Revenues": [_row(p, 1000.0, date(2018, 2, 15), "old")],
+        "RevenueFromContractWithCustomerExcludingAssessedTax": [_row(p, 1010.0, date(2019, 2, 14), "restated")],
+    }
+    out = {r["accession"]: r for r in resolve_concept("revenue", rows)}
+    assert set(out) == {"old", "restated"}
+    assert out["old"]["source_tag"] == "Revenues" and out["restated"]["value"] == 1010.0
+
+
+def test_within_one_filing_the_higher_priority_tag_wins():
+    p = (date(2018, 1, 1), date(2018, 12, 31))
+    rows = {
+        "SalesRevenueNet": [_row(p, 1.0, date(2019, 2, 1), "same")],
+        "Revenues": [_row(p, 2.0, date(2019, 2, 1), "same")],
+    }
+    out = resolve_concept("revenue", rows)
+    assert [r["value"] for r in out] == [2.0]

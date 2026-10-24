@@ -39,7 +39,10 @@ QUESTION = {
 COVID_WINDOW = (date(2020, 1, 1), date(2020, 12, 31))
 HORIZON_QUARTERS = {"next_quarter": 1, "4_quarters": 4, "12_months": 4}
 # A's official held-out report first (TASKS B6 path), then where eval.run actually writes today.
-HELDOUT_CANDIDATES = (ROOT / "eval" / "out" / "heldout.json", ROOT / "eval" / "reports" / "heldout_report.json",
+# One agreed path: the official report is eval/reports/heldout_report.json (written once, by
+# `python -m eval.run --live`); anything not real goes to data/eval_preview/. Person A's quality report
+# is a different file in a different format (quality/out/), and is not read here.
+HELDOUT_CANDIDATES = (ROOT / "eval" / "reports" / "heldout_report.json",
                       ROOT / "data" / "eval_preview" / "heldout_report.json")
 
 

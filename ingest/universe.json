@@ -1,122 +1,135 @@
 {
-  "version": 1,
+  "version": 2,
   "note": "Names and tickers stay in the store. Agents only ever see company_id.",
   "companies": [
     {
       "company_id": "anon_001",
-      "ticker": "NUE",
-      "name": "Nucor",
-      "sector": "Materials",
-      "covid_group": "mixed",
+      "ticker": "COP",
+      "name": "ConocoPhillips",
+      "sector": "Energy",
+      "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_002",
-      "ticker": "JNJ",
-      "name": "Johnson & Johnson",
-      "sector": "Health Care",
-      "covid_group": "resilient",
+      "ticker": "KO",
+      "name": "Coca-Cola",
+      "sector": "Consumer Staples",
+      "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_003",
-      "ticker": "BA",
-      "name": "Boeing",
-      "sector": "Industrials",
-      "covid_group": "hit",
-      "held_out": true,
-      "cik": null
-    },
-    {
-      "company_id": "anon_004",
-      "ticker": "PEP",
-      "name": "PepsiCo",
-      "sector": "Consumer Staples",
-      "covid_group": "resilient",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_005",
-      "ticker": "VZ",
-      "name": "Verizon",
-      "sector": "Communication",
-      "covid_group": "resilient",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_006",
-      "ticker": "GM",
-      "name": "General Motors",
-      "sector": "Consumer Discretionary",
-      "covid_group": "hit",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_007",
       "ticker": "MRK",
       "name": "Merck",
       "sector": "Health Care",
       "covid_group": "resilient",
       "held_out": true,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_004",
+      "ticker": "AMZN",
+      "name": "Amazon.com",
+      "sector": "Consumer Discretionary",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_005",
+      "ticker": "AMD",
+      "name": "Advanced Micro Devices",
+      "sector": "Technology",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_006",
+      "ticker": "MCD",
+      "name": "McDonald's",
+      "sector": "Consumer Discretionary",
+      "covid_group": "mixed",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_007",
+      "ticker": "WMT",
+      "name": "Walmart",
+      "sector": "Consumer Staples",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_008",
-      "ticker": "LMT",
-      "name": "Lockheed Martin",
+      "ticker": "HON",
+      "name": "Honeywell",
       "sector": "Industrials",
-      "covid_group": "resilient",
+      "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_009",
-      "ticker": "F",
-      "name": "Ford Motor",
+      "ticker": "NKE",
+      "name": "Nike",
       "sector": "Consumer Discretionary",
-      "covid_group": "hit",
+      "covid_group": "mixed",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_010",
-      "ticker": "ABT",
-      "name": "Abbott Laboratories",
-      "sector": "Health Care",
+      "ticker": "COST",
+      "name": "Costco Wholesale",
+      "sector": "Consumer Staples",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_011",
-      "ticker": "MMM",
-      "name": "3M",
+      "ticker": "CAT",
+      "name": "Caterpillar",
       "sector": "Industrials",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_012",
-      "ticker": "CMCSA",
-      "name": "Comcast",
-      "sector": "Communication",
-      "covid_group": "mixed",
-      "held_out": true,
+      "ticker": "PLTR",
+      "name": "Palantir Technologies",
+      "sector": "Technology",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": true,
       "cik": null
     },
     {
       "company_id": "anon_013",
-      "ticker": "PFE",
-      "name": "Pfizer",
-      "sector": "Health Care",
+      "ticker": "PG",
+      "name": "Procter & Gamble",
+      "sector": "Consumer Staples",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -126,15 +139,17 @@
       "sector": "Technology",
       "covid_group": "mixed",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_015",
-      "ticker": "MCD",
-      "name": "McDonald's",
-      "sector": "Consumer Discretionary",
-      "covid_group": "mixed",
+      "ticker": "VZ",
+      "name": "Verizon",
+      "sector": "Communication",
+      "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -144,15 +159,17 @@
       "sector": "Technology",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_017",
-      "ticker": "TGT",
-      "name": "Target",
+      "ticker": "GM",
+      "name": "General Motors",
       "sector": "Consumer Discretionary",
-      "covid_group": "resilient",
+      "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -162,33 +179,37 @@
       "sector": "Technology",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_019",
-      "ticker": "CAT",
-      "name": "Caterpillar",
-      "sector": "Industrials",
-      "covid_group": "mixed",
+      "ticker": "ABT",
+      "name": "Abbott Laboratories",
+      "sector": "Health Care",
+      "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_020",
-      "ticker": "CCL",
-      "name": "Carnival",
+      "ticker": "F",
+      "name": "Ford Motor",
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
-      "held_out": false,
+      "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_021",
-      "ticker": "DAL",
-      "name": "Delta Air Lines",
+      "ticker": "SBUX",
+      "name": "Starbucks",
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
-      "held_out": true,
+      "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -198,42 +219,47 @@
       "sector": "Technology",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_023",
-      "ticker": "PG",
-      "name": "Procter & Gamble",
-      "sector": "Consumer Staples",
-      "covid_group": "resilient",
+      "ticker": "M",
+      "name": "Macy's",
+      "sector": "Consumer Discretionary",
+      "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_024",
-      "ticker": "FCX",
-      "name": "Freeport-McMoRan",
-      "sector": "Materials",
-      "covid_group": "mixed",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_025",
-      "ticker": "GE",
-      "name": "General Electric",
-      "sector": "Industrials",
-      "covid_group": "hit",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_026",
       "ticker": "SLB",
       "name": "Schlumberger",
       "sector": "Energy",
       "covid_group": "hit",
       "held_out": true,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_025",
+      "ticker": "BA",
+      "name": "Boeing",
+      "sector": "Industrials",
+      "covid_group": "hit",
+      "held_out": true,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_026",
+      "ticker": "XOM",
+      "name": "Exxon Mobil",
+      "sector": "Energy",
+      "covid_group": "hit",
+      "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -243,60 +269,67 @@
       "sector": "Technology",
       "covid_group": "resilient",
       "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_028",
-      "ticker": "DUK",
-      "name": "Duke Energy",
-      "sector": "Utilities",
-      "covid_group": "resilient",
+      "ticker": "NUE",
+      "name": "Nucor",
+      "sector": "Materials",
+      "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_029",
-      "ticker": "COP",
-      "name": "ConocoPhillips",
-      "sector": "Energy",
-      "covid_group": "hit",
+      "ticker": "LMT",
+      "name": "Lockheed Martin",
+      "sector": "Industrials",
+      "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_030",
-      "ticker": "SBUX",
-      "name": "Starbucks",
-      "sector": "Consumer Discretionary",
-      "covid_group": "hit",
-      "held_out": false,
+      "ticker": "META",
+      "name": "Meta Platforms",
+      "sector": "Communication",
+      "covid_group": "resilient",
+      "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_031",
-      "ticker": "DIS",
-      "name": "Walt Disney",
-      "sector": "Communication",
-      "covid_group": "hit",
+      "ticker": "NVDA",
+      "name": "NVIDIA",
+      "sector": "Technology",
+      "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_032",
-      "ticker": "XOM",
-      "name": "Exxon Mobil",
-      "sector": "Energy",
-      "covid_group": "hit",
+      "ticker": "UPS",
+      "name": "United Parcel Service",
+      "sector": "Industrials",
+      "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_033",
-      "ticker": "HON",
-      "name": "Honeywell",
-      "sector": "Industrials",
-      "covid_group": "mixed",
+      "ticker": "MDT",
+      "name": "Medtronic",
+      "sector": "Health Care",
+      "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -306,33 +339,37 @@
       "sector": "Technology",
       "covid_group": "mixed",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_035",
-      "ticker": "COST",
-      "name": "Costco Wholesale",
-      "sector": "Consumer Staples",
+      "ticker": "TSLA",
+      "name": "Tesla",
+      "sector": "Consumer Discretionary",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_036",
-      "ticker": "HD",
-      "name": "Home Depot",
-      "sector": "Consumer Discretionary",
-      "covid_group": "resilient",
+      "ticker": "DIS",
+      "name": "Walt Disney",
+      "sector": "Communication",
+      "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_037",
-      "ticker": "LLY",
-      "name": "Eli Lilly",
+      "ticker": "PFE",
+      "name": "Pfizer",
       "sector": "Health Care",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
@@ -342,114 +379,127 @@
       "sector": "Technology",
       "covid_group": "resilient",
       "held_out": false,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_039",
-      "ticker": "M",
-      "name": "Macy's",
+      "ticker": "DAL",
+      "name": "Delta Air Lines",
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
-      "held_out": false,
+      "held_out": true,
+      "short_history": false,
       "cik": null
     },
     {
       "company_id": "anon_040",
-      "ticker": "KSS",
-      "name": "Kohl's",
-      "sector": "Consumer Discretionary",
-      "covid_group": "hit",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_041",
-      "ticker": "WMT",
-      "name": "Walmart",
-      "sector": "Consumer Staples",
-      "covid_group": "resilient",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_042",
-      "ticker": "NKE",
-      "name": "Nike",
-      "sector": "Consumer Discretionary",
-      "covid_group": "mixed",
-      "held_out": true,
-      "cik": null
-    },
-    {
-      "company_id": "anon_043",
-      "ticker": "NEE",
-      "name": "NextEra Energy",
-      "sector": "Utilities",
-      "covid_group": "resilient",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_044",
-      "ticker": "MDT",
-      "name": "Medtronic",
-      "sector": "Health Care",
-      "covid_group": "hit",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_045",
-      "ticker": "MAR",
-      "name": "Marriott International",
-      "sector": "Consumer Discretionary",
-      "covid_group": "hit",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_046",
-      "ticker": "BKNG",
-      "name": "Booking Holdings",
-      "sector": "Consumer Discretionary",
-      "covid_group": "hit",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_047",
-      "ticker": "KO",
-      "name": "Coca-Cola",
-      "sector": "Consumer Staples",
-      "covid_group": "mixed",
-      "held_out": true,
-      "cik": null
-    },
-    {
-      "company_id": "anon_048",
-      "ticker": "CVX",
-      "name": "Chevron",
-      "sector": "Energy",
-      "covid_group": "hit",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_049",
-      "ticker": "UPS",
-      "name": "United Parcel Service",
-      "sector": "Industrials",
-      "covid_group": "resilient",
-      "held_out": false,
-      "cik": null
-    },
-    {
-      "company_id": "anon_050",
       "ticker": "UAL",
       "name": "United Airlines Holdings",
       "sector": "Consumer Discretionary",
       "covid_group": "hit",
       "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_041",
+      "ticker": "BKNG",
+      "name": "Booking Holdings",
+      "sector": "Consumer Discretionary",
+      "covid_group": "hit",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_042",
+      "ticker": "CMCSA",
+      "name": "Comcast",
+      "sector": "Communication",
+      "covid_group": "mixed",
+      "held_out": true,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_043",
+      "ticker": "DUK",
+      "name": "Duke Energy",
+      "sector": "Utilities",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_044",
+      "ticker": "JNJ",
+      "name": "Johnson & Johnson",
+      "sector": "Health Care",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_045",
+      "ticker": "HD",
+      "name": "Home Depot",
+      "sector": "Consumer Discretionary",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_046",
+      "ticker": "CCL",
+      "name": "Carnival",
+      "sector": "Consumer Discretionary",
+      "covid_group": "hit",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_047",
+      "ticker": "TGT",
+      "name": "Target",
+      "sector": "Consumer Discretionary",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_048",
+      "ticker": "GE",
+      "name": "General Electric",
+      "sector": "Industrials",
+      "covid_group": "hit",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_049",
+      "ticker": "LLY",
+      "name": "Eli Lilly",
+      "sector": "Health Care",
+      "covid_group": "resilient",
+      "held_out": false,
+      "short_history": false,
+      "cik": null
+    },
+    {
+      "company_id": "anon_050",
+      "ticker": "MAR",
+      "name": "Marriott International",
+      "sector": "Consumer Discretionary",
+      "covid_group": "hit",
+      "held_out": false,
+      "short_history": false,
       "cik": null
     }
   ]

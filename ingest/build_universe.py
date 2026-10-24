@@ -5,14 +5,18 @@ from SEC company_tickers.json and fills `cik`. Names and tickers live only in th
 the `companies` table. They never go into an agent prompt.
 
 Selection rules (checked by ingest/universe.py and its tests):
-  * 50 US operating companies with 10-K/10-Q filings across 2017 to 2025
+  * 50 US operating companies with 10-K/10-Q filings across 2017 to 2025. Palantir, which only
+    started filing in late 2020, is kept but flagged `short_history`
   * no banks, insurers or REITs: the metric set (FCF, gross margin, debt/EBITDA) does not
     fit their statements
-  * a mix of sectors, with COVID "hit", "resilient" and "mixed" groups, so the replay shows
-    a visible 2020 shock and a recovery
-  * 10 held out of ALL learning (README 9), spread over sectors and COVID groups, and
-    including some distress candidates so the held-out set has positive Risk outcomes
+  * tech-heavy (10 of 50, plus Tesla and Amazon under consumer discretionary), with COVID
+    "hit", "resilient" and "mixed" groups, so the replay shows a visible 2020 shock and a recovery
+  * 10 held out of ALL learning (README 9), spread over 6 sectors and including distress
+    candidates, so the held-out set has positive Risk outcomes
   * anon IDs come from a seeded shuffle so an ID says nothing about sector or ticker
+
+Not included on purpose: private companies (SpaceX, xAI) have no 10-K or 10-Q history to grade
+against, and Broadcom changed CIK in 2018 so its history is split across two filers.
 """
 from __future__ import annotations
 
@@ -22,6 +26,7 @@ from pathlib import Path
 
 SEED = 20251025
 OUT = Path(__file__).parent / "universe.json"
+SHORT_HISTORY = {"PLTR"}  # first 10-Q was for Q3 2020: metrics exist only from about 2022
 
 # ticker, name, sector, covid_group, held_out
 _COMPANIES = [
@@ -33,10 +38,14 @@ _COMPANIES = [
     ("CSCO", "Cisco Systems", "Technology", "mixed", False),
     ("ADBE", "Adobe", "Technology", "resilient", False),
     ("TXN", "Texas Instruments", "Technology", "mixed", False),
+    ("NVDA", "NVIDIA", "Technology", "resilient", False),
+    ("PLTR", "Palantir Technologies", "Technology", "resilient", False),
+    ("AMD", "Advanced Micro Devices", "Technology", "resilient", False),
     # Communication
     ("DIS", "Walt Disney", "Communication", "hit", False),
     ("CMCSA", "Comcast", "Communication", "mixed", True),
     ("VZ", "Verizon", "Communication", "resilient", False),
+    ("META", "Meta Platforms", "Communication", "resilient", True),
     # Consumer discretionary
     ("HD", "Home Depot", "Consumer Discretionary", "resilient", False),
     ("NKE", "Nike", "Consumer Discretionary", "mixed", True),
@@ -50,14 +59,14 @@ _COMPANIES = [
     ("CCL", "Carnival", "Consumer Discretionary", "hit", False),
     ("TGT", "Target", "Consumer Discretionary", "resilient", False),
     ("M", "Macy's", "Consumer Discretionary", "hit", False),
-    ("KSS", "Kohl's", "Consumer Discretionary", "hit", False),
     ("BKNG", "Booking Holdings", "Consumer Discretionary", "hit", False),
+    ("TSLA", "Tesla", "Consumer Discretionary", "resilient", False),
+    ("AMZN", "Amazon.com", "Consumer Discretionary", "resilient", False),
     # Consumer staples
-    ("KO", "Coca-Cola", "Consumer Staples", "mixed", True),
+    ("KO", "Coca-Cola", "Consumer Staples", "mixed", False),
     ("PG", "Procter & Gamble", "Consumer Staples", "resilient", False),
     ("WMT", "Walmart", "Consumer Staples", "resilient", False),
     ("COST", "Costco Wholesale", "Consumer Staples", "resilient", False),
-    ("PEP", "PepsiCo", "Consumer Staples", "resilient", False),
     # Health care
     ("JNJ", "Johnson & Johnson", "Health Care", "resilient", False),
     ("PFE", "Pfizer", "Health Care", "resilient", False),
@@ -71,19 +80,15 @@ _COMPANIES = [
     ("HON", "Honeywell", "Industrials", "mixed", False),
     ("UPS", "United Parcel Service", "Industrials", "resilient", False),
     ("GE", "General Electric", "Industrials", "hit", False),
-    ("MMM", "3M", "Industrials", "mixed", False),
     ("LMT", "Lockheed Martin", "Industrials", "resilient", False),
     # Energy
     ("XOM", "Exxon Mobil", "Energy", "hit", False),
-    ("CVX", "Chevron", "Energy", "hit", False),
     ("COP", "ConocoPhillips", "Energy", "hit", False),
     ("SLB", "Schlumberger", "Energy", "hit", True),
     # Materials
     ("NUE", "Nucor", "Materials", "mixed", False),
-    ("FCX", "Freeport-McMoRan", "Materials", "mixed", False),
     # Utilities
     ("DUK", "Duke Energy", "Utilities", "resilient", False),
-    ("NEE", "NextEra Energy", "Utilities", "resilient", False),
 ]
 
 
@@ -98,12 +103,13 @@ def build() -> dict:
             "sector": s,
             "covid_group": g,
             "held_out": h,
+            "short_history": t in SHORT_HISTORY,
             "cik": None,  # filled by ingest from SEC company_tickers.json
         }
         for i, (t, n, s, g, h) in enumerate(rows)
     ]
     return {
-        "version": 1,
+        "version": 2,
         "note": "Names and tickers stay in the store. Agents only ever see company_id.",
         "companies": companies,
     }

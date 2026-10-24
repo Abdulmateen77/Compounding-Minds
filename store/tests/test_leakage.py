@@ -61,3 +61,14 @@ def test_macro_returns_vintage_valid_at_t():
 def test_events_form_filter_and_gate():
     assert queries.get_events("anon_001", date(2019, 9, 1), forms=["8-K"]) == []
     assert len(queries.get_events("anon_001", date(2019, 9, 10), forms=["8-K"])) == 1
+
+
+def test_three_and_six_month_facts_with_the_same_period_end_are_both_visible():
+    """Regression: a Q2 10-Q reports the 3-month and the 6-month figure ending on the same date."""
+    def f(value, start, accession):
+        return dict(company_id="anon_002", concept="op_cash_flow", value=value, unit="USD", period_start=start,
+                    period_end=date(2019, 6, 30), fiscal_period="Q2", form="10-Q", accession=accession,
+                    filed_date=date(2019, 8, 1))
+    queries.set_backend(InMemoryBackend(facts=[f(40.0, date(2019, 4, 1), "q2"), f(70.0, date(2019, 1, 1), "q2")]))
+    got = {(x.period_start, x.value) for x in queries.get_facts("anon_002", "op_cash_flow", date(2019, 8, 1))}
+    assert got == {(date(2019, 4, 1), 40.0), (date(2019, 1, 1), 70.0)}

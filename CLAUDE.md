@@ -17,8 +17,8 @@ One sentence: a team of AI analysts that grades itself against reality and impro
 
 ## Team of two
 
-- **Person A: content, data and agents.** Owns `principles/`, `agents/` (except the files below), `store/`, `metrics/`, `tools/`, `eval/`, `screener/`. Decides what the data is (sources, concept map, schema, metrics) and builds the agents.
-- **Person B: ingestion, grading, orchestration and output.** Owns `ingest/`, `grader/`, `dashboard/`, `memos/`, plus `agents/synthesizer.py`, `agents/correction_loop.py`, `agents/cache.py`, `agents/mubit_batch.py`, `agents/offline.py`. Fetches the data in, grades the calls, runs the replay, shows the result.
+- **Person A: content, data and agents.** Owns `principles/`, `agents/` (except the files below), `store/`, `metrics/`, `tools/`, `quality/` (frozen-twin quality report), `screener/`. Decides what the data is (sources, concept map, schema, metrics) and builds the agents.
+- **Person B: ingestion, grading, orchestration and output.** Owns `ingest/`, `grader/`, `eval/` (held-out harness), `dashboard/`, `api/`, `web/`, `memos/`, plus `agents/synthesizer.py`, `agents/correction_loop.py`, `agents/cache.py`, `agents/mubit_batch.py`, `agents/offline.py`. Fetches the data in, grades the calls, runs the replay, shows the result.
 - Shared: `schemas/`, `.env.example`, root docs. Full split and handoff times are in `TASKS.md`.
 - Only edit your owner's files unless asked. Small PRs, `main` always runs.
 - Until the real store is ready, everyone builds against **stub JSON** matching the schemas (`USE_STUBS=1`).
@@ -47,7 +47,7 @@ One sentence: a team of AI analysts that grades itself against reality and impro
 
 Supporting: **replay orchestrator** (advances one quarter, enforces as-of date) and **reality grader** (scores calls, emits corrections).
 
-**MVP:** Fundamentals, Risk, Scenarios + synthesizer + grader + Mubit correction loop + replay dashboard, ~50 US companies.
+**MVP:** Fundamentals, Risk, Scenarios + synthesizer + grader + Mubit correction loop + replay dashboard, 50 US companies (see `ingest/universe.json`).
 **Stretch:** Valuation, Moat, cross-examination round, legend scoreboard, frontier-model comparison, Firecrawl press releases, and the analyst workflow layer (README 11b): watchlist screener (`screener/`, A), memo drafting (`memos/`, B), calibration track record (`grader/calibration.py`, A). Memos may not contain any number the metrics engine did not produce. Screener flags are "needs attention", never buy/sell.
 **Never cut:** point-in-time store, reality grader, correction-to-Mubit loop, held-out eval, backup demo video.
 

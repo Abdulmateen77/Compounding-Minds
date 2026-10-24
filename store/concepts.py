@@ -111,25 +111,26 @@ METRIC_INPUTS: dict[str, tuple[str, ...]] = {
 def resolve_concept(key: str, rows_by_tag: dict[str, list[dict]]) -> list[dict]:
     """Merge rows from several tags into one series for concept `key`.
 
-    For each reporting period (period_start, period_end) take the rows of the highest-priority
-    tag that has that period. Per period, not per company: a filer that moves from `Revenues`
-    to `RevenueFromContract...` keeps one continuous series. Every row of the chosen tag is
-    kept, so a restated value (same period, later accession) stays visible to the date gate.
+    Within ONE filing (accession) and ONE period, several tags may carry the same idea; keep the
+    highest-priority one. Across filings keep every row: a restated value (same period, later
+    accession) stays visible to the date gate, even when the restating filing used a different
+    tag (the 2018 revenue-recognition change moved many filers from `Revenues` to
+    `RevenueFromContract...`, so the old and new values sit under different tags).
     """
     concept = CONCEPTS[key]
     rank = {t: i for i, t in enumerate(concept.tags)}
-    chosen: dict[tuple, tuple[int, str]] = {}
+    best: dict[tuple, tuple[int, str]] = {}
     for tag, rows in rows_by_tag.items():
         if tag not in rank:
             continue
         for r in rows:
-            period = (r.get("period_start"), r["period_end"])
-            if period not in chosen or rank[tag] < chosen[period][0]:
-                chosen[period] = (rank[tag], tag)
+            k = (r.get("period_start"), r["period_end"], r.get("accession"))
+            if k not in best or rank[tag] < best[k][0]:
+                best[k] = (rank[tag], tag)
     out: list[dict] = []
     for tag, rows in rows_by_tag.items():
         for r in rows:
-            period = (r.get("period_start"), r["period_end"])
-            if chosen.get(period, (None, None))[1] == tag:
+            k = (r.get("period_start"), r["period_end"], r.get("accession"))
+            if best.get(k, (None, None))[1] == tag:
                 out.append({**r, "concept": key, "source_tag": tag})
     return out

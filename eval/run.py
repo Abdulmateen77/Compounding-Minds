@@ -112,8 +112,9 @@ def main(argv: list[str] | None = None) -> int:
         results[a] = summarise(ev)
         if store:
             for s in snapshots(ev):
+                n_correct = round(s["accuracy"] * s["n"]) if s["accuracy"] is not None else 0
                 store.write_snapshot(train_run if s["phase"] == "train" else heldout_run, s["agent"], s["arm"],
-                                     s["as_of"], s["n"], s["accuracy"], s["brier"], s["model"])
+                                     s["as_of"], s["n"], n_correct, s["accuracy"], s["brier"], s["model"])
 
     report = build_report(split, results, provenance)
     out_dir = Path(args.out) if args.out else (OFFICIAL_DIR if real else PREVIEW_DIR)

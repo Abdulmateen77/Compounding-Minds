@@ -27,6 +27,32 @@ Who builds what, in what order. Spec: [README.md](README.md). Pattern and flow: 
 
 ---
 
+## 0b. Integration notes (Sat 24 Oct, ~17:45): A's branch merged with B's `person-b/eval`
+
+What the merge found, and what was done. 499 tests pass on the merged branch (4 skip: 3 need the `mcp` package).
+
+| Finding | Resolution |
+|---|---|
+| **Two sources of truth for held-out companies.** B's split picked them by hash; `universe.json` (and so the `companies` table) carries curated `held_out` flags. The replay could have learned from a company the database calls held out | `eval/split.py::pick_held_out` now uses the `universe.json` flags for any run over the real universe (30 or more universe companies). Stub runs and tests keep the hash. A test proves the replay, the report and the database agree |
+| **Two evaluation packages with the same file names** | B's `eval/` (held-out harness, wired to the dashboard) is kept as is. Hermes's package moved to `quality/` (frozen twin, strict baselines, quality report with critique) |
+| **B's parser dropped a restatement filed under a different tag** (the 2018 revenue-rule change) | `ingest/parse.py::_resolve` now chooses the tag per period AND per filing, as `store.concepts.resolve_concept` does. Regression test in `ingest/tests/test_parse_restatement.py` |
+| **`companies.short_history`** (Palantir) missing from B's row builder | Added to `ingest/load.py` and its contract test |
+| **`eval.run --save` crashed** (`write_snapshot` missing `n_correct`) | Fixed in `eval/run.py` |
+| **Two loaders** (A's `ingest/pipeline.py` and B's `ingest/load.py`) | B's is the loader of record; A's is kept as a tested reference (see `ingest/README.md`) |
+| **8 API tests failed on a fresh checkout** | They need demo data in `data/runs` (gitignored). Generate it with `python -m eval.run --agents fundamentals,risk,scenarios --curves --save data/runs` before running them |
+| **Hermes's test assumed an older grader** | Test helper updated: B's grader now derives the resolution date itself |
+
+**B's four requests (Sat evening), all answered**
+
+| B asked for | Where it is |
+|---|---|
+| Postgres backend, and `_latest_per_key` keyed on `(concept, period_start, period_end)` | `store/pg.py`, wired by `queries.use_postgres(conn)` (no argument connects with `DATABASE_URL`). The gate key is `(concept, period_start, period_end)` |
+| `source_tag`, `fiscal_year` on `Fact`; `going_concern_hits` on `Event` | `schemas/models.py` (optional fields, defaults keep old callers working) |
+| `run_agent` that reads lessons from the updater so learned differs from frozen | `agents.entry:replay_runner`, which has the keyword signature B's replay expects: `python -m grader.replay --runner agents.entry:replay_runner`. It reads lessons from the updater, skips unusable bundles, blocks leaking prompts, and counts outcomes in `agents.entry.OUTCOMES`. Checked in B's real offline replay: the learned arm reached version 4 while the frozen arm stayed at 0 |
+| Real `get_metrics`, and one held-out report path | `metrics.get_metrics`, switched on with `USE_STUBS=0` in `eval/metrics_source.py` (it still needs `--live` to count as real). **The one path is `eval/reports/heldout_report.json`**, written once by `python -m eval.run --live`; the dashboard reads only that and `data/eval_preview/`. A's quality report is separate (`quality/out/`) |
+
+Held-out reporting: B's dashboard reads B's `heldout_report.json` (segments `all_companies`, `seen_companies`, `unseen_companies`). Hermes's `quality/` writes a different format with an extra time slice; it feeds `quality.md` and the README results section, not the dashboard.
+
 ## 1. Where we are now (Sat 24 Oct, ~15:00)
 
 Read from the repo. 74 tests pass. Nothing runs on real data yet: every agent runs on three hand-written stub files.
@@ -54,7 +80,7 @@ Neither side should wait on the other. These handoffs have times. Anything late 
 
 | # | From | To | Deliverable | Due |
 |---|---|---|---|---|
-| 1 | A | B | `ingest/universe.json` (about 50 companies, anon IDs, sector, about 10 held out) | Sat 17:00 |
+| 1 | A | B | `ingest/universe.json` (50 companies, anon IDs, sector, 10 held out) | Sat 17:00 |
 | 2 | A | B | Final `store/schema.sql` and the XBRL concept map (concept, fallbacks, unit) | Sat 17:00 |
 | 3 | B | A | Raw SEC data cached and parsed into Postgres for 5 companies | Sat 19:00 |
 | 4 | A | B | Postgres backend in `store/queries.py`, leakage test passing on real rows | Sat 21:00 |
@@ -62,7 +88,7 @@ Neither side should wait on the other. These handoffs have times. Anything late 
 | 6 | B | A | All 50 companies and macro loaded, ingest QA report | Sat 23:00 |
 | 7 | A | B | `run_agent(company_id, as_of) -> AgentCall` (the runner entry point the replay calls) | Sat 20:00 |
 | 8 | B | A | `grade(call) -> Grade` with real rules for all three MVP questions | Sat 23:00 |
-| 9 | A | B | Held-out results as `eval/out/heldout.json` (frozen vs learned vs baselines) | Sun 05:00 |
+| 9 | B | B | The held-out report, written once to `eval/reports/heldout_report.json` by `python -m eval.run --live` (the one agreed path; the dashboard reads it). A's quality report is separate: `quality/out/` | Sun 05:00 |
 | 10 | B | A | Quarterly snapshots in Postgres (for A's quality report) | Sun 03:00 |
 
 Interfaces that do not change without telling the other person: `get_facts`, `get_events`, `get_macro`, `get_metrics`, and the three models in `schemas/`.
@@ -76,16 +102,32 @@ Interfaces that do not change without telling the other person: `get_facts`, `ge
 | Phase | Goal | Due | Handoff | Status |
 |---|---|---|---|---|
 | **1. Contract** | Universe, concept map, final schema, metric spec, principles checked against the metrics | Sat 17:00 | 1, 2 | Done in code. Citations still to verify |
-| **2. Real store** | Postgres backend for the date gate, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | Not started. Needs B's first 5 companies (handoff 3) |
-| **3. Metrics and tools** | The 22 metrics computed from real facts, `get_metrics` real, MCP tools | Sat 22:00 | 5 | Spec written (`metrics/SPEC.md`), code not started |
-| **4. Agents on real data** | Run the 3 MVP agents on real metrics, tune prompts, measure JSON validity and evidence match | Sun 01:00 | | Not started |
+| **2. Real store** | Postgres backend for the date gate, loaders, parsers, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | **Done** except the leakage test on real filings (needs B's download, handoff 3). Backend, loaders, parsers, date-gate fix and `agents/entry.py` are built and tested on a real Postgres |
+| **3. Metrics and tools** | The 22 metrics computed from real facts, `get_metrics` real, MCP tools | Sat 22:00 | 5 | **Engine done** (`metrics/`, 34 tests against hand-worked values, identical on Postgres). MCP tools are workstream H1 (Hermes) |
+| **4. Agents on real data** | Run the 3 MVP agents on real metrics, tune prompts, measure JSON validity and evidence match | Sun 01:00 | | **Groundwork done**: prompt leak guard and a no-model dry run. Running the agents needs a Mubit key in `.env` and real data loaded (B, handoff 3) |
 | **5. Evaluation** | Frozen twins, baselines, held-out run, quality report with critique | Sun 05:00 | 9 | Not started |
 | **6. Content and freeze** | Copy, demo script, README results, backup video | Sun 08:00 | | Not started |
+
+**Unblocked for Person B now.** Everything after the network call is built and tested: `docker compose up -d`, `python -m store.migrate`, then follow [ingest/README.md](ingest/README.md). B's only job to get real data flowing is to download the raw SEC and FRED files into the cache; `ingest/pipeline.py` parses and loads them, and `store.quality.coverage` reports which companies are missing what.
+
+**Phase 4 groundwork delivered**
+- `agents/leakcheck.py`: every prompt is checked for a company name, ticker, calendar year or accession number before it is sent. A prompt that fails is **blocked** and the model is never called (status `blocked` from `Entry.attempt`). It is narrow on purpose: two real false alarms were found and fixed in testing (a decimal metric like `0.2018` is not a year, and "target" the word is not Target the company).
+- `python -m agents.dryrun --company anon_007 --as-of 2019-06-30`: prints the exact prompt each agent would be sent, its size, what is missing, and the leak result, with no model call. `--stubs` works without a database.
+- `store.db.connect` now gives up after 10 seconds instead of hanging when the database is down.
+
+**Phase 2 delivered**
+- `store/pg.py`: Postgres backend for the date gate. It only supplies candidate rows, so the visibility rule stays in `store/queries.py` and cannot differ from the tested in-memory one.
+- `store/db.py`, `store/migrate.py`: connection, schema apply, idempotent bulk loaders (re-running inserts nothing).
+- `ingest/parse_facts.py`, `parse_submissions.py`, `parse_fred.py`: raw SEC and FRED JSON to rows. Pure functions, tested on fixtures shaped like the real responses.
+- `ingest/pipeline.py`: loads a cache directory into Postgres, offline. `store/quality.py`: per-company coverage and drop candidates.
+- **Bug fixed in the date gate:** it kept one fact per `(concept, period_end)`, but a Q2 10-Q reports a 3-month and a 6-month figure ending the same day, so one was silently dropped. It now keys on `(concept, period_start, period_end)`, with a regression test.
+- **Design fix in the concept map:** a restatement filed under a different tag (the 2018 revenue-recognition change) is now kept, so the gate can show the old value before the restatement and the new one after.
+- `docker-compose.yml`, `.env.example`, and a `pg_conn` test fixture that skips cleanly when no database is reachable.
 
 Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as handoff 3 (5 companies in Postgres) lands: until then, build the Postgres backend against the in-memory gate tests so it is ready to run.
 
 **Phase 1 delivered**
-- `ingest/universe.json`: 50 companies, anon IDs from a seeded shuffle, 10 held out, COVID groups. Built by `ingest/build_universe.py`, validated by `ingest/universe.py`, tested.
+- `ingest/universe.json`: 50 companies (Tesla, Nvidia, Palantir, AMD, Meta and Amazon added, and low-value names such as Kohl's, Chevron, 3M, Freeport, NextEra and PepsiCo dropped to keep it short), anon IDs from a seeded shuffle, 10 held out, COVID groups. Palantir is flagged `short_history` (first filing 2020). Built by `ingest/build_universe.py`, validated by `ingest/universe.py`, tested.
 - `store/concepts.py`: the XBRL concept map (22 concepts, tag fallbacks, which are cumulative in a 10-Q), macro series, and the inputs each of the 22 metrics needs. `resolve_concept` merges tags per period and keeps restated rows.
 - `store/schema.sql`: idempotent-load keys, `held_out` and `covid_group` on companies, going-concern count on events, macro vintage index, a `snapshots` table for the dashboard. Parsed with a real Postgres parser in a test.
 - `metrics/SPEC.md`: the formula for every metric, how quarters are derived from filings, and what happens when data is missing.
@@ -107,25 +149,25 @@ Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as han
 - [x] Final `store/schema.sql`: keys, indexes, `filed_date NOT NULL`, `vintage_date NOT NULL` for macro, `snapshots` table **(handoff 2)**
 - [x] `metrics/SPEC.md`: formulas for all 22 metrics and the quarter-derivation rules
 - [x] Date gate in `store/queries.py` with an in-memory backend, and `store/tests/test_leakage.py`
-- [ ] **Postgres backend** for the gate. Latest row per (concept, period_end) with `filed_date <= as_of`. Leakage test on real rows **(handoff 4)**
-- [ ] `metrics/` engine for Fundamentals, Risk and Scenarios. Each metric returns name, value, unit, as_of and the filing accessions **(handoff 5)**
-- [ ] Traceability test: every accession a metric cites exists in `facts`
-- [ ] `get_metrics` real, then flip `USE_STUBS=0`
+- [x] **Postgres backend** for the gate. Latest row per (concept, period_end) with `filed_date <= as_of`. Leakage test on real rows **(handoff 4)**
+- [x] `metrics/` engine for Fundamentals, Risk and Scenarios. Each metric returns name, value, unit, as_of and the filing accessions **(handoff 5)**
+- [x] Traceability test: every accession a metric cites is a real filing of that company and was filed by `as_of`
+- [x] `get_metrics` real. `agents/entry.py` uses it unless `USE_STUBS=1`; set `USE_STUBS=0` once real data is loaded
 - [ ] `tools/` MCP servers: `get_metric_series`, `get_recent_events`, `get_macro_snapshot`, `peer_compare`
 - [ ] Data quality report per company (coverage, gaps), agreed with B's ingest QA
 
 ### A3. Agents
 - [x] Runner, specs for Fundamentals, Risk and Scenarios, date masking, Mubit gateway
-- [ ] `run_agent(company_id, as_of) -> AgentCall` as the stable entry point **(handoff 7)**
+- [x] `agents/entry.py`: `Entry(gateway, updater).attempt(agent, company_id, as_of)` is the entry point **(handoff 7)**. It returns `ok`, `skipped` (bundle not usable, the model is never asked) or `dropped` (invalid reply), so the replay can count each
 - [ ] Run each agent on real metrics for one company, then widen. Check: JSON valid rate, evidence matches the metrics engine, tool calls capped at about 5 **(Sat 20:00)**
 - [ ] Mubit: per-agent identity, and the office-hours answers on the update API (endpoint, latency, version IDs). The gateway already notes that no public corrections endpoint is known
 - [ ] Confirm the model version is stamped into every `AgentCall`
 
-### A4. Agent evaluation (`eval/`)
+### A4. Agent quality report (`quality/`, built by Hermes; B owns the held-out harness in `eval/`)
 - [ ] Frozen twin of each agent (never updated)
 - [ ] Baselines: always yes, base rate
 - [ ] Held-out harness: split by time (train 2018 to 2022, held out 2023 to 2024) and by company (about 10). Learning from train-window corrections only
-- [ ] Run once, before freeze, no tuning against it. Write `eval/out/heldout.json` **(handoff 9)**
+- [ ] Run once, before freeze, no tuning against it. The held-out report is B's `eval/reports/heldout_report.json` **(handoff 9)**; `quality/` writes the quality report to `quality/out/` and does not feed the dashboard
 - [ ] Quality report per agent: valid-JSON rate, evidence match, accuracy, Brier, calibration, overconfidence gap, and a short written critique of where each agent is weak
 
 ### A stretch (in order)

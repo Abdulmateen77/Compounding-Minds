@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS companies (
   sector     TEXT,
   covid_group TEXT CHECK (covid_group IN ('hit','resilient','mixed')),
   held_out   BOOLEAN NOT NULL DEFAULT false,  -- true = never used to learn (README 9)
+  short_history BOOLEAN NOT NULL DEFAULT false,  -- recent filer (e.g. IPO in 2020): fewer quarters of data
   sic        TEXT                         -- from SEC submissions
 );
 

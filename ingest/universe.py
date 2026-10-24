@@ -33,6 +33,8 @@ def validate(companies: list[dict]) -> None:
         if len(set(vals)) != len(vals):
             problems.append(f"duplicate {key}")
     for c in companies:
+        if not isinstance(c.get("short_history", False), bool):
+            problems.append(f"{c['company_id']}: short_history must be true or false")
         if not _ID.match(c["company_id"]):
             problems.append(f"bad company_id {c['company_id']!r}")
         if c["covid_group"] not in COVID_GROUPS:
