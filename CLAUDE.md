@@ -1,6 +1,6 @@
 # CLAUDE.md: Compounding Minds
 
-Project context for Claude Code. Read this first, then `README.md` (full spec) and `TASKS.md` (team split).
+Project context for Claude Code. Read this first, then `README.md` (full spec), `ARCHITECTURE.md` (agent pattern: parallel fan-out/fan-in committee, shared Postgres state, external-verifier reflection loop) and `TASKS.md` (team split).
 
 ## What this is
 
@@ -47,7 +47,7 @@ One sentence: a team of AI analysts that grades itself against reality and impro
 Supporting: **replay orchestrator** (advances one quarter, enforces as-of date) and **reality grader** (scores calls, emits corrections).
 
 **MVP:** Fundamentals, Risk, Scenarios + synthesizer + grader + Mubit correction loop + replay dashboard, ~50 US companies.
-**Stretch:** Valuation, Moat, cross-examination round, legend scoreboard, frontier-model comparison, Firecrawl press releases.
+**Stretch:** Valuation, Moat, cross-examination round, legend scoreboard, frontier-model comparison, Firecrawl press releases, and the analyst workflow layer (README 11b): watchlist screener (`screener/`, A), memo drafting (`memos/`, B), calibration track record (`grader/calibration.py`, A). Memos may not contain any number the metrics engine did not produce. Screener flags are "needs attention", never buy/sell.
 **Never cut:** point-in-time store, reality grader, correction-to-Mubit loop, held-out eval, backup demo video.
 
 ## Data sources (free, cached to Postgres)

@@ -3,7 +3,7 @@
 A team of AI analysts that grades itself against reality and compounds from every mistake.
 
 Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026). Code freeze **Sun 25 Oct 10:00**.
-Companion files: [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
+Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITECTURE.md) (agent pattern and flow), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
 
 ---
 
@@ -21,7 +21,11 @@ The demo's **Time Machine** replay runs 2018-2024 quarter by quarter. The audien
 3. A visible, reproducible loop: call, grade, correction, Mubit update, better call.
 4. A live demo that runs entirely from a local cache in under the time limit.
 
+### Positioning
+This is a research-support and QA loop for analysts, not a replacement for an investment firm. It covers fundamental research, committee-style synthesis and systematic post-mortems. Stretch features (section 11b) add watchlist screening, memo drafting and a calibration track record to fit an analyst's workflow.
+
 ### Non-goals
+- Portfolio sizing, trade execution, compliance workflows.
 - Price targets, buy/sell advice, trading signals.
 - Ingesting full investor books.
 - Real-time data. Everything is historical and cached.
@@ -341,6 +345,43 @@ A disclaimer footer is always visible: "Research tool, not financial advice."
 
 ---
 
+## 11b. Analyst workflow layer (stretch)
+
+Turns the call-grade-correct engine into something that fits an investment team's research workflow. Three features, all built **on top of** existing stores and schemas. None changes the MVP or the never-cut list. All rules in CLAUDE.md still apply: no LLM-generated numbers, point-in-time only, no price predictions, no buy/sell language.
+
+### 11b.1 Watchlist screener (`screener/`, owner A)
+- Input: a watchlist (subset of the universe) and an `as_of` date.
+- Pure Python, no LLM. Ranks companies by **flags computed from `get_metrics`**: e.g. FCF margin slope turning negative, interest coverage below threshold, gross margin std-dev rising, going-concern keyword hit.
+- Optionally ranks by the committee's latest calls (distress probability, scenario bucket) stored in `calls`.
+- Output: `ScreenResult {company_id, as_of, flags: [{metric, value, threshold, accessions}], rank_score}`. Every flag is traceable to filings, like any metric.
+- Thresholds are fixed in `screener/config.py`, tuned on the train window only.
+- Framed as "needs analyst attention", never "buy/sell".
+
+### 11b.2 Analyst memo drafting (`memos/`, owner B)
+- For a chosen company and `as_of`, assemble a structured memo from **existing outputs only**: the metrics bundle, each agent's `AgentCall` (reasoning bullets, evidence), the synthesizer verdict, and recent events.
+- The LLM (via Mubit `LLMGateway`) writes prose around the numbers. **It may not introduce numbers**: every figure in the memo must come from a `{{metric:name}}` placeholder the renderer fills from the metrics engine. A post-check rejects memos containing any numeric literal not produced by a placeholder.
+- Sections: Business outlook summary, Key metrics (table rendered by Python), Agent views and disagreements, Risks and distress flags, What would change the view (referencing principles), Source accessions.
+- Anonymized by default. Name/ticker mapping happens only at render time in the dashboard, and only for the demo's chosen company, never in the prompt.
+- Footer on every memo: "Research tool, not financial advice."
+
+### 11b.3 Calibration and track-record tracker (`grader/calibration.py`, owner A)
+- Maintains a persistent track record per agent (and per principle ID used): accuracy, Brier, calibration curve, overconfidence gap (mean confidence minus accuracy), per-regime breakdown.
+- Computed only from `grades`, as-of aware: at replay date `t` it includes only grades resolved by `t`.
+- Feeds the synthesizer's weights (7.3) and a "stale principle" flag when a principle's rolling Brier degrades.
+- Exposes `get_track_record(agent, as_of) -> TrackRecord`, used by the dashboard, memos and screener.
+
+### 11b.4 Dashboard additions
+| View | Content |
+|---|---|
+| Watchlist screen | Ranked table of flagged companies at the current `as_of`, click-through to metrics |
+| Memo view | Generated memo for a chosen company and quarter, with metric table and source accessions |
+| Track record | Per-agent and per-principle calibration curves and overconfidence gap |
+
+### 11b.5 Out of scope, even in stretch
+Portfolio sizing, trade execution, price targets, compliance workflows, real-time feeds. This stays a research-support tool.
+
+---
+
 ## 12. Interfaces and parallel development
 
 Person B must never be blocked on Person A. Day 1 deliverables:
@@ -362,7 +403,9 @@ ingest/       SEC/FRED/price fetchers, universe.json, raw cache             (A)
 store/        schema.sql, queries.py (point-in-time gate), stubs/, tests/   (A)
 metrics/      one module per agent's metric set                             (A)
 tools/        MCP servers                                                   (A)
-grader/       rules.py, grade.py, corrections.py, replay.py                 (A)
+grader/       rules.py, grade.py, corrections.py, replay.py, calibration.py (A)
+screener/     watchlist flags and ranking (stretch)                         (A)
+memos/        memo assembly, placeholder renderer, number check (stretch)   (B)
 dashboard/    Streamlit app                                                 (A)
 schemas/      shared Pydantic models                                        (shared)
 .env.example  keys listed, no values
@@ -415,7 +458,7 @@ Backup: a recorded video of the full flow, made before freeze. If live fails, pl
 
 **MVP (must ship):** Fundamentals, Risk, Scenarios + synthesizer + grader + Mubit correction loop + replay dashboard, ~50 companies.
 
-**Stretch (in order):** Valuation, Moat, held-out frontier-model comparison, cross-examination round, legend scoreboard, Firecrawl press releases as an extra event source.
+**Stretch (in order):** Valuation, Moat, track-record tracker (11b.3), held-out frontier-model comparison, watchlist screener (11b.1), analyst memos (11b.2), cross-examination round, legend scoreboard, Firecrawl press releases as an extra event source.
 
 **Never cut:** point-in-time store, reality grader, correction-to-Mubit loop, held-out eval, backup demo video.
 
