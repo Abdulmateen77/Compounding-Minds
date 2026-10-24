@@ -74,7 +74,11 @@ class CachingGateway(LLMGateway):
         key = self.key_for(agent, messages, **kw)
         path = self._path(key)
         if path.exists() and not self.refresh:
-            entry = json.loads(path.read_text())
+            raw = path.read_bytes()
+            try:
+                entry = json.loads(raw.decode("utf-8"))
+            except UnicodeDecodeError:  # written before the utf-8 fix by Windows' default codec
+                entry = json.loads(raw.decode("cp1252"))
             self.hits += 1
             self.last_request_id = entry.get("mubit_request_id")
             return entry["text"]
@@ -86,6 +90,7 @@ class CachingGateway(LLMGateway):
         entry = {"key": key, "agent": agent, "model": self.model, "text": text,
                  "mubit_request_id": self.last_request_id, "saved_at": int(time.time())}
         tmp = path.with_suffix(f".{os.getpid()}.{threading.get_ident()}.tmp")  # replay threads share a pid
-        tmp.write_text(json.dumps(entry, ensure_ascii=False))
+        # utf-8 always: Windows' default codec cannot encode replies such as "≈" and crashed the replay
+        tmp.write_text(json.dumps(entry, ensure_ascii=False), encoding="utf-8")
         tmp.replace(path)  # atomic: a crash never leaves a half-written reply
         return text
