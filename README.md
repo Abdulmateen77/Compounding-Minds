@@ -26,7 +26,9 @@ How it stays honest:
   through the date gate and compares them with what happened over the next year. It is the evidence that the checks mean something
   (or the honest report that they do not): see the results section.
 
-Code: `research/` (`resolve`, `live`, `report`, `analysis`, `valuation`, `text`, `narrative`, `market`, `service`, `backtest`),
+- **News comes from Firecrawl (`research/web.py`) and is words only.** Each summary line points at one article and may only use numbers that article contains; no financial figure ever comes from the web. It is fetched for today's report only (never for the past replay or back-test), cached for twelve hours (each search costs two credits), and the section is simply absent if Firecrawl is unavailable. Uses `FIRECRAWL_API_KEY` or the stored `firecrawl login`.
+
+Code: `research/` (`resolve`, `live`, `report`, `analysis`, `valuation`, `dividends`, `text`, `web`, `narrative`, `market`, `service`, `backtest`),
 API `GET /api/research/search` and `/api/research/company/{cik}`, web screen `web/src/screens/Research.tsx`.
 Not covered yet: non-US listings, and banks and insurers only partly (several measures do not apply to them).
 

@@ -24,7 +24,7 @@ export type Report = {
   scorecard?: Figure[]; tally?: { good: number; watch: number; warn: number };
   sections?: Section[]; risk_flags?: Flag[];
   economy?: { key: string; label: string; meaning: string; unit: string; value: number }[];
-  market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[]; analysis?: Analysis;
+  market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[]; analysis?: Analysis; news?: News | null;
 };
 export type Check = { id: string; principle: string; source: string; check: string; result: "pass" | "partial" | "fail" | "unknown"; shown: string };
 export type Lens = { key: string; name: string; question: string; fit: number | null; word: string; checks: Check[]; narrative?: string | null; ahead?: string | null; note?: { category: string; why: string }; backtested?: boolean; caveat?: string | null };
@@ -80,3 +80,7 @@ export type Evidence = {
   year_end_only: { rows: number; tests: EvidenceTest[] };
   held_out_year_end: { rows: number; tests: EvidenceTest[] };
 };
+
+export type NewsLine = { text: string; url: string; source: string; title: string; age: string | null };
+export type NewsArticle = { title: string; url: string; source: string; age: string | null; text: string };
+export type News = { retrieved: string; lines: NewsLine[]; articles: NewsArticle[] };

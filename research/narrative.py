@@ -22,7 +22,8 @@ INSTRUCTIONS = (
     "Write two short parts in the third person (for example: Buffett would ...). 'view': three or four sentences on how "
     "the investor reads this company today, using the checks. 'ahead': two or three sentences on what the investor would "
     "watch over the next few years and what would change their mind, using their way of thinking and this company's checks. "
-    "Use only the background and the checks. Do not add facts, numbers, forecasts, or knowledge about the company from "
+    "Use only the background, the checks and the recent developments you are given (if any; say they were reported in the "
+    "news if you use one). Do not add facts, numbers, forecasts, or knowledge about the company from "
     "anywhere else. Every number you write must appear in the checks or the background exactly as given. Do not tell the "
     "reader to buy, sell or hold, and do not predict the share price. "
     "Reply with JSON only: {\"view\": \"...\", \"ahead\": \"...\"}."
@@ -40,13 +41,13 @@ def system_for(lens: dict) -> str:
     return f"{INSTRUCTIONS}\n\nInvestor: {lens['name']}\n\nBackground on how {lens['name']} thinks:\n{guide_text(lens['key'])}"
 
 
-def allowed(lens: dict, extra: list[str]) -> set[str]:
+def allowed(lens: dict, extra: list[str]) -> set[str]:   # `extra` already holds the figures and the news lines
     corpus = " ".join([c["shown"] for c in lens["checks"]] + [c["check"] for c in lens["checks"]]
                       + [guide_text(lens["key"])] + [(lens.get("note") or {}).get("why", "")] + extra)
     return numbers(corpus) | FREE
 
 
-def prompt(lens: dict, company: str, headline: str) -> str:
+def prompt(lens: dict, company: str, headline: str, news: list[str] = ()) -> str:
     lines = [f"Company: {company}", f"Question this investor asks: {lens['question']}", f"Overall result of the checks: {lens['word']}"]
     if lens.get("note"):
         lines.append(f"What kind of stock it looks like: {lens['note']['category']} ({lens['note']['why']})")
@@ -57,8 +58,8 @@ def prompt(lens: dict, company: str, headline: str) -> str:
     return "\n".join(lines)
 
 
-def _ask(gateway, lens: dict, company: str, headline: str, note: str = "") -> dict | None:
-    msgs = [{"role": "system", "content": system_for(lens)}, {"role": "user", "content": prompt(lens, company, headline) + note}]
+def _ask(gateway, lens: dict, company: str, headline: str, note: str = "", news: list[str] = ()) -> dict | None:
+    msgs = [{"role": "system", "content": system_for(lens)}, {"role": "user", "content": prompt(lens, company, headline, news) + note}]
     try:
         raw = gateway.complete(f"narrative_{lens['key']}", msgs, purpose="research_narrative", max_tokens=900,
                                session_id=f"narrative:{lens['key']}")
@@ -69,11 +70,11 @@ def _ask(gateway, lens: dict, company: str, headline: str, note: str = "") -> di
         return None
 
 
-def write(gateway, lens: dict, company: str, headline: str, extra_numbers: list[str] = ()) -> dict | None:
-    ok = allowed(lens, list(extra_numbers) + [headline])
+def write(gateway, lens: dict, company: str, headline: str, extra_numbers: list[str] = (), news: list[str] = ()) -> dict | None:
+    ok = allowed(lens, list(extra_numbers) + list(news) + [headline])
     note = ""
     for _ in range(2):
-        got = _ask(gateway, lens, company, headline, note)
+        got = _ask(gateway, lens, company, headline, note, news)
         if not got:
             return None
         bad = sorted((numbers(got["view"]) | numbers(got["ahead"])) - ok)
@@ -83,11 +84,11 @@ def write(gateway, lens: dict, company: str, headline: str, extra_numbers: list[
     return None
 
 
-def attach(gateway, analysis: dict, company: str, extra_numbers: list[str] = ()) -> None:
+def attach(gateway, analysis: dict, company: str, extra_numbers: list[str] = (), news: list[str] = ()) -> None:
     """Add `narrative` (the view) and `ahead` to every lens, or None for both; the calls run side by side."""
     head = analysis["overall"]["headline"]
     with ThreadPoolExecutor(max_workers=6) as pool:
-        texts = list(pool.map(lambda l: write(gateway, l, company, head, extra_numbers), analysis["lenses"]))
+        texts = list(pool.map(lambda l: write(gateway, l, company, head, extra_numbers, news), analysis["lenses"]))
     for lens, t in zip(analysis["lenses"], texts):
         lens["narrative"] = t["view"] if t else None
         lens["ahead"] = t["ahead"] if t else None

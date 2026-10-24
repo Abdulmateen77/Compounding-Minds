@@ -7,7 +7,7 @@ import { researchHref, go } from "../route";
 import { EvidencePanel, Future, Lenses, Verdict, Worth } from "./ResearchAnalysis";
 import {
   TONE, fmtValue, longDate, money, multiple, pctOf, year,
-  type Candidate, type Figure, type Flag, type Report, type SearchResult, type Section,
+  type Candidate, type Figure, type Flag, type News, type Report, type SearchResult, type Section,
 } from "../research";
 
 const j = async <T,>(url: string): Promise<T> => {
@@ -93,7 +93,7 @@ function Landing() {
 
 /* ───────────────────────── the report ───────────────────────── */
 
-const STEPS = ["Finding the company's filings", "Reading the financial statements", "Reading the annual report for plans and R&D", "Checking the share price"];
+const STEPS = ["Finding the company's filings", "Reading the financial statements", "Reading the annual report for plans and R&D", "Reading the latest news and checking the share price"];
 
 function Loading({ name }: { name?: string }) {
   const [i, setI] = useState(0);
@@ -109,7 +109,7 @@ function Loading({ name }: { name?: string }) {
           </li>
         ))}
       </ol>
-      <p className="mute text-sm m-0">The first lookup takes about 20 seconds. Later ones are instant.</p>
+      <p className="mute text-sm m-0">The first lookup takes 20 to 30 seconds: it reads the filings, the annual report and the latest news. Later ones are instant.</p>
       <Skeleton h={80} />
     </div>
   );
@@ -156,6 +156,7 @@ function ReportPage({ cik }: { cik: string }) {
 
       {r.analysis && <Verdict a={r.analysis} name={c.name} />}
       <Summary r={r} />
+      {r.news && <NewsBlock n={r.news} />}
       <TrendChart sections={sections} />
 
       {(["growth", "profit", "cash", "balance", "reinvest"] as const).map((id) => <SectionBlock key={id} s={byId(id)} />)}
@@ -368,6 +369,31 @@ function MarketBlock({ m }: { m: NonNullable<Report["market"]> }) {
             ))}
           </div>
         )}
+      </div>
+    </section>
+  );
+}
+
+function NewsBlock({ n }: { n: News }) {
+  const lines = n.lines, heads = n.articles;
+  if (!lines.length && !heads.length) return null;
+  return (
+    <section className="grid gap-3">
+      <div>
+        <h2 className="text-xl font-semibold m-0">What has happened lately?</h2>
+        <p className="mute text-sm m-0 mt-1 max-w-3xl">From news sites, found on {longDate(n.retrieved)}. Each line is summarised by an AI from one article and checked against that article's own numbers. Open the link before relying on it: news is not part of the financial figures on this page.</p>
+      </div>
+      <div className="card p-5 grid gap-3">
+        {lines.length > 0
+          ? lines.map((l) => (
+              <div key={l.url} className="grid gap-0.5">
+                <p className="m-0 text-sm leading-relaxed">{l.text}</p>
+                <a href={l.url} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "var(--blue)" }}>{l.source}{l.age ? `, ${l.age}` : ""}: {l.title}</a>
+              </div>
+            ))
+          : heads.map((a) => (
+              <a key={a.url} href={a.url} target="_blank" rel="noreferrer" className="text-sm underline" style={{ color: "var(--blue)" }}>{a.source}{a.age ? `, ${a.age}` : ""}: {a.title}</a>
+            ))}
       </div>
     </section>
   );
