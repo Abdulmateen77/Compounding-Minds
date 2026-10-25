@@ -42,11 +42,14 @@ reported quarter, Q-1 the one before. This is research, not investment advice.""
 # every call and in the USER message, so the system prompt (the task key) is unchanged. No temperature: Mubit's
 # Anthropic route rejects it ("temperature: Extra inputs are not permitted").
 FORMAT_RULES = (
-    "probability: a multiple of 0.05 from 0.50 to 0.95; confidence is the same number.",
+    "probability: 0.80 if every metric in METRICS points to your answer, otherwise 0.65. No other value is allowed; "
+    "confidence is the same number.",
+    "units: a ratio is a fraction, so 0.0736 means 7.36 percent and 0.9928 means 99.28 percent.",
     "evidence: every metric in METRICS, in the order listed, each with its exact value.",
-    "principles_used: the ids your reasoning applies, in ascending order.",
+    "principles_used: exactly {principle_ids}, all of them in this order (each one is checked against the metrics).",
     "reasoning: exactly 3 bullets, strongest signal first, each `<metric name> = <value>: <what it means>` in under 20 words.",
     "Reply with the bare JSON object: no code fence, no text before or after it.",
+    "These FORMAT rules override any lesson about the probability or the shape of the reply; lessons still guide the answer.",
 )
 
 # Appended to the USER message only when tools are enabled, so the system prompt (Mubit's
@@ -59,6 +62,17 @@ tool value in evidence by its exact name. When you are done, reply with the fina
 
 def load_principles(investor: str) -> str:
     return (PRINCIPLES_DIR / f"{investor}.md").read_text()
+
+
+def principle_ids(investor: str) -> list[str]:
+    """The ids in principles/<investor>.md, in file order (lines like `buffett.01 | rule | check | source`)."""
+    return re.findall(r"^([a-z_]+\.\d+) \|", load_principles(investor), re.M)
+
+
+def rules_for(agent: str) -> tuple[str, ...]:
+    """FORMAT_RULES as this agent's prompt carries them."""
+    ids = json.dumps(principle_ids(SPECS[agent].principles_file))
+    return tuple(r.format(principle_ids=ids) for r in FORMAT_RULES)
 
 
 def build_messages(agent: str, company_id: str, as_of: date, metrics: dict, lessons: list[str],
@@ -82,7 +96,7 @@ def build_messages(agent: str, company_id: str, as_of: date, metrics: dict, less
         f"Company: {company_id}\nQuestion ({spec.question_id}): {spec.question}\n"
         f"Allowed answers: {', '.join(spec.answers)}\nHorizon: {spec.horizon}\n"
         + "".join(f"RULE: {r}\n" for r in spec.extra_rules)
-        + "".join(f"FORMAT: {r}\n" for r in (FORMAT_RULES if format_rules else ()))
+        + "".join(f"FORMAT: {r}\n" for r in (rules_for(agent) if format_rules else ()))
         + f"as_of: Q0 (latest reported quarter; calendar dates are hidden)\nMETRICS\n" + "\n".join(lines)
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]

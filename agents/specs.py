@@ -41,6 +41,8 @@ SPECS: dict[str, AgentSpec] = {
         extra_rules=(
             "Copy every metric name in `evidence` exactly as it is written in METRICS, prefix included "
             "(write `revenue_macro_beta`, never `macro_beta`). Do not shorten, rename or reword metric names.",
+            "Start from the bucket revenue_growth_mean_5y falls in (dalio.04: mean reversion is the default). Move to "
+            "another bucket only if revenue_growth_yoy and the macro metrics both point to it.",
         )),
     # Stretch agents (README 7.1). Same runner, same AgentCall shape.
     "valuation": AgentSpec(

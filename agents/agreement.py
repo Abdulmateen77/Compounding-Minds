@@ -125,6 +125,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--compare", action="store_true", help="also measure the prompt without FORMAT_RULES")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--seed", default="agreement")
+    ap.add_argument("--lessons-dir", help="put the learned arm's lessons in each prompt, as the replay does")
     ap.add_argument("--yes", action="store_true", help="send the live (unrecorded) calls")
     ap.add_argument("--json", help="write the summaries here")
     args = ap.parse_args(argv)
@@ -132,10 +133,11 @@ def main(argv: list[str] | None = None) -> int:
     from dotenv import load_dotenv
     load_dotenv(Path(__file__).resolve().parent.parent / ".env")
     agents = tuple(a.strip() for a in args.agents.split(",") if a.strip())
-    cases = real_cases(args.per_agent, agents, seed=args.seed)
+    cases = real_cases(args.per_agent, agents, seed=args.seed, lessons_dir=args.lessons_dir)
     arms = [("with FORMAT_RULES", True)] + ([("without FORMAT_RULES", False)] if args.compare else [])
     calls = 2 * len(cases) * len(arms)
-    print(f"{len(cases)} real prompts ({', '.join(agents)}), {calls} unrecorded calls")
+    print(f"{len(cases)} real prompts ({', '.join(agents)}), {calls} unrecorded calls, "
+          f"{'with lessons from ' + args.lessons_dir if args.lessons_dir else 'no lessons'}")
     if not args.yes:
         print("DRY RUN: nothing was sent. Add --yes to measure.")
         return 0
