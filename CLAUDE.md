@@ -8,10 +8,12 @@ A multi-agent investment research system built for **Night Shift: Mubit Hackatho
 
 One sentence: a team of AI analysts that grades itself against reality and improves every time it's wrong.
 
-**The product (pivot, Sat 24 Oct):** type any US-listed company and get a research report from its SEC filings today:
-growth, profit, cash, balance sheet, R&D, risk, the company's own words on plans, four investor lenses (Buffett, Munger,
-Graham, Dalio) as rule checks over the figures, a cash-flow valuation with stated assumptions, ten-year scenarios and one
-overall reading. Code in `research/` (owner A). Python computes every number; models only write words, with a guard on
+**The product (pivot, Sat 24 Oct):** type any US-listed company and get a research report from its SEC filings today, in two
+tabs. **Report:** the investors' take first (a tally and a card per investor), then growth, profit, cash, balance sheet, R&D,
+risk, the company's own words on plans, a 5-minute check, news, a cash-flow valuation with stated assumptions, and a 5-year
+outlook. **Investor panel:** a 3D office where each investor (Buffett, Munger, Lynch, Dalio, Jhunjhunwala; Graham is off the
+panel) works through their checks, then a debate said in the first person over the speaker's head, ending in a panel verdict.
+Code in `research/` (owner A); the panel UI in `web/`. Python computes every number; models only write words, with a guard on
 numbers. The reading describes evidence and price, never gives a price target or personal advice. The replay below remains
 the evidence for the learning loop and the Mubit story.
 

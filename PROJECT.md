@@ -2,6 +2,10 @@
 
 Overview document: what it is, who it is for, and how it is built. Agent pattern and data flow: [ARCHITECTURE.md](ARCHITECTURE.md). Detailed contracts and schemas live in [README.md](README.md). Rules for Claude Code live in [CLAUDE.md](CLAUDE.md).
 
+> **Status (Sun 25 Oct):** the product has pivoted to a research report on any US-listed company, with an investor panel (Buffett,
+> Munger, Lynch, Dalio, Jhunjhunwala) and a debate. See [README.md](README.md) section 0 and [TASKS.md](TASKS.md) section 0f. The
+> replay and Mubit learning loop described below remain the evidence base.
+
 ---
 
 ## 1. What it is

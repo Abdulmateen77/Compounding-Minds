@@ -92,26 +92,49 @@ Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITEC
 ## 0. The product: research any listed company, today
 
 Type a company name or ticker. The app finds it (US exchanges today; London and Europe are next), reads its SEC filings and
-builds a report: growth, profit, cash, balance sheet, reinvestment and R&D, risk checks, what the company says about its own
-plans, price and market multiples. Then it reads the same evidence through four investors' habits of mind (Buffett, Munger,
-Graham, Dalio), values the business under three stated growth cases, shows what the share price assumes, sketches ten-year
-scenarios, and gives one overall reading with the reasons.
+builds a report with two tabs.
+
+**Report tab**
+- **The investors' take**, first: the panel's tally ("2 would invest, 3 would wait, 0 would not"), a box per investor with their
+  face, and a click-open card of their checks and final call.
+- **The numbers:** growth, profit, cash, balance sheet, reinvestment and R&D, risk checks, what the company says about its own plans,
+  price and market multiples, each figure naming the filing it came from.
+- **A 5-minute check** (debt to equity, return on capital, sales growth, promoter holding, dilution), **news** (Firecrawl),
+  a **cash-flow valuation** under three stated growth cases with what today's price assumes, and **the next five years**: the chance
+  the business is bigger, drawn from its own growth record, and value per share year by year beside the share price.
+
+**Investor panel tab**
+- The 3D office plays a prologue: each investor works through their own checks, then gives a reading. Under the animation a card per
+  investor (face, name, the check they are on, their reading, their vote) follows along at a fixed height.
+- Click a card, or the investor in the scene, for a pop-up in their own words: their call, why, the strongest points for and against,
+  what they would watch next, every check folded away.
+- **"Start the debate"** plays opening statements, face-offs between those who disagree most (with a judge) and a final verdict. Each
+  line is said over the speaker's head in the scene, in the first person, and the transcript stays in a log below. With an
+  ElevenLabs key each investor speaks in their own voice.
+
+The panel is five investors: **Buffett, Munger, Lynch, Dalio, Jhunjhunwala** (Graham's code is kept but he is off the panel). Each
+check is pass, partly, fail or unknown, and `decide()` turns them into invest, wait or avoid; price-minded investors wait when the
+price is above even the optimistic case.
 
 How it stays honest:
 - **Python computes every figure** and each one names the SEC filings it came from. Models only write words: a paragraph per
-  investor, checked so it cannot use a number the checks did not produce, and a choice among verbatim sentences from the 10-K.
+  investor, checked so it cannot use a number the checks did not produce, and a choice among verbatim sentences from the 10-K. The
+  first-person wording of the debate and pop-ups is a rewrite of the same checks; no new facts.
 - **The investor lenses are the checklists in `principles/`**, turned into checks with their verified sources (`principles/SOURCES.md`).
 - **The valuation is a plain cash-flow calculation with its assumptions on the page**, including the reverse question
-  "what growth does today's price assume?". It is not a price target.
-- **The overall reading describes the evidence and the price. It is not personal advice** and never predicts a share price.
+  "what growth does today's price assume?". It is not a price target. The five-year outlook is a view of value, not a share-price forecast.
+- **Every call is a reading of the evidence, never personal advice**, and the page says so.
 - **The back-test (`python -m research.backtest`)** runs the Buffett and Munger checks at every quarter 2018-2023 for the 50 companies
   through the date gate and compares them with what happened over the next year. It is the evidence that the checks mean something
-  (or the honest report that they do not): see the results section.
-
+  (or the honest report that they do not): see the results section. Lynch, Dalio and Jhunjhunwala are not back-tested, and the page says so.
 - **News comes from Firecrawl (`research/web.py`) and is words only.** Each summary line points at one article and may only use numbers that article contains; no financial figure ever comes from the web. It is fetched for today's report only (never for the past replay or back-test), cached for twelve hours (each search costs two credits), and the section is simply absent if Firecrawl is unavailable. Uses `FIRECRAWL_API_KEY` or the stored `firecrawl login`.
+- **Data is judged fresh by content**: the filing list is refetched daily and the facts whenever a newer 10-K or 10-Q exists. The page says which filing the figures come from and flags when the SEC feed itself is behind.
 
-Code: `research/` (`resolve`, `live`, `report`, `analysis`, `valuation`, `dividends`, `text`, `web`, `narrative`, `market`, `service`, `backtest`),
-API `GET /api/research/search` and `/api/research/company/{cik}`, web screen `web/src/screens/Research.tsx`.
+Code: `research/` (`resolve`, `live`, `report`, `analysis`, `valuation`, `outlook`, `quick_check`, `dividends`, `text`, `web`, `narrative`,
+`market`, `chat`, `voice`, `service`, `backtest`), API `GET /api/research/search`, `/api/research/company/{cik}`, `.../chat`,
+`/api/research/evidence`, `/api/voice` and `/api/voice/status`; web `web/src/screens/Research.tsx`, the panel in
+`web/src/components/` (`InvestorStage`, `InvestorCards`, `DebateLog`, `AnalysisPopup`, `Avatar`, `firstPerson`, `Outlook`) and
+`web/src/scene/` (the 3D office: `ResearchScene`, `ThinkingCards`).
 Not covered yet: non-US listings, and banks and insurers only partly (several measures do not apply to them).
 
 The original replay (sections 1 to 15 below) is the evidence base for the learning loop and the Mubit story. Two places the pivot

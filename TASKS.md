@@ -87,7 +87,7 @@ The product is now a report on any US-listed company as it stands today (README 
 |---|---|
 | Search by name or ticker, market shown | Done (US only). A search that finds nothing says London and Europe are not covered |
 | Report: growth, profit, cash, balance sheet, R&D, risk, plans in the company's own words, price and multiples | Done; every figure names its filings; approximations marked |
-| Six investor lenses from the books in `principles/guides/` | Done; each check cites its source; only Buffett and Munger are back-tested, and the page says so |
+| Investor lenses from the books in `principles/guides/` | Done: Buffett, Munger, Lynch, Dalio, Jhunjhunwala (Graham off the panel); each check cites its source; only Buffett and Munger are back-tested, and the page says so |
 | Valuation range, what the price assumes, ten-year scenarios, overall reading | Done; assumptions on the page; not a price target, not advice |
 | Back-test of the Buffett and Munger checks | Done: Munger's failure checks point the right way but modestly (13% vs 2%; an earlier 45% vs 3% was an artefact of dividend timing, fixed); Buffett's predict cash margin (typical 14% vs 4%), not sales growth |
 | Demo script and judge Q&A | `docs/DEMO.md`; replay numbers to fill in |
@@ -98,7 +98,30 @@ Notes for B:
 - `agents/cache.py` now writes UTF-8: on Windows a reply containing a character such as "≈" crashed the replay.
 - The replay agents' prompt files (`principles/<investor>.md`) are unchanged on purpose: the demo replays from a cache keyed on the prompt.
 
-## 1. Where we are now (Sat 24 Oct, ~19:00)
+## 0f. Where the project is now (Sun 25 Oct, ~02:00; freeze 10:00)
+
+Pushed to `main` (`594842e`). 666 tests pass (5 skip). The app runs from `main` at http://localhost:8000.
+
+| Area | State |
+|---|---|
+| Research report (Report tab) | Done: the investors' take first, the numbers with sources, 5-minute check, Firecrawl news, valuation, 5-year outlook, back-test evidence |
+| Investor panel (3D office) | Done: prologue, a card per investor with face, live check and vote, click-open analysis pop-up, debate said in the scene in the first person with the log below. Graham is off the panel |
+| Investors | Buffett, Munger, Lynch, Dalio, Jhunjhunwala; per-investor invest, wait or avoid and a panel tally |
+| Voices | Built (ElevenLabs through `/api/voice`, cached on disk). **Off until `ELEVENLABS_API_KEY` is in `.env`** |
+| Data | Live SEC data judged fresh by content; 50-company replay store in Postgres; a copy on Supabase (row-level security on) |
+| Replay (final) | Finished into `data/runs_final` (calls, grades, corrections) |
+| Mubit | All model calls route through Mubit. No corrections API exists, so lessons go into the next prompt and the learned analyst is shown beside an identical frozen one. **Adapter training is not started** (needs 25 kept examples per task; 3 adapter starts per UTC day; waiting on the console Tasks and Adapters pages) |
+
+**Still to do, in order**
+1. Read the final replay: `python -m eval.run --from-replay data/runs_final --tag final`, then `quality.cli --runs`; measure what the dividend-timing fix did to Risk grades. Fill the `[replay]` numbers in `docs/DEMO.md`.
+2. Mubit: report the console Tasks and Adapters state so the adapter plan can be fixed. Fallback idea: a compact Munger risk-read training task.
+3. Record the backup demo video from `docs/DEMO.md` (team). Never cut.
+4. Add the ElevenLabs key and listen to the debate once end to end.
+5. Optional: bind Postgres to 127.0.0.1 in `docker-compose` (the replay has finished); UK and European listings; financial-company metrics; Alpaca price history to back-test the price checks.
+
+**Known limits, stated on the page:** only Buffett and Munger are back-tested; the SEC feed can lag a filing (the page flags it); banks and insurers are only partly covered.
+
+## 1. Where we were (Sat 24 Oct, ~19:00; kept for the record)
 
 Checked against the repo and the local Postgres. 531 tests pass (4 skip). Postgres holds the 50-company universe: 97,591 facts and 23,788 events. `.env` has `USE_STUBS=0` and `USE_FAKE_UPDATER=0`. `MUBIT_BASE_URL` is empty in `.env`.
 
