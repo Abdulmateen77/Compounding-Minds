@@ -134,6 +134,18 @@ def heldout():
     return {"path": str(path.relative_to(ROOT)), "report": report}
 
 
+MUBIT_CONSOLE = Path(__file__).resolve().parent.parent / "agents" / "mubit_console.json"
+
+
+@app.get("/api/mubit/adapters")
+def mubit_adapters():
+    """Adapter test results as last copied from the Mubit console (it has no API for them), with our own
+    measure of how often the provider agrees with itself. Served as written, with its read_at time."""
+    if not MUBIT_CONSOLE.exists():
+        raise HTTPException(404, "no Mubit console reading yet")
+    return json.loads(MUBIT_CONSOLE.read_text())
+
+
 # ---- research on any listed company, as it stands today (research/) ----------------------------------------------
 _research = None
 

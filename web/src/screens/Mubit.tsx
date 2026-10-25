@@ -1,7 +1,7 @@
 import { useQueries, useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
-import { api, pct, type Correction, type HeldOutReport, type Score, type TrackRecord } from "../api/client";
+import { api, pct, type AdapterResult, type Correction, type HeldOutReport, type MubitConsole, type Score, type TrackRecord } from "../api/client";
 import { ErrorBox, Skeleton, StubChip } from "../components/bits";
 import { go, mubitHref } from "../route";
 import { EvidencePanel } from "./ResearchAnalysis";
@@ -102,6 +102,7 @@ export default function Mubit({ agent }: { agent?: string }) {
       )}
 
       <HeldOut />
+      <Adapters />
       </>)}
     </div>
   );
@@ -164,6 +165,104 @@ function HeldOut() {
         </table>
       </div>
     </section>
+  );
+}
+
+const ANALYSTS = ["fundamentals", "risk", "scenarios"] as const;
+const when = (iso: string) => iso.replace("T", " ").replace("Z", " UTC");
+
+/** Mubit's own test of each adapter (copied from its console, which has no API) and our measure of what limits it. */
+function Adapters() {
+  const q = useQuery({ queryKey: ["mubit-adapters"], queryFn: api.mubitAdapters, retry: false });
+  if (q.isLoading) return <Skeleton h={160} />;
+  if (q.isError || !q.data) return null;
+  const d: MubitConsole = q.data;
+  const passed = d.adapters.filter((a) => a.matched >= a.target).length;
+  const { before, after } = d.agreement;
+  return (
+    <section className="card p-5 grid gap-5" aria-label="Mubit adapters">
+      <div>
+        <div className="flex items-center gap-3 flex-wrap">
+          <h2 className="text-xl font-semibold m-0">Mubit adapters</h2>
+          <span className="chip num">{passed} of {d.adapters.length} passed</span>
+        </div>
+        <p className="mute text-sm mt-1 mb-0 max-w-2xl">
+          Mubit trains a small model (an adapter) for each kind of call and tests it against the answers our provider model gave.
+          {" "}{d.pass_rule} Read from the Mubit console at <span className="num">{when(d.read_at)}</span>.
+        </p>
+      </div>
+
+      <div>
+        <h3 className="text-base font-semibold m-0">Does the provider agree with itself?</h3>
+        <p className="mute text-xs mt-1 mb-3 max-w-2xl">{d.agreement.note}</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {ANALYSTS.map((a) => (
+            <div key={a} className="card p-4" style={{ background: "var(--card-alt)" }}>
+              <div className="mute text-xs">{ROLE[a]} analyst</div>
+              <div className="num text-3xl font-semibold my-1" style={{ color: "var(--success)" }}>{pct(after[a])}</div>
+              <div className="mute text-xs num">was {pct(before[a])}</div>
+              <Bar value={after[a]} from={before[a]} target={0.95} />
+            </div>
+          ))}
+        </div>
+        <p className="mute text-xs mt-2 mb-0">Before: {before.label.toLowerCase()}, <span className="num">{before.pairs}</span> prompts each. After: {after.label.toLowerCase()}, <span className="num">{after.pairs}</span> prompts each. The line marks 95%.</p>
+      </div>
+
+      <div>
+        <h3 className="text-base font-semibold m-0">Mubit's test of each adapter</h3>
+        <p className="mute text-xs mt-1 mb-3 max-w-2xl">Every version so far was trained on replies from before the reply format was pinned.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm num">
+            <thead className="mute text-xs text-left">
+              <tr><th className="py-1 pr-4 font-normal">Task</th><th className="pr-4 font-normal">Version</th><th className="pr-4 font-normal">Matched</th>
+                <th className="pr-4 font-normal">Needs</th><th className="pr-4 font-normal">Test cases</th><th className="font-normal">Result</th></tr>
+            </thead>
+            <tbody>
+              {d.adapters.map((a: AdapterResult) => {
+                const ok = a.matched >= a.target;
+                return (
+                  <tr key={a.task} className="border-t" style={{ borderColor: "var(--divider)" }}>
+                    <td className="py-2 pr-4" style={{ fontFamily: "inherit" }}>{a.task}</td>
+                    <td className="pr-4">{a.version}</td>
+                    <td className="pr-4" style={{ minWidth: 120 }}>{pct(a.matched)}<Bar value={a.matched} target={a.target} /></td>
+                    <td className="pr-4">{pct(a.target)}</td>
+                    <td className="pr-4">{a.test_cases}</td>
+                    <td style={{ fontFamily: "inherit", color: ok ? "var(--success)" : "var(--muted)" }}>{ok ? "Passed" : "Below target"}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div>
+        <h3 className="text-base font-semibold m-0">Training on the pinned format</h3>
+        <p className="mute text-xs mt-1 mb-3 max-w-2xl">{d.training.note}</p>
+        <div className="grid gap-3 sm:grid-cols-3">
+          {d.training.tasks.map((t) => (
+            <div key={t.task} className="card p-4" style={{ background: "var(--card-alt)" }}>
+              <div className="mute text-xs">{ROLE[t.agent] ?? t.agent} analyst</div>
+              <div className="text-sm font-medium mt-1">{t.status}</div>
+              <div className="num text-xs mute mt-2">{t.calls_7d} calls · {t.kept} of {t.needed} examples kept</div>
+              <Bar value={Math.min(1, t.kept / t.needed)} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/** A 0-100% bar; `from` shows an earlier value as a faint segment, `target` a marker line. */
+function Bar({ value, from, target }: { value: number; from?: number; target?: number }) {
+  return (
+    <div className="relative h-1.5 rounded-full mt-2" style={{ background: "var(--divider)" }} aria-hidden>
+      {from != null && <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${from * 100}%`, background: "var(--muted)", opacity: 0.35 }} />}
+      <motion.div className="absolute inset-y-0 left-0 rounded-full" style={{ background: "var(--success)" }}
+        initial={{ width: 0 }} animate={{ width: `${value * 100}%` }} transition={{ duration: DUR.slower }} />
+      {target != null && <div className="absolute -inset-y-1 w-px" style={{ left: `${target * 100}%`, background: "var(--foreground)" }} />}
+    </div>
   );
 }
 

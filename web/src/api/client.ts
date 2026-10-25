@@ -21,6 +21,16 @@ export type HeldOutReport = {
   agents: Record<string, HeldOutAgent>;
 };
 
+/** agents/mubit_console.json, as /api/mubit/adapters serves it: the Mubit console copied by hand, plus our agreement measure. */
+export type AdapterResult = { task: string; kind: string; version: string; base_model: string; matched: number; test_cases: number; target: number };
+export type TrainingTask = { task: string; agent: string; calls_7d: number; kept: number; needed: number; status: string };
+export type AgreementArm = { label: string; pairs: number; fundamentals: number; risk: number; scenarios: number };
+export type MubitConsole = {
+  read_at: string; source: string; pass_rule: string; adapters: AdapterResult[];
+  training: { note: string; tasks: TrainingTask[] };
+  agreement: { note: string; before: AgreementArm; after: AgreementArm };
+};
+
 async function j<T>(url: string, init?: RequestInit): Promise<T> {
   const r = await fetch(url, init);
   if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
@@ -38,6 +48,7 @@ export const api = {
   assessment: (id: string) => j<Assessment>(`/api/assessments/${id}`),
   trackRecord: (agent: string, asOf?: string) => j<TrackRecord>(`/api/agents/${agent}/track-record${asOf ? `?as_of=${asOf}` : ""}`),
   heldout: () => j<{ path: string; report: HeldOutReport }>("/api/heldout"),
+  mubitAdapters: () => j<MubitConsole>("/api/mubit/adapters"),
 };
 
 export const LABELS = {

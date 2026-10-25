@@ -118,6 +118,19 @@ def test_heldout_report_served_or_404(monkeypatch, tmp_path):
     assert client.get("/api/heldout").status_code == 404
 
 
+def test_mubit_adapters_serves_the_console_reading_with_its_time(monkeypatch, tmp_path):
+    import api.main as main
+    d = client.get("/api/mubit/adapters").json()
+    assert d["read_at"] and "by hand" in d["source"]
+    for a in d["adapters"]:
+        assert 0 <= a["matched"] <= 1 and 0 < a["target"] <= 1 and a["test_cases"] > 0
+    for arm in ("before", "after"):
+        assert all(0 <= d["agreement"][arm][k] <= 1 for k in ("fundamentals", "risk", "scenarios"))
+    assert all(t["kept"] <= t["calls_7d"] for t in d["training"]["tasks"])
+    monkeypatch.setattr(main, "MUBIT_CONSOLE", tmp_path / "missing.json")
+    assert client.get("/api/mubit/adapters").status_code == 404
+
+
 @pytest.mark.skipif(not (Path(__file__).resolve().parents[2] / "web" / "dist").is_dir(), reason="front end not built")
 @pytest.mark.parametrize("path", ["..%2f..%2fCLAUDE.md", "%2e%2e/%2e%2e/CLAUDE.md", "assets/..%2f..%2f..%2fCLAUDE.md"])
 def test_static_files_cannot_escape_dist(path):
