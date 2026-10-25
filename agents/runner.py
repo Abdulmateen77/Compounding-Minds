@@ -36,6 +36,19 @@ OUTPUT_SHAPE = """Reply with ONE JSON object and nothing else:
 Use only the metrics provided. Do not invent numbers. Time is relative: Q0 is the latest
 reported quarter, Q-1 the one before. This is research, not investment advice."""
 
+# Pins the parts of the reply the model would otherwise vary from call to call (probability digits, which
+# metrics it cites, bullet count, fences). Mubit tests an adapter by how often it matches the provider model's
+# answers, so a reply that is a near-fixed function of the prompt is one an adapter can match. Same text for
+# every call and in the USER message, so the system prompt (the task key) is unchanged. No temperature: Mubit's
+# Anthropic route rejects it ("temperature: Extra inputs are not permitted").
+FORMAT_RULES = (
+    "probability: a multiple of 0.05 from 0.50 to 0.95; confidence is the same number.",
+    "evidence: every metric in METRICS, in the order listed, each with its exact value.",
+    "principles_used: the ids your reasoning applies, in ascending order.",
+    "reasoning: exactly 3 bullets, strongest signal first, each `<metric name> = <value>: <what it means>` in under 20 words.",
+    "Reply with the bare JSON object: no code fence, no text before or after it.",
+)
+
 # Appended to the USER message only when tools are enabled, so the system prompt (Mubit's
 # task key) and the no-tools prompts stay byte-for-byte the same.
 TOOL_INSTRUCTIONS = """TOOLS (optional, at most {n} calls in total). To call one, reply with ONLY
@@ -48,7 +61,9 @@ def load_principles(investor: str) -> str:
     return (PRINCIPLES_DIR / f"{investor}.md").read_text()
 
 
-def build_messages(agent: str, company_id: str, as_of: date, metrics: dict, lessons: list[str]) -> list[dict]:
+def build_messages(agent: str, company_id: str, as_of: date, metrics: dict, lessons: list[str],
+                   format_rules: bool = True) -> list[dict]:
+    """`format_rules=False` gives the prompt as it was before FORMAT_RULES (agents.agreement compares the two)."""
     spec = SPECS[agent]
     # Prompts carry only the anon id and metrics: no names, tickers or calendar dates.
     # Names, units and lessons are masked; numeric values are passed through untouched.
@@ -67,6 +82,7 @@ def build_messages(agent: str, company_id: str, as_of: date, metrics: dict, less
         f"Company: {company_id}\nQuestion ({spec.question_id}): {spec.question}\n"
         f"Allowed answers: {', '.join(spec.answers)}\nHorizon: {spec.horizon}\n"
         + "".join(f"RULE: {r}\n" for r in spec.extra_rules)
+        + "".join(f"FORMAT: {r}\n" for r in (FORMAT_RULES if format_rules else ()))
         + f"as_of: Q0 (latest reported quarter; calendar dates are hidden)\nMETRICS\n" + "\n".join(lines)
     )
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]

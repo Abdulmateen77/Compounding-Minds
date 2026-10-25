@@ -99,10 +99,10 @@ def rules_answer(lens: dict, question: str) -> str:
     return prefix + " ".join(parts)
 
 
-def _ask(gateway, lens: dict, user_block: str, history: list[dict], note: str) -> str | None:
+def _ask(gateway, lens: dict, user_block: str, history: list[dict], note: str, company: str = "") -> str | None:
     msgs = [{"role": "system", "content": system_for(lens)}, *history, {"role": "user", "content": user_block + note}]
     try:
-        raw = gateway.complete(f"chat_{lens['key']}", msgs, purpose="research_chat", max_tokens=700, session_id=f"chat:{lens['key']}")
+        raw = gateway.complete(f"chat_{lens['key']}", msgs, purpose="research_chat", max_tokens=700, session_id=f"chat:{lens['key']}:{company}")
     except Exception:
         return None
     out = str(raw).strip()
@@ -126,7 +126,7 @@ def answer(gateway, report: dict, lens: dict, question: str, history: list[dict]
             block = f"{sheet}\n\nReader's question: {question}"
         note = ""
         for _ in range(2):
-            text = _ask(gateway, lens, block, turns, note)
+            text = _ask(gateway, lens, block, turns, note, company)
             if not text:
                 break
             bad = sorted(numbers(text) - ok)

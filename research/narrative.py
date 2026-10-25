@@ -61,8 +61,10 @@ def prompt(lens: dict, company: str, headline: str, news: list[str] = ()) -> str
 def _ask(gateway, lens: dict, company: str, headline: str, note: str = "", news: list[str] = ()) -> dict | None:
     msgs = [{"role": "system", "content": system_for(lens)}, {"role": "user", "content": prompt(lens, company, headline, news) + note}]
     try:
+        # One session per company, not per task: Mubit sets a task's test cases aside by session, so a single
+        # session for every call leaves it nothing to test an adapter on.
         raw = gateway.complete(f"narrative_{lens['key']}", msgs, purpose="research_narrative", max_tokens=900,
-                               session_id=f"narrative:{lens['key']}")
+                               session_id=f"narrative:{lens['key']}:{company}")
         got = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))
         view, ahead = str(got["view"]).strip(), str(got["ahead"]).strip()
         return {"view": view, "ahead": ahead} if view and ahead else None

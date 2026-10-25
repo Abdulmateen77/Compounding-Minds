@@ -138,7 +138,7 @@ def summarise(gateway, company: str, news: dict | None) -> list[dict]:
     try:
         raw = gateway.complete("research_news", [{"role": "system", "content": SYSTEM},
                                                  {"role": "user", "content": f"Company: {company}\n\n{body}"}],
-                               purpose="research_news", max_tokens=700, session_id="news")
+                               purpose="research_news", max_tokens=700, session_id=f"news:{company}")
         got = json.loads(re.search(r"\{.*\}", raw, re.S).group(0))["items"]
     except Exception:
         return []
