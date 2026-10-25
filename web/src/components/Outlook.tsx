@@ -1,12 +1,14 @@
 import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import type { ReactNode } from "react";
 import { TONE, type Market, type Outlook } from "../research";
+import { Head } from "./Section";
 
 const pct = (x: number | null | undefined, d = 0) => (x == null ? "n/a" : `${x >= 0 ? "+" : ""}${(x * 100).toFixed(d)}%`);
 const usd = (v: number | null | undefined) => (v == null ? "n/a" : `$${v >= 100 ? v.toFixed(0) : v.toFixed(2)}`);
 
 /** The next five years: how likely the business is to be bigger (from its own record), the value per share along the way under
     the three cases beside the share price so far, and one plain reading. A value path, not a share-price forecast. */
-export function OutlookBlock({ o, market }: { o: Outlook; market?: Market | null }) {
+export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Market | null; children?: ReactNode }) {
   const v = o.verdict, color = TONE[v.tone].color, odds = o.odds;
   const thisYear = new Date().getFullYear();
   const past = (market?.history ?? []).filter((h, i, arr) => i % 3 === 0 || i === arr.length - 1).slice(-21)   // quarterly, five years
@@ -20,10 +22,8 @@ export function OutlookBlock({ o, market }: { o: Outlook; market?: Market | null
 
   return (
     <section className="grid gap-3">
-      <div>
-        <h2 className="text-xl font-semibold m-0">The next five years</h2>
-        <p className="mute text-sm m-0 mt-1 max-w-3xl">Where the business could be, and what that would make each share worth, worked out from every figure above. It is a view of the business's value, not a forecast of the share price, which can stay far from value for years.</p>
-      </div>
+      <Head title="The next five years" blurb="Where the business could be, and what each share would then be worth. A view of value, not a forecast of the share price."
+        more={<p className="m-0">Worked out from every figure on the Financials page. The share price can stay far from the business's value for years.</p>} />
       <div className="card p-5 grid gap-5" style={{ borderColor: `color-mix(in srgb, ${color} 40%, var(--line))` }}>
         <div className="grid gap-1">
           <p className="m-0 text-lg font-semibold" style={{ color }}>{v.headline}</p>
@@ -59,6 +59,8 @@ export function OutlookBlock({ o, market }: { o: Outlook; market?: Market | null
             <p className="m-0 mute text-xs">Dashed and solid lines are the business's value per share under the bear, base and bull growth cases (the valuation section's model, read at each year). The line on the left is the actual share price.</p>
           </div>
         )}
+
+        {children}
 
         <div className="grid gap-1 text-xs mute">
           {odds && <span>How the odds are worked out: five years of sales growth are drawn, many thousands of times, from the {odds.history_years} yearly growth rates this company has actually had (best {pct(odds.best_year, 1)}, worst {pct(odds.worst_year, 1)}). Its own record is the only input, so an uneven record gives a wide range.</span>}

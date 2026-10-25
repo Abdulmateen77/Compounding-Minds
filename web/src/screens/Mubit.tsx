@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api, pct, type Correction, type HeldOutReport, type Score, type TrackRecord } from "../api/client";
 import { ErrorBox, Skeleton, StubChip } from "../components/bits";
 import { go, mubitHref } from "../route";
+import { EvidencePanel } from "./ResearchAnalysis";
 
 const AGENTS = ["fundamentals", "risk", "scenarios"] as const; // the MVP committee; Valuation is a stretch agent
 const ROLE: Record<string, string> = { fundamentals: "Fundamentals", valuation: "Valuation", moat: "Moat", risk: "Risk", scenarios: "Scenarios" };
@@ -25,16 +26,28 @@ export default function Mubit({ agent }: { agent?: string }) {
   const graded = data.reduce((n, d) => n + d.calls_graded, 0);
   const lift = learnedNow != null && frozenNow != null ? Math.round((learnedNow - frozenNow) * 100) : null;
   const asOf = data[0]?.as_of;
+  const [tab, setTab] = useState<"checks" | "learning">(agent ? "learning" : "checks");
 
   return (
     <div className="grid gap-6">
       <div>
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">Mubit: how the analysts learn</h1>
-          {health.data?.stub !== false && <StubChip />}
+          <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">Track record</h1>
+          {health.data?.stub !== false && tab === "learning" && <StubChip />}
         </div>
-        <p className="mute mt-2 mb-0 max-w-2xl">Every wrong call becomes a correction, and Mubit turns corrections into a new model version. Each analyst here is compared with a frozen twin that never updates.{asOf && <> Figures run to <span className="num">{asOf}</span>.</>}</p>
+        <p className="mute mt-2 mb-0 max-w-2xl">Two tests of whether this can be trusted: do the checks tell good businesses from weak ones, and do the AI analysts improve when they are wrong?</p>
       </div>
+
+      <div role="tablist" aria-label="Track record" className="flex gap-1 p-1 rounded-xl justify-self-start flex-wrap" style={{ background: "var(--panel2)", border: "1px solid var(--line)" }}>
+        {([["checks", "Do the checks work?"], ["learning", "Do the analysts learn?"]] as const).map(([id, label]) => (
+          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-0"
+            style={tab === id ? { background: "var(--panel)", color: "var(--text)", boxShadow: "0 0 0 1px var(--line)" } : { background: "transparent", color: "var(--mute)" }}>{label}</button>
+        ))}
+      </div>
+
+      {tab === "checks" && <EvidencePanel />}
+      {tab === "learning" && (<>
+        <p className="mute m-0 max-w-2xl text-sm">Every wrong call becomes a correction, and Mubit turns corrections into a new model version. Each analyst here is compared with a frozen twin that never updates.{asOf && <> Figures run to <span className="num">{asOf}</span>.</>}</p>
 
       {failed && <ErrorBox msg="Could not load track records. Is the API running?" onRetry={() => qs.forEach((q) => q.refetch())} />}
       {loading && <div className="grid gap-3 grid-cols-2 md:grid-cols-4"><Skeleton h={96} /><Skeleton h={96} /><Skeleton h={96} /><Skeleton h={96} /></div>}
@@ -82,6 +95,7 @@ export default function Mubit({ agent }: { agent?: string }) {
       )}
 
       <HeldOut />
+      </>)}
     </div>
   );
 }

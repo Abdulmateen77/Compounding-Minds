@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { Disclosure, Explain, Head } from "../components/Section";
 import { jumpTo } from "../route";
 import { TONE, money, pctOf, type Analysis, type Check, type Lens, type QuickCheck } from "../research";
 
@@ -109,10 +110,8 @@ export function Worth({ a }: { a: Analysis }) {
   const v = a.valuation;
   return (
     <section className="grid gap-3">
-      <div>
-        <h2 className="text-xl font-semibold m-0">What could the business be worth per share?</h2>
-        <p className="mute text-sm m-0 mt-1 max-w-3xl">A cash-flow valuation: take the free cash it normally produces, grow it for ten years at a rate taken from its own history, discount it back, and add cash less debt. It shows what a price assumes. It is not a prediction.</p>
-      </div>
+      <Head title="What could the business be worth per share?" blurb="A cash-flow valuation. It shows what a price assumes; it is not a prediction."
+        more={<p className="m-0">Take the free cash it normally produces, grow it for ten years at a rate taken from its own history, discount it back, and add cash less debt.</p>} />
       {!v.available ? <div className="card p-5 text-sm">{v.reason}</div> : (
         <div className="card p-5 grid gap-5">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -134,16 +133,18 @@ export function Worth({ a }: { a: Analysis }) {
             </div>
           )}
           {v.sensitivity && (
-            <div className="overflow-x-auto">
-              <table className="text-sm w-full num" style={{ borderCollapse: "collapse" }}>
-                <caption className="text-left mute text-xs pb-2">Value per share if you require a different yearly return</caption>
-                <thead><tr className="mute text-xs text-left"><th className="py-1 pr-4 font-normal">Required return</th>{v.scenarios!.map((s) => <th key={s.name} className="py-1 pr-4 font-normal">{s.name}</th>)}</tr></thead>
-                <tbody>{v.sensitivity.map((r) => (
-                  <tr key={r.rate} style={{ borderTop: "1px solid var(--line)", fontWeight: Math.abs(r.rate - (v.discount_rate ?? 0)) < 1e-9 ? 600 : 400 }}>
-                    <td className="py-1 pr-4">{pctOf(r.rate)}</td>{r.values.map((x, i) => <td key={i} className="py-1 pr-4">{usd(x)}</td>)}
-                  </tr>))}</tbody>
-              </table>
-            </div>
+            <Disclosure level={3} title="What if you require a different yearly return?" summary="Value per share at other required returns">
+              <div className="overflow-x-auto">
+                <table className="text-sm w-full num" style={{ borderCollapse: "collapse" }}>
+                  <caption className="text-left mute text-xs pb-2">Value per share if you require a different yearly return</caption>
+                  <thead><tr className="mute text-xs text-left"><th className="py-1 pr-4 font-normal">Required return</th>{v.scenarios!.map((s) => <th key={s.name} className="py-1 pr-4 font-normal">{s.name}</th>)}</tr></thead>
+                  <tbody>{v.sensitivity.map((r) => (
+                    <tr key={r.rate} style={{ borderTop: "1px solid var(--line)", fontWeight: Math.abs(r.rate - (v.discount_rate ?? 0)) < 1e-9 ? 600 : 400 }}>
+                      <td className="py-1 pr-4">{pctOf(r.rate)}</td>{r.values.map((x, i) => <td key={i} className="py-1 pr-4">{usd(x)}</td>)}
+                    </tr>))}</tbody>
+                </table>
+              </div>
+            </Disclosure>
           )}
           <p className="m-0 text-xs mute">Starting cash flow: {money(v.normalised_fcf!)}, the middle value of the last three years so one unusual year does not distort it. A higher required return lowers every value.</p>
         </div>
@@ -152,16 +153,14 @@ export function Worth({ a }: { a: Analysis }) {
   );
 }
 
-export function Future({ a, outlook }: { a: Analysis; outlook: string[] }) {
+/** The scenario table. `bare` drops the heading when it sits inside another section (the next-five-years block). */
+export function Future({ a, bare = false }: { a: Analysis; bare?: boolean }) {
   const f = a.future!;
   const yrs = ["1", "3", "5", "10"];
   return (
     <section className="grid gap-3">
-      <div>
-        <h2 className="text-xl font-semibold m-0">What could the next ten years look like?</h2>
-        <p className="mute text-sm m-0 mt-1 max-w-3xl">Three paths for sales and free cash flow. Each grows at a starting rate taken from the company's own record, then slows toward the economy's long-run pace. These are scenarios under stated assumptions, not forecasts.</p>
-      </div>
-      <div className="card p-5 overflow-x-auto">
+      {!bare && <Head title="What could the next ten years look like?" blurb="Three paths for sales and free cash flow under stated assumptions, not forecasts." />}
+      <div className={bare ? "overflow-x-auto" : "card p-5 overflow-x-auto"}>
         <table className="text-sm w-full num" style={{ borderCollapse: "collapse" }}>
           <thead>
             <tr className="mute text-xs text-left">
@@ -181,12 +180,6 @@ export function Future({ a, outlook }: { a: Analysis; outlook: string[] }) {
           </tbody>
         </table>
       </div>
-      {outlook.length > 0 && (
-        <div className="card p-5 grid gap-2">
-          <span className="font-semibold text-sm">What management itself expects</span>
-          {outlook.map((t) => <blockquote key={t} className="m-0 pl-3 text-sm leading-relaxed" style={{ borderLeft: "3px solid var(--blue)" }}>{t}</blockquote>)}
-        </div>
-      )}
     </section>
   );
 }
@@ -218,17 +211,15 @@ function Bars({ t, value, color, fmt }: { t: EvidenceTest; value: (b: EvidenceTe
 
 export function EvidencePanel() {
   const q = useQuery({ queryKey: ["evidence"], retry: 0, staleTime: Infinity, queryFn: async (): Promise<Evidence> => { const r = await fetch("/api/research/evidence"); if (!r.ok) throw new Error(); return r.json(); } });
-  if (!q.data) return null;
+  if (q.isLoading) return <p className="mute text-sm m-0" role="status">Loading the results…</p>;
+  if (!q.data) return <p className="mute text-sm m-0">The back-test results are not available right now.</p>;
   const e = q.data, all = e.all_quarters.tests, ye = e.year_end_only.tests, ho = e.held_out_year_end.tests;
   const find = (ts: EvidenceTest[], lens: string, k: string) => ts.find((t) => t.lens === lens && t.outcome.startsWith(k))!;
   const hoM = ho.find((t) => t.lens === "munger");
   const m = find(all, "munger", "Auditor"), b = find(all, "buffett", "Free-cash"), g = find(all, "buffett", "Revenue");
   return (
     <section className="grid gap-3">
-      <div>
-        <h2 className="text-xl font-semibold m-0">Have these checks actually worked?</h2>
-        <p className="mute text-sm m-0 mt-1 max-w-3xl">We ran the same checks on 50 large US companies at every quarter from 2018 to 2023, using only the filings public at the time, and compared them with what happened over the next twelve months. {e.all_quarters.rows.toLocaleString()} company-quarters, no AI involved, repeatable.</p>
-      </div>
+      <Head title="Have these checks actually worked?" blurb={`We ran the same checks on 50 large US companies at every quarter from 2018 to 2023, using only the filings public at the time, and compared them with what happened over the next twelve months (${e.all_quarters.rows.toLocaleString()} company-quarters, no AI involved).`} />
       <div className="grid gap-4 md:grid-cols-2">
         <div className="card p-5 grid gap-3 content-start">
           <span className="font-semibold">Munger's “how could it fail?” checks</span>
@@ -246,12 +237,12 @@ export function EvidencePanel() {
           <p className="m-0 text-sm">Companies passing most of the checks kept earning more cash per dollar of sales. But the same checks said nothing about sales growth: typical growth was {pc(g.buckets[0].median, 1)}, {pc(g.buckets[1].median, 1)} and {pc(g.buckets[2].median, 1)}, with no pattern.</p>
         </div>
       </div>
-      <ul className="mute text-xs m-0 pl-5 grid gap-1 max-w-3xl">
+      <Explain label="Read the caveats"><ul className="m-0 pl-5 grid gap-1 max-w-3xl">
         <li>This tests whether the checks tell good businesses from weak ones. It does not test whether the share price rose, and it does not test the price and valuation checks (we hold no historical prices).</li>
         <li>The cash-flow check overlaps with what it predicts, so its result shows persistence, not independent proof.</li>
         <li>Windows overlap from quarter to quarter. Using one window per company per year gives the same direction (Munger {ye.find((t) => t.lens === "munger")?.spearman?.toFixed(2)}, Buffett cash {ye.find((t) => t.lens === "buffett" && t.outcome.startsWith("Free-cash"))?.spearman?.toFixed(2)}).</li>
         <li>Large US companies, 2018 to 2023, includes the 2020 shock. Past performance of a method is no guarantee.</li>
-      </ul>
+      </ul></Explain>
     </section>
   );
 }
@@ -262,10 +253,7 @@ export function QuickCheckBlock({ q }: { q: QuickCheck }) {
   const color = q.score == null ? "var(--mute)" : q.score >= 0.75 ? "var(--green)" : q.score >= 0.4 ? "var(--amber)" : "var(--red)";
   return (
     <section className="grid gap-3">
-      <div>
-        <h2 className="text-xl font-semibold m-0">The 5-minute check: is it worth researching further?</h2>
-        <p className="mute text-sm m-0 mt-1 max-w-3xl">Five quick tests that filter out companies to avoid before you spend time on them. Meant for manufacturing and other non-financial companies.</p>
-      </div>
+      <Head title="The 5-minute check: is it worth researching further?" blurb="Five quick tests that filter out companies to avoid. Meant for manufacturing and other non-financial companies." />
       {!q.applies ? <div className="card p-5 text-sm">{q.note}</div> : (
         <div className="card p-5 grid gap-4">
           {q.verdict && <p className="m-0 text-lg font-semibold" style={{ color }}>{q.verdict}</p>}

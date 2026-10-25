@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { Disclosure } from "../components/Section";
 import { TONE, fmtValue, longDate, money, multiple, pctOf, type Check, type Figure, type Report } from "../research";
 
 /* The professional view: the same computed numbers as the written report, as tables. No narrative, no AI text. Every row is
@@ -24,15 +25,13 @@ function Th({ children, right }: { children?: React.ReactNode; right?: boolean }
 const td = "py-1.5 px-3 align-top";
 const rowLine = { borderBottom: "1px solid color-mix(in srgb, var(--line) 55%, transparent)" } as const;
 
-function Block({ title, note, right, children }: { title: string; note?: string; right?: React.ReactNode; children: React.ReactNode }) {
+function Block({ title, note, right, open = false, children }: { title: string; note?: string; right?: React.ReactNode; open?: boolean; children: React.ReactNode }) {
   return (
-    <section className="grid gap-2">
-      <div className="flex items-end justify-between gap-3 flex-wrap">
-        <div><h2 className="text-base font-semibold m-0">{title}</h2>{note && <p className="mute text-xs m-0 mt-0.5 max-w-3xl">{note}</p>}</div>
-        {right}
-      </div>
-      <div className="card overflow-x-auto">{children}</div>
-    </section>
+    <Disclosure level={3} title={title} summary={note} defaultOpen={open}>
+      {note && <p className="mute text-xs m-0 max-w-3xl">{note}</p>}
+      {right && <div className="flex justify-end">{right}</div>}
+      <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid var(--line)" }}>{children}</div>
+    </Disclosure>
   );
 }
 
@@ -67,15 +66,12 @@ export default function ProView({ r }: { r: Report }) {
   const hist = (f: Figure) => f.history.slice(-5).map((h) => (h.value == null ? "–" : fmtValue(f.unit, h.value))).join("  →  ");
 
   return (
-    <div className="grid gap-8">
-      <header className="grid gap-1">
-        <h2 className="text-2xl font-bold tracking-tight m-0">{r.company.name} <span className="num mute text-lg">{r.company.ticker}</span></h2>
-        <p className="mute text-xs m-0">Professional view · computed from SEC filings through {r.data_through ? longDate(r.data_through) : "n/a"} · every row below names its source · research, not advice</p>
-      </header>
+    <div className="grid gap-3">
+      <p className="mute text-xs m-0">Every table below is computed from SEC filings through {r.data_through ? longDate(r.data_through) : "n/a"} and names its source. Open one to read it.</p>
 
       {m && (
-        <section className="grid gap-2" aria-label="Market snapshot">
-          <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6">
+        <Block title="Market snapshot" note={`Price, value and yield measures on ${m.price_date}.`}>
+          <div className="grid gap-2 grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 p-3">
             <Stat k={`Price (${m.price_date})`} v={`${m.currency} ${m.price.toFixed(2)}`} />
             <Stat k="Market cap" v={m.market_cap ? money(m.market_cap) : "n/a"} />
             <Stat k="Enterprise value" v={m.enterprise_value ? money(m.enterprise_value) : "n/a"} />
@@ -89,7 +85,7 @@ export default function ProView({ r }: { r: Report }) {
             {a && <Stat k="Overall reading" v={OVERALL[a.overall.key] ?? a.overall.key} />}
             {a && <Stat k="Checks passed" v={(() => { const all = rows.filter(({ k }) => k.result !== "unknown"); return `${all.filter(({ k }) => k.result === "pass").length}/${all.length}`; })()} />}
           </div>
-        </section>
+        </Block>
       )}
 
       {v?.available && v.scenarios && (
@@ -125,7 +121,7 @@ export default function ProView({ r }: { r: Report }) {
       )}
 
       {a && (
-        <Block title="Investor lenses: summary" note="Fit = share of testable checks passed, a partial counting half. Rules, not opinions: the written reading is in the Report view.">
+        <Block title="Investor lenses: summary" note="Fit = share of testable checks passed, a partial counting half. Rules, not opinions: the written reading is on the Investor panel page.">
           <table className="w-full text-xs border-collapse">
             <thead><tr><Th>Investor</Th><Th>Reading</Th><Th right>Fit</Th><Th right>Pass</Th><Th right>Part</Th><Th right>Fail</Th><Th right>N/A</Th><Th>Back-tested</Th></tr></thead>
             <tbody>
@@ -179,7 +175,7 @@ export default function ProView({ r }: { r: Report }) {
         </Block>
       )}
 
-      <Block title="Financial figures" note="Latest value, five most recent periods (oldest first), and the filings each is computed from. ≈ marks an approximation.">
+      <Block open title="Financial figures" note="Latest value, five most recent periods (oldest first), and the filings each is computed from. ≈ marks an approximation.">
         <table className="w-full text-xs border-collapse">
           <thead><tr><Th>Section</Th><Th>Metric</Th><Th right>Latest</Th><Th>Signal</Th><Th>History</Th><Th right>Filings</Th></tr></thead>
           <tbody>

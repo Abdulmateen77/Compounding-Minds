@@ -14,7 +14,7 @@ export function PanelVerdict({ a, name, title }: { a: Analysis; name: string; ti
       <div>
         <p className="mute text-sm m-0">{title} {name}</p>
         <h2 className="text-2xl md:text-3xl font-bold tracking-tight my-1" style={{ color }}>{p?.headline ?? o.headline}</h2>
-        <p className="m-0 max-w-3xl leading-relaxed"><b>{o.headline}.</b> {o.why}</p>
+        <p className="m-0 max-w-3xl leading-relaxed">{p && <b>{o.headline}. </b>}{o.why}</p>
       </div>
       <div className="flex flex-wrap gap-2" aria-label="Each investor's call">
         {a.lenses.map((l) => (

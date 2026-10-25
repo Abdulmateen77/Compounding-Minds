@@ -353,7 +353,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
           background: "#121831", aspectRatio: "16 / 9", touchAction: "pan-y",
           ...(demo
             ? { width: "min(100vw, calc(100vh * 16 / 9))", margin: "0 auto" }
-            : { borderRadius: 16, border: "1px solid var(--line)", minHeight: 380 }),
+            : { borderRadius: 16, border: "1px solid var(--line)", minHeight: 380, width: "100%" }),
         }}
         tabIndex={0} role="group" aria-label="The investors read the company. Drag or use arrow keys to tilt the camera, space to pause."
         onKeyDown={demo ? undefined : onKey}

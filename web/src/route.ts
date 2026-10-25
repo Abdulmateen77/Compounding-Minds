@@ -1,8 +1,12 @@
 import { useEffect, useState, type MouseEvent } from "react";
 
-/** Hash routes so every page is linkable: #/, #/assess/<company>/<asOf>[/run], #/mubit[/<agent>]. */
-/** One company, three separate pages: the written report, the animated investors (with chat), and the professional tables. */
-export type ResearchView = "report" | "investors" | "pro";
+/** Hash routes so every page is linkable: #/, #/research/<cik>[/<view>], #/assess/<company>/<asOf>[/run], #/mubit[/<agent>]. */
+/** One company, five pages, each answering one question: is it any good (overview), how are the numbers (financials), what is it
+    worth and where is it heading (value), what do the investors make of it (investors), where does it all come from (sources). */
+export type ResearchView = "overview" | "financials" | "value" | "investors" | "sources";
+export const RESEARCH_VIEWS: ResearchView[] = ["overview", "financials", "value", "investors", "sources"];
+/** Links and saved choices from before the split: "report" was the long page (now the overview), "pro" the tables (now sources). */
+export const asView = (x: unknown): ResearchView => (x === "report" ? "overview" : x === "pro" ? "sources" : RESEARCH_VIEWS.includes(x as ResearchView) ? (x as ResearchView) : "overview");
 
 export type Route =
   | { name: "home" }
@@ -17,7 +21,7 @@ export function parseHash(hash: string): Route {
     const id = `${p[1]}_${p[2]}`;
     return p[3] === "run" ? { name: "run", id } : { name: "verdict", id };
   }
-  if (p[0] === "research" && /^\d+$/.test(p[1] ?? "")) return { name: "research", cik: p[1], view: p[2] === "investors" ? "investors" : p[2] === "pro" ? "pro" : "report" };
+  if (p[0] === "research" && /^\d+$/.test(p[1] ?? "")) return { name: "research", cik: p[1], view: asView(p[2]) };
   if (p[0] === "mubit") return { name: "mubit", agent: p[1] };
   return { name: "home" };
 }
@@ -28,7 +32,7 @@ export function assessHref(id: string, run = false) {
   return `#/assess/${encodeURIComponent(id.slice(0, i))}/${encodeURIComponent(id.slice(i + 1))}${run ? "/run" : ""}`;
 }
 export const mubitHref = (agent?: string) => (agent ? `#/mubit/${encodeURIComponent(agent)}` : "#/mubit");
-export const researchHref = (cik: number | string, view: ResearchView = "report") => (view === "report" ? `#/research/${cik}` : `#/research/${cik}/${view}`);
+export const researchHref = (cik: number | string, view: ResearchView = "overview") => (view === "overview" ?`#/research/${cik}` : `#/research/${cik}/${view}`);
 export const go = (href: string) => { window.location.hash = href; };
 
 /** Presenter mode: `?demo=1` before the # (http://localhost:5173/?demo=1#/research/320193) or after the route (#/research/320193?demo=1). */

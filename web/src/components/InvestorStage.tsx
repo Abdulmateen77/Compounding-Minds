@@ -21,7 +21,7 @@ class SceneBoundary extends Component<{ onError: (why: string) => void; children
 /** The investors, animated: they read the filings, run their checks, give their reading, and the two who disagree most face off;
     you can question any of them. Presenter mode (`?demo=1`, or the Present button) fills the window and loops. When the 3D scene
     cannot or should not run (reduced motion, no WebGL, an error) the same roster, face-off and chat are shown as plain 2D. */
-export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: Report; fromLoading?: boolean; mode?: "take" | "panel" }) {
+export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoading?: boolean }) {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
   const [playAnyway, setPlayAnyway] = useState(false);
@@ -68,17 +68,16 @@ export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: R
 
   if (!motionOk) {
     const why = failed ? "The 3D view could not start on this device." : !webgl ? "This device can't draw the 3D view." : "The 3D view is off because your device asks for reduced motion.";
-    if (mode === "take") return <p className="m-0 mute text-sm">{why} Each investor's analysis is in the boxes below.</p>;
     return <Plain r={r} why={why} onPlay={reduced && webgl && !failed ? () => setPlayAnyway(true) : undefined} />;
   }
 
   const scene = (demo: boolean) => (
     <SceneBoundary onError={() => setFailed(true)}>
-      <Suspense fallback={<div className="grid place-items-center mute text-sm" style={{ aspectRatio: "16 / 9", minHeight: 380 }} role="status">Setting up the office…</div>}>
+      <Suspense fallback={<div className="grid place-items-center mute text-sm" style={{ aspectRatio: "16 / 9", minHeight: 380, width: "100%" }} role="status">Setting up the office…</div>}>
         <ResearchScene
           cik={c.cik} name={c.name} sub={[c.ticker, c.exchange].filter(Boolean).join(" · ")} asOf={r.as_of ?? r.data_through ?? ""}
           lenses={a.lenses} cards={cards} overall={a.overall} onFail={() => setFailed(true)} demo={demo} onExitDemo={exit} fromLoading={fromLoading}
-          debates={mode === "panel"} thinkingBelow={mode === "panel"} speech={mode === "panel" ? speech : null} />
+          debates thinkingBelow speech={speech} />
       </Suspense>
     </SceneBoundary>
   );
@@ -92,24 +91,12 @@ export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: R
     );
   }
 
-  if (mode === "take") {
-    return (
-      <section className="grid gap-3" aria-label="The investors' take">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <p className="mute text-sm m-0 max-w-3xl">Each investor works through their own checks on the filings and gives a reading. Their face-offs are on the Investor panel tab.</p>
-          <button className="btn ghost" onClick={present} title="Full-screen, for showing to a room">Present</button>
-        </div>
-        {scene(false)}
-      </section>
-    );
-  }
-
   return (
-    <section className="grid gap-3" aria-label="Investor panel">
+    <section className="grid gap-3 grid-cols-[minmax(0,1fr)]" aria-label="Investor panel">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-xl font-semibold m-0">Investor panel: {a.lenses.length} investors on {c.name}</h2>
-          <p className="mute text-sm m-0 mt-1 max-w-3xl">A short prologue plays first: each investor works through their own checks and gives a reading, then those who disagree argue it out in front of a judge. Watch it through and you can question any of them. Every check is written out in the Report tab.</p>
+          <p className="mute text-sm m-0 mt-1 max-w-3xl">Each investor works through their own checks, then those who disagree argue it out. Watch it through and you can question any of them. Every check is listed on the Sources tab.</p>
         </div>
         <button className="btn ghost" onClick={present} title="Full-screen, for showing to a room">Present</button>
       </div>
@@ -128,7 +115,7 @@ function Plain({ r, why, onPlay }: { r: Report; why: string; onPlay?: () => void
   const key = sel != null ? lenses[sel].key : "";
 
   return (
-    <section className="grid gap-4" aria-label="Investor panel">
+    <section className="grid gap-4 grid-cols-[minmax(0,1fr)]" aria-label="Investor panel">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
           <h2 className="text-xl font-semibold m-0">Investor panel: {r.company.name}</h2>

@@ -20,7 +20,7 @@ export function Spark({ data, color = "var(--blue)", w = 120, h = 34 }: { data: 
   const lo = Math.min(...data), hi = Math.max(...data), span = hi - lo || 1;
   const pts = data.map((v, i) => `${(i / (data.length - 1)) * (w - 4) + 2},${h - 3 - ((v - lo) / span) * (h - 6)}`).join(" ");
   return (
-    <svg width={w} height={h} aria-hidden>
+    <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} style={{ maxWidth: "100%", height: "auto" }} aria-hidden>
       <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
       <circle cx={pts.split(" ").pop()!.split(",")[0]} cy={pts.split(" ").pop()!.split(",")[1]} r="3" fill={color} />
     </svg>

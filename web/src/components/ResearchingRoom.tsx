@@ -31,7 +31,7 @@ export function ResearchingRoom({ cik, plain }: { cik: string; plain: (name?: st
 
   const room = (
     <Boundary onError={() => setFailed(true)}>
-      <Suspense fallback={<div className="card grid place-items-center mute text-sm" style={{ aspectRatio: "16 / 9", minHeight: 380 }} role="status">Setting up the office…</div>}>
+      <Suspense fallback={<div className="card grid place-items-center mute text-sm" style={{ aspectRatio: "16 / 9", minHeight: 380, width: "100%" }} role="status">Setting up the office…</div>}>
         <ResearchingScene name={name} step={step} seconds={seconds} onFail={() => setFailed(true)} demo={presenting} />
       </Suspense>
     </Boundary>

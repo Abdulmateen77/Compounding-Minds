@@ -66,7 +66,7 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
 }
 
 const OPEN: { id: ResearchView; label: string; hint: string }[] = [
-  { id: "report", label: "Report", hint: "The written report in plain English" },
+  { id: "overview", label: "Overview", hint: "The short answer first, in plain English" },
   { id: "investors", label: "Investor panel", hint: "The investors debate it face to face, and you can question each one" },
 ];
 

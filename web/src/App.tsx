@@ -31,9 +31,7 @@ export default function App() {
           <a href="#/" aria-current={onResearch ? "page" : undefined} className="py-1 no-underline" style={navStyle(onResearch)}>Research</a>
           <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(onMubit)}>Track record</a>
         </nav>
-        {route.name === "home"
-          ? <span className="chip hidden sm:inline-flex">{health.data ? "US-listed companies" : "connecting…"}</span>
-          : <CompanySearch compact />}
+        {route.name !== "home" && <CompanySearch compact />}
       </header>
       <main className="max-w-5xl w-full mx-auto px-4 py-6 flex-1">
         <AnimatePresence mode="wait">
