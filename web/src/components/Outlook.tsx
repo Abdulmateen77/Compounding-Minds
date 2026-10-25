@@ -20,6 +20,9 @@ export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Mar
     ...(i === 0 && market ? { Price: market.price } : {}),
   })) : [];
   const rows = [...past, ...future].sort((a, b) => a.t - b.t);
+  const ticks = rows.length ? Array.from({ length: Math.floor(rows[rows.length - 1].t) - Math.ceil(rows[0].t) + 1 }, (_, i) => Math.ceil(rows[0].t) + i) : [];
+  const baseNow = o.value_path[1]?.points[0]?.value, priceNow = market?.price ?? o.price;
+  const gap = baseNow && priceNow ? priceNow / baseNow : null;
 
   return (
     <section className="grid gap-3">
@@ -46,7 +49,7 @@ export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Mar
               <ResponsiveContainer>
                 <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
                   <CartesianGrid stroke="var(--divider)" vertical={false} />
-                  <XAxis dataKey="t" type="number" domain={["dataMin", "dataMax"]} tickFormatter={(t) => String(Math.floor(t))} stroke="var(--muted)" fontSize={12} />
+                  <XAxis dataKey="t" type="number" domain={["dataMin", "dataMax"]} ticks={ticks} tickFormatter={(t) => String(Math.floor(t))} stroke="var(--muted)" fontSize={12} />
                   <YAxis stroke="var(--muted)" fontSize={12} tickFormatter={(x) => `$${Math.round(x)}`} width={56} />
                   <Tooltip formatter={(x) => usd(Number(x))} labelFormatter={(t) => String(Math.floor(Number(t)))} contentStyle={{ background: "var(--card)", border: "1px solid var(--divider)", borderRadius: 12 }} />
                   <Legend />
@@ -58,6 +61,12 @@ export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Mar
               </ResponsiveContainer>
             </div>
             <p className="m-0 mute text-xs">Dashed and solid lines are the business's value per share under the bear, base and bull growth cases (the valuation section's model, read at each year). The line on the left is the actual share price.</p>
+            {gap != null && baseNow != null && priceNow != null && (
+              <p className="m-0 text-sm leading-relaxed">
+                Today the base-case value is {usd(baseNow)} a share against a price of {usd(priceNow)}, so the price is {gap.toFixed(1)} times that value.
+                {gap >= 1.6 && " A gap this wide usually means the share price counts something this model does not (large investment holdings, insurance float, or growth well beyond the company's record), so read the value lines with caution. They are not a forecast of the price."}
+              </p>
+            )}
           </div>
         )}
 
