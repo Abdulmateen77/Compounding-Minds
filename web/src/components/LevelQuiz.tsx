@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { LEVELS, LEVEL_KEYS, QUIZ, levelForScore, setLevel, type Level } from "../literacy";
 import { Say } from "./Say";
 
-/* The onboarding quiz: six multiple-choice questions, easiest first, that set how much explaining the whole site does. It opens
+/* The onboarding quiz: three multiple-choice questions, easiest first, that set how much explaining the whole site does. It opens
    by itself on a first visit and again from the level control in the top bar. Skipping keeps the middle level. */
 
 const NOT_SURE = "I'm not sure";
@@ -55,7 +55,7 @@ export function LevelQuiz({ onClose }: { onClose: () => void }) {
                 <div style={{ width: `${((step + 1) / QUIZ.length) * 100}%`, height: "100%", background: "var(--primary-solid)", transition: "width var(--duration-slow) var(--ease-soft)" }} />
               </div>
             </div>
-            {step === 0 && <p className="m-0 text-sm mute">How much do you know about finance? Six quick questions set how much explaining this site does. “I'm not sure” is a fine answer, and you can change it any time from the top right.</p>}
+            {step === 0 && <p className="m-0 text-sm mute">How much do you know about finance? Three quick questions set how much explaining this site does. “I'm not sure” is a fine answer, and you can change it any time from the top right.</p>}
             <h2 id="quiz-title" className="text-lg font-semibold m-0">{q.q}</h2>
             <div role="radiogroup" aria-labelledby="quiz-title" className="grid gap-2">
               {[...order[step], -1].map((i, k) => {

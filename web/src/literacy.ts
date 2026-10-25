@@ -1,6 +1,6 @@
 import { LEVEL_KEYS, setPrefs, usePrefs, type Level } from "./prefs";
 
-/* Financial literacy. A six-question quiz sets one of three levels; the level is kept in this browser (prefs.ts) and read by
+/* Financial literacy. A three-question quiz sets one of three levels; the level is kept in this browser (prefs.ts) and read by
    every part of the site: definitions on jargon (components/Say.tsx), the guide strips and the "what this means" lines, the debate,
    the voices and the investor chat. Nothing here changes a number; it only changes how much explaining goes around the numbers. */
 
@@ -36,22 +36,16 @@ export type Question = { q: string; options: string[]; answer: number };
 
 /** Easy to hard. The quiz adds an "I'm not sure" option to each; a wrong guess and "not sure" score the same, so there is no reason to guess. */
 export const QUIZ: Question[] = [
-  { q: "A company reports revenue of $10 billion for the year. What is revenue?",
-    options: ["The money it took in from sales, before any costs", "The profit left after all costs and tax", "The cash in its bank account", "The value of everything it owns"], answer: 0 },
   { q: "A company's profit is up, but its free cash flow fell. What does free cash flow measure?",
     options: ["Total sales for the year", "Cash left after running the business and paying for equipment and buildings", "The dividend paid to shareholders", "The company's share price rise"], answer: 1 },
   { q: "A stock has a P/E ratio of 25. What does that tell you?",
     options: ["The price is 25 times a year of its profit per share", "It will grow 25% a year", "25% of its shares are owned by insiders", "It pays a 25% dividend"], answer: 0 },
-  { q: "Investors say a business has a “wide moat”. What do they mean?",
-    options: ["It holds a lot of cash", "It has a lasting advantage that keeps competitors from taking its customers", "It is in a very safe industry", "Its debt is small"], answer: 1 },
-  { q: "A company's net debt is 4 times its EBITDA, up from 1 time two years ago. What is the likely worry?",
-    options: ["It is hoarding cash", "Its earnings are rising too quickly", "It is borrowing much more than it earns, so a bad year could be hard to survive", "Its shares have become cheaper"], answer: 2 },
   { q: "In a discounted cash flow (DCF) valuation, what happens to the estimated value if you raise the discount rate and change nothing else?",
     options: ["It falls, because future cash is worth less today", "It rises, because the risk is rewarded", "It stays the same", "It depends on the share price"], answer: 0 },
 ];
 
-/** 0 to 2 right: beginner. 3 to 4: intermediate. 5 to 6: advanced. */
-export const levelForScore = (score: number): Level => (score >= 5 ? "advanced" : score >= 3 ? "intermediate" : "beginner");
+/** 0 or 1 right: beginner. 2: intermediate. 3: advanced. */
+export const levelForScore = (score: number): Level => (score >= 3 ? "advanced" : score === 2 ? "intermediate" : "beginner");
 
 /* ───────────────────────── the glossary ───────────────────────── */
 
