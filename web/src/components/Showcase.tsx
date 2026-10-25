@@ -4,13 +4,13 @@ import { useReducedMotion } from "../route";
 
 const SRC = "/showcase-web.mp4";
 const POSTER = "/showcase-poster.jpg";
-const CAPTION = "Illustrative data: the accuracy chart in this clip is a mock-up, not real results.";
+const CAPTION = "The call and the lesson in this clip are an example. The scores at the end are the real 2023-24 held-out results.";
 
 const PlayIcon = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden><path d="M2 1.2v11.6L12.5 7z" fill="currentColor" /></svg>
 );
 
-/** Homepage explainer: muted looping preview plus a button that opens the full clip with sound. */
+/** Homepage explainer: muted looping preview that opens the full clip, with sound, in a dialog. */
 export function ShowcaseVideo() {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
@@ -18,36 +18,29 @@ export function ShowcaseVideo() {
   const btn = useRef<HTMLButtonElement>(null);
 
   return (
-    <section aria-label="Product intro video" className="card overflow-hidden grid md:grid-cols-[1fr_1.15fr] items-stretch">
-      <div className="p-6 md:p-8 flex flex-col justify-center order-2 md:order-1 gap-3">
-        <h2 className="text-xl md:text-2xl font-semibold m-0">Analysts that grade themselves against reality</h2>
-        <p className="m-0 text-sm md:text-base leading-relaxed mute max-w-md">
-          Four AI analysts, modelled on Buffett, Graham, Munger and Dalio, make calls from a company's filings. Later filings show whether they were right, and every wrong call becomes a lesson they read next time.
-        </p>
-        <div className="flex items-center gap-3 flex-wrap mt-1">
-          <button ref={btn} className="btn inline-flex items-center gap-2" style={{ background: "var(--accent)", color: "#1a1006" }} onClick={() => setOpen(true)}>
-            <PlayIcon /> Watch how it works <span className="num text-xs opacity-70">0:23</span>
-          </button>
-          <a href="#/mubit" className="text-sm mute underline underline-offset-4">Are they getting better?</a>
-        </div>
-      </div>
-
-      <div className="relative order-1 md:order-2 min-h-[200px]" style={{ background: "#0b1020" }}>
+    <figure aria-label="Product intro video" className="m-0 grid gap-3 self-center">
+      <div className="relative overflow-hidden rounded-xl" style={{ aspectRatio: "16 / 9", background: "#0b1020", border: "1px solid var(--divider)" }}>
         {failed || reduced ? (
           <img src={POSTER} alt="Four voxel-style analysts at their desks under the title Compounding Minds" className="w-full h-full object-cover block" onError={(e) => { e.currentTarget.style.display = "none"; }} />
         ) : (
           <video className="w-full h-full object-cover block" src={SRC} poster={POSTER} autoPlay muted loop playsInline preload="metadata"
             aria-label="Preview of the explainer clip, muted" onError={() => setFailed(true)} />
         )}
-        <button aria-label="Open the explainer video with sound" onClick={() => setOpen(true)} className="absolute inset-0 w-full h-full cursor-pointer bg-transparent border-0" />
-        <span className="chip absolute left-3 bottom-3" style={{ background: "color-mix(in srgb, var(--background) 82%, transparent)", color: "var(--warning)", borderColor: "var(--warning)" }}>
-          Illustrative data
+        <button ref={btn} aria-label="Watch the explainer video with sound" onClick={() => setOpen(true)}
+          className="group absolute inset-0 w-full h-full cursor-pointer bg-transparent border-0 grid place-items-center">
+          <span className="grid place-items-center w-14 h-14 rounded-full transition-transform duration-200 group-hover:scale-110 group-focus-visible:scale-110"
+            style={{ background: "var(--accent)", color: "#1a1006", boxShadow: "0 6px 24px rgba(0,0,0,.45)" }}><PlayIcon /></span>
+        </button>
+        <span className="chip absolute left-3 top-3" style={{ background: "color-mix(in srgb, var(--background) 82%, transparent)", color: "var(--warning)", borderColor: "var(--warning)" }}>
+          Example call, real scores
         </span>
       </div>
-      <p className="mute text-xs m-0 px-6 py-2 order-3 md:col-span-2" style={{ borderTop: "1px solid var(--divider)" }}>{CAPTION}</p>
-
+      <figcaption className="flex items-center justify-between gap-x-4 gap-y-1 flex-wrap text-sm">
+        <span className="font-semibold">See how it works <span className="num mute font-normal">0:23</span></span>
+        <a href="#/mubit" className="mute underline underline-offset-4">Read the real track record</a>
+      </figcaption>
       <AnimatePresence>{open && <ShowcaseModal onClose={() => { setOpen(false); btn.current?.focus(); }} />}</AnimatePresence>
-    </section>
+    </figure>
   );
 }
 

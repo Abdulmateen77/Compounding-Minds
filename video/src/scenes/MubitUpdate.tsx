@@ -17,7 +17,7 @@ const HEAD: V3 = [DESK_X, 1.75, -0.75];
 const INTAKE: V3 = [MACHINE_X, 2.55, 0];
 
 const tag = (label: string, on: boolean) => ({
-  w: 360,
+  w: 480,
   h: 110,
   bg: on ? C.green : '#5b6180',
   radius: 55,
@@ -77,7 +77,7 @@ const Machine: React.FC<{f: number}> = ({f}) => {
           radius: 20,
           lines: [
             {text: 'MUBIT', size: 120, weight: 900, color: '#d8ccff', spacing: 12},
-            {text: 'MODEL UPDATES', size: 30, weight: 700, color: C.violet, spacing: 6},
+            {text: 'RECORDS EVERY CALL', size: 30, weight: 700, color: C.violet, spacing: 6},
           ],
           gap: 0,
         }}
@@ -129,7 +129,7 @@ export const MubitUpdate: React.FC = () => {
         />
         <Label
           spec={upgraded ? tag('1 LESSON', true) : tag('0 LESSONS', false)}
-          width={0.95}
+          width={1.25}
           p={[DESK_X, 3.05 + hop, -0.75]}
           scale={upgraded ? 0.7 + 0.3 * tagPop : 1}
         />

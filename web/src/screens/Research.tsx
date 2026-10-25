@@ -31,42 +31,71 @@ const HOW = [
   ["Shows its working", "Each number names its filing; the company's own words are quoted with a link."],
   ["Lets you question the investors", "The investors give their calls, face off, and answer your why."],
 ] as const;
+/* Figures from README "Results" and research/evidence.json (the 2018-2023 back-test), not computed here. */
+const PROOF = [
+  ["50", "companies replayed, 2018 to 2024", "Every call made with only the filings public that day, then graded against the next ones."],
+  ["322", "lessons from the analysts' own misses", "Each wrong call from 2018 to 2022 became a lesson the same analyst reads next time."],
+  ["13% vs 2%", "dividend cuts or auditor changes", "Companies failing most of Munger's checks against those passing most, over 1,184 company-quarters."],
+] as const;
 
 function Landing() {
   const [q, setQ] = useState("");
 
   return (
-    <div className="grid gap-8">
-      <section className="card p-6 md:p-8 grid gap-5">
-        <div className="max-w-2xl grid gap-3">
-          <h1 className="text-3xl md:text-4xl font-semibold m-0">Is this company worth your money? Check the filings.</h1>
-          <p className="m-0 text-base md:text-lg leading-relaxed mute">Type a company name or ticker. We read its SEC filings and show what a careful investor would look at.</p>
+    <div className="grid gap-12">
+      <section className="card overflow-hidden grid gap-8 lg:gap-10 p-6 md:p-8 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] items-center"
+        style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 8%, var(--card)), var(--card) 60%)" }}>
+        <div className="grid gap-5 content-center">
+          <span className="chip justify-self-start">Research from SEC filings</span>
+          <div className="grid gap-3">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-semibold m-0">Is this company worth your money? Check the filings.</h1>
+            <p className="m-0 text-base md:text-lg leading-relaxed mute max-w-xl">Type a company name or ticker. Five investors read its SEC filings and show what a careful investor would look at, with every number traced to its source.</p>
+          </div>
+
+          <CompanySearch q={q} onQ={setQ} autoFocus />
+
+          <div className="flex items-center gap-2 flex-wrap text-sm">
+            <span className="mute">Try</span>
+            {EXAMPLES.map((e) => <button key={e} className="chip cursor-pointer bg-transparent" onClick={() => setQ(e)}>{e}</button>)}
+          </div>
+          <Guide title="New to this?">Type the name of any company listed in the US. We read the reports it must publish for investors (called filings) and show the key figures in plain terms, then five famous investing styles give their view. It is a way to learn about a company, not advice on what to buy.</Guide>
+          <p className="mute text-xs m-0">Covers companies listed in the United States (NYSE and Nasdaq). London and European listings are coming.</p>
         </div>
 
-        <CompanySearch q={q} onQ={setQ} autoFocus />
-
-        <div className="flex items-center gap-2 flex-wrap text-sm">
-          <span className="mute">Try</span>
-          {EXAMPLES.map((e) => <button key={e} className="chip cursor-pointer bg-transparent" onClick={() => setQ(e)}>{e}</button>)}
-        </div>
-        <Guide title="New to this?">Type the name of any company listed in the US. We read the reports it must publish for investors (called filings) and show the key figures in plain terms, then five famous investing styles give their view. It is a way to learn about a company, not advice on what to buy.</Guide>
-        <p className="mute text-xs m-0">Covers companies listed in the United States (NYSE and Nasdaq). London and European listings are coming.</p>
+        <ShowcaseVideo />
       </section>
 
-      <ShowcaseVideo />
+      <section aria-label="Evidence" className="grid gap-4">
+        <div className="max-w-2xl grid gap-1">
+          <h2 className="text-xl md:text-2xl font-semibold m-0">Checked against what really happened</h2>
+          <p className="m-0 mute text-sm leading-relaxed">We grade our own analysts and publish the result, including the parts that are not flattering.</p>
+        </div>
+        <ul className="m-0 p-0 list-none grid gap-3 md:grid-cols-3">
+          {PROOF.map(([n, h, t]) => (
+            <li key={h} className="card p-5 grid gap-1 content-start">
+              <span className="num text-3xl md:text-4xl font-semibold leading-none" style={{ color: "var(--accent)", fontFamily: "var(--font-display)" }}>{n}</span>
+              <span className="text-sm font-semibold mt-2">{h}</span>
+              <span className="mute text-sm leading-relaxed">{t}</span>
+            </li>
+          ))}
+        </ul>
+        <p className="text-sm mute m-0 max-w-3xl">The analysts that learn from their misses did not beat an identical copy that never learns on the unseen 2023-24 years. <a href="#/mubit" className="underline underline-offset-4">See the full track record</a>.</p>
+      </section>
 
       <PanelRoster />
 
-      <section aria-label="How it works" className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
-        {HOW.map(([h, t], i) => (
-          <div key={h} className="grid gap-1 content-start">
-            <span className="text-sm font-semibold"><span className="num mute">{i + 1}</span>  {h}</span>
-            <span className="mute text-sm leading-relaxed"><Say>{t}</Say></span>
-          </div>
-        ))}
+      <section aria-label="How it works" className="grid gap-5">
+        <h2 className="text-xl md:text-2xl font-semibold m-0">How it works</h2>
+        <ol className="m-0 p-0 list-none grid gap-x-6 gap-y-5 sm:grid-cols-2 lg:grid-cols-4">
+          {HOW.map(([h, t], i) => (
+            <li key={h} className="grid gap-2 content-start">
+              <span className="num inline-grid place-items-center w-7 h-7 rounded-full text-sm font-semibold" style={{ background: "var(--accent)", color: "#1a1006" }}>{i + 1}</span>
+              <span className="text-sm font-semibold">{h}</span>
+              <span className="mute text-sm leading-relaxed"><Say>{t}</Say></span>
+            </li>
+          ))}
+        </ol>
       </section>
-
-      <p className="text-sm mute m-0">How accurate have the checks been? See the <a href="#/mubit" className="underline underline-offset-4">track record</a>.</p>
     </div>
   );
 }

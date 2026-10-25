@@ -36,12 +36,12 @@ const Legend: React.FC<{start: number}> = ({start}) => {
   const f = useCurrentFrame();
   const o = interpolate(f, [start, start + 12], [0, 1], {extrapolateLeft: 'clamp', extrapolateRight: 'clamp'});
   const items: [string, string][] = [
-    ['Guessing', C.grey],
+    ['Naive baseline', C.grey],
     ['Learned analyst', C.violet],
     ['Frozen twin', C.amber],
   ];
   return (
-    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 150, opacity: o}}>
+    <AbsoluteFill style={{alignItems: 'center', justifyContent: 'flex-start', paddingTop: 215, opacity: o}}>
       <div style={{display: 'flex', gap: 28}}>
         {items.map(([t, c]) => (
           <div key={t} style={{display: 'flex', alignItems: 'center', gap: 12, fontFamily: SANS, fontWeight: 800, fontSize: 30, color: C.paper}}>
@@ -157,8 +157,8 @@ export const Compounding: React.FC = () => {
         ))}
       </ThreeCanvas>
       <Vignette />
-      <Badge text="REAL RESULTS · 2023-24 HELD-OUT" start={20} />
-      <TitleTape text="THE SCOREBOARD IS PUBLIC" start={4} end={168} />
+      <Badge text="2023-24 HELD-OUT" start={20} />
+      <TitleTape text="THE REAL SCORES" start={4} end={168} />
       <Legend start={90} />
       <Caption words={['unseen', 'years,', 'real', 'filings,', 'the', 'twin', 'still', 'wins']} start={70} perWord={4} end={168} />
       <EndCard start={172} />
