@@ -44,7 +44,7 @@ const speechOf = (m: Msg, a: Analysis): Speech | null =>
 const spoken = (m: Msg) => [m.text, m.detail && m.role !== "case" && m.role !== "objection" ? m.detail : ""].filter(Boolean).join(" ");
 const pause = (m: Msg) => (m.kind === "heading" ? 700 : Math.min(4200, 1100 + (m.text.length + (m.detail?.length ?? 0)) * 18));
 
-export function DebateLog({ a, company, onSpeak }: { a: Analysis; company: string; onSpeak?: (s: Speech | null) => void }) {
+export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis; company: string; onSpeak?: (s: Speech | null) => void; heading?: boolean }) {
   const msgs = useMemo(() => script(a, company), [a, company]);
   const voice = useVoiceStatus();
   const [shown, setShown] = useState(0);              // how many lines are visible
@@ -93,10 +93,12 @@ export function DebateLog({ a, company, onSpeak }: { a: Analysis; company: strin
   return (
     <section className="card p-5 grid gap-4" aria-label="The debate">
       <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h3 className="text-lg font-semibold m-0">The debate</h3>
-          <p className="mute text-sm m-0 mt-1 max-w-2xl">Opening statements, the face-offs between investors who disagree, and the final verdict. Every line is taken from the investors' own checks.</p>
-        </div>
+        {heading
+          ? <div>
+              <h3 className="text-lg font-semibold m-0">The debate</h3>
+              <p className="mute text-sm m-0 mt-1 max-w-2xl">Opening statements, the face-offs between investors who disagree, and the final verdict. Every line is taken from the investors' own checks.</p>
+            </div>
+          : <p className="mute text-sm m-0 max-w-2xl">Opening statements, the face-offs between investors who disagree, then the final verdict.</p>}
         <div className="flex items-center gap-2 flex-wrap">
           <label className="text-xs mute flex items-center gap-2" title={voice.data?.enabled ? "Each investor speaks in their own voice" : "Voices are off: add ELEVENLABS_API_KEY to the server's .env"}>
             <input type="checkbox" checked={useVoice} disabled={!voice.data?.enabled || running} onChange={(e) => setUseVoice(e.target.checked)} /> Voices

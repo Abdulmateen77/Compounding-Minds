@@ -3,7 +3,7 @@ import { Disclosure, Explain, Head } from "../components/Section";
 import { jumpTo } from "../route";
 import { TONE, money, pctOf, type Analysis, type Check, type Lens, type QuickCheck } from "../research";
 
-/* The verdict, the four investors, the value, the future: everything here is rendered from the numbers the API
+/* The verdict, the investors, the value, the future: everything here is rendered from the numbers the API
    computed in Python (research/analysis.py). Nothing on this page is written by a model. */
 
 const CHECK = {
@@ -49,7 +49,7 @@ export function Lenses({ lenses }: { lenses: Lens[] }) {
   return (
     <section className="grid gap-4">
       <div>
-        <h2 className="text-xl font-semibold m-0">How six great investors would read it</h2>
+        <h2 className="text-xl font-semibold m-0">How the investors would read it</h2>
         <p className="mute text-sm m-0 mt-1 max-w-3xl">Each investor's habits of mind, distilled from their own books and written as checks in our own words, run against this company's numbers. Every line cites where the idea comes from.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">{lenses.map((l) => <LensCard key={l.key} l={l} />)}</div>

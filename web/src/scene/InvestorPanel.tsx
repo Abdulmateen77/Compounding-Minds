@@ -18,11 +18,12 @@ type Props = {
   onClose: () => void;
   big?: boolean;
   inline?: boolean;                 // a normal block instead of an overlay on the stage
+  autoFocus?: boolean;              // put the cursor in the question box (off on arrival, so a phone does not open its keyboard)
   onBusy?: (busy: boolean) => void; // the investor is composing an answer
   onReply?: () => void;             // an answer just arrived
 };
 
-export default function InvestorPanel({ cik, lens, messages, setMessages, onClose, big, inline, onBusy, onReply }: Props) {
+export default function InvestorPanel({ cik, lens, messages, setMessages, onClose, big, inline, autoFocus = true, onBusy, onReply }: Props) {
   const [tab, setTab] = useState<"chat" | "checks">("chat");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -34,12 +35,16 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
   const first = lens.name.split(" ")[0];
   const text = big ? "text-sm" : "text-xs";
 
-  useEffect(() => { input.current?.focus({ preventScroll: true }); }, [lens.key]);
+  useEffect(() => { if (autoFocus) input.current?.focus({ preventScroll: true }); }, [lens.key, autoFocus]);
   useEffect(() => { setErr(null); setDraft(""); }, [lens.key]);
   // A new answer scrolls to its own first line, so it is read from the start rather than from the end.
+  // Scrolls the chat itself, never the page: a page scroll would throw the reader down to the box the moment the tab opens.
+  const log = useRef<HTMLDivElement>(null), skipFirst = useRef(true);
   useEffect(() => {
-    const m = messages[messages.length - 1];
-    (m?.role === "assistant" ? lastAnswer : end).current?.scrollIntoView({ block: "start", behavior: "smooth" });
+    if (skipFirst.current) { skipFirst.current = false; return; }
+    const m = messages[messages.length - 1], box = log.current, to = (m?.role === "assistant" ? lastAnswer : end).current;
+    if (!box || !to) return;
+    box.scrollTo({ top: box.scrollTop + (to.getBoundingClientRect().top - box.getBoundingClientRect().top) - 8, behavior: "smooth" });
   }, [messages.length, busy, tab]);
   useEffect(() => () => onBusy?.(false), [onBusy]);
 
@@ -97,7 +102,7 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
 
       {tab === "chat" ? (
         <>
-          <div className={`flex-1 overflow-auto p-3 grid gap-2 content-start ${text}`} role="log" aria-live="polite" aria-relevant="additions" aria-busy={busy}>
+          <div ref={log} className={`flex-1 overflow-auto p-3 grid gap-2 content-start ${text}`} role="log" aria-live="polite" aria-relevant="additions" aria-busy={busy}>
             {messages.length === 0 && (
               <div className="grid gap-2">
                 <p className="m-0 mute" style={{ lineHeight: 1.45 }}>Ask {first} why they reached this reading. They answer from their own checks on this company, and say so when something isn't in them.</p>
@@ -107,7 +112,7 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
             {messages.map((m, i) => (
               <div key={i} ref={i === lastAssistant ? lastAnswer : undefined} className={m.role === "user" ? "justify-self-end" : "justify-self-start"} style={{ maxWidth: "92%", scrollMarginTop: 8 }}>
                 <div className="sr-only">{m.role === "user" ? "You asked:" : `${first} answered:`}</div>
-                <div className="rounded-xl px-3 py-2" style={{ lineHeight: 1.45, background: m.role === "user" ? "var(--primary)" : "var(--card-alt)", color: m.role === "user" ? "#fff" : "var(--foreground)" }}>{m.content}</div>
+                <div className="rounded-xl px-3 py-2" style={{ lineHeight: 1.45, background: m.role === "user" ? "var(--primary-solid)" : "var(--card-alt)", color: m.role === "user" ? "var(--on-primary)" : "var(--foreground)" }}>{m.content}</div>
                 {m.role === "assistant" && <div className="mute text-xs mt-1">{m.source === "rules" ? "Read straight from their checks" : "AI portrayal, from their checks"}</div>}
               </div>
             ))}

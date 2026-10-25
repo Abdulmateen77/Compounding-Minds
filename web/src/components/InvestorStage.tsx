@@ -1,42 +1,30 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import type { ChatMsg } from "../chat";
+import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { fmtValue, type Report } from "../research";
 import { demoMode, useReducedMotion } from "../route";
-import InvestorPanel from "../scene/InvestorPanel";
-import { pickFaceOffs, surname } from "../scene/lenses";
 import { hasWebGL } from "../scene/support";
-import { DebateLog, type Speech } from "./DebateLog";
-import { InvestorRoster } from "./InvestorRoster";
+import type { Speech } from "./DebateLog";
 
-// three + react-three-fiber are their own chunk, so the rest of the report stays light.
+// three + react-three-fiber are their own chunk: nothing about the 3D is downloaded until someone asks to watch it.
 const ResearchScene = lazy(() => import("../scene/ResearchScene"));
 
 class SceneBoundary extends Component<{ onError: (why: string) => void; children: ReactNode }, { bad: boolean }> {
   state = { bad: false };
   static getDerivedStateFromError() { return { bad: true }; }
-  componentDidCatch(e: unknown) { console.warn("investor scene failed; the 2D version takes over", e); this.props.onError(String((e as Error)?.message ?? e)); }
+  componentDidCatch(e: unknown) { console.warn("investor scene failed; the written debate stands in", e); this.props.onError(String((e as Error)?.message ?? e)); }
   render() { return this.state.bad ? null : this.props.children; }
 }
 
-/** The investors, animated: they read the filings, run their checks, give their reading, and the two who disagree most face off;
-    you can question any of them. Presenter mode (`?demo=1`, or the Present button) fills the window and loops. When the 3D scene
-    cannot or should not run (reduced motion, no WebGL, an error) the same roster, face-off and chat are shown as plain 2D. */
-export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoading?: boolean }) {
+/** The debate staged in the 3D office: the investors work through their checks, give their readings, and the ones who disagree
+    argue it out. Optional: the page works without it, and nothing in it locks anything. Presenter mode (`?demo=1`, or the Present
+    button) fills the window and loops. When the scene cannot or should not run (reduced motion, no WebGL, an error) a short note
+    says so, and the written debate beside it covers the same ground. */
+export function InvestorStage({ r, fromLoading = false, speech = null, onPick }: { r: Report; fromLoading?: boolean; speech?: Speech | null; onPick?: (i: number) => void }) {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
   const [playAnyway, setPlayAnyway] = useState(false);
   const [presenting, setPresenting] = useState(demoMode);
   const webgl = useMemo(hasWebGL, []);
   const a = r.analysis;
-  // the debate's current line, spoken over the speaker's head in the scene; the log under the scene keeps the transcript
-  const [speech, setSpeech] = useState<Speech | null>(null);
-  const stage = useRef<HTMLDivElement | null>(null);
-  const speaking = useRef(false);
-  const onSpeak = useCallback((s: Speech | null) => {
-    if (s && !speaking.current) stage.current?.scrollIntoView({ behavior: "smooth", block: "start" });   // bring the scene into view as it starts
-    speaking.current = !!s;
-    setSpeech(s);
-  }, []);
 
   const cards = useMemo(() => (r.scorecard ?? []).slice(0, 6).map((f) => ({ name: f.label, value: fmtValue(f.unit, f.value) })), [r.scorecard]);
 
@@ -68,7 +56,12 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
 
   if (!motionOk) {
     const why = failed ? "The 3D view could not start on this device." : !webgl ? "This device can't draw the 3D view." : "The 3D view is off because your device asks for reduced motion.";
-    return <Plain r={r} why={why} onPlay={reduced && webgl && !failed ? () => setPlayAnyway(true) : undefined} />;
+    return (
+      <div className="card p-4 flex items-center justify-between gap-3 flex-wrap">
+        <p className="m-0 text-sm">{why} <span className="mute">The written debate says the same thing.</span></p>
+        {reduced && webgl && !failed && <button className="btn ghost" onClick={() => setPlayAnyway(true)}>Show the 3D view anyway</button>}
+      </div>
+    );
   }
 
   const scene = (demo: boolean) => (
@@ -77,7 +70,7 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
         <ResearchScene
           cik={c.cik} name={c.name} sub={[c.ticker, c.exchange].filter(Boolean).join(" · ")} asOf={r.as_of ?? r.data_through ?? ""}
           lenses={a.lenses} cards={cards} overall={a.overall} onFail={() => setFailed(true)} demo={demo} onExitDemo={exit} fromLoading={fromLoading}
-          debates thinkingBelow speech={speech} />
+          debates speech={speech} onPick={onPick} />
       </Suspense>
     </SceneBoundary>
   );
@@ -92,46 +85,9 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
   }
 
   return (
-    <section className="grid gap-3 grid-cols-[minmax(0,1fr)]" aria-label="Investor panel">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-xl font-semibold m-0">Investor panel: {a.lenses.length} investors on {c.name}</h2>
-          <p className="mute text-sm m-0 mt-1 max-w-3xl">Each investor works through their own checks, then those who disagree argue it out. Watch it through and you can question any of them. Every check is listed on the Sources tab.</p>
-        </div>
-        <button className="btn ghost" onClick={present} title="Full-screen, for showing to a room">Present</button>
-      </div>
-      <div ref={stage} style={{ scrollMarginTop: 12 }}>{scene(false)}</div>
-      <DebateLog a={a} company={c.name} onSpeak={onSpeak} />
-    </section>
-  );
-}
-
-/** The investors without the 3D scene: roster, the sharpest disagreement, and the same one-on-one chat. */
-function Plain({ r, why, onPlay }: { r: Report; why: string; onPlay?: () => void }) {
-  const lenses = r.analysis!.lenses;
-  const faceoffs = useMemo(() => pickFaceOffs(lenses), [lenses]);
-  const [sel, setSel] = useState<number | null>(null);
-  const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
-  const key = sel != null ? lenses[sel].key : "";
-
-  return (
-    <section className="grid gap-4 grid-cols-[minmax(0,1fr)]" aria-label="Investor panel">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h2 className="text-xl font-semibold m-0">Investor panel: {r.company.name}</h2>
-          <p className="mute text-sm m-0 mt-1 max-w-3xl">Choose an investor to ask why they reached their reading. {why}</p>
-        </div>
-        {onPlay && <button className="btn ghost" onClick={onPlay}>Show the 3D view</button>}
-      </div>
-
-      <InvestorRoster lenses={lenses} sel={sel} onChoose={(i) => setSel((s) => (s === i ? null : i))} />
-
-      <DebateLog a={r.analysis!} company={r.company.name} />
-
-      {sel != null && (
-        <InvestorPanel key={key} inline cik={r.company.cik} lens={lenses[sel]} onClose={() => setSel(null)}
-          messages={chats[key] ?? []} setMessages={(f) => setChats((c) => ({ ...c, [key]: f(c[key] ?? []) }))} />
-      )}
-    </section>
+    <div className="grid gap-3 grid-cols-[minmax(0,1fr)]">
+      <div className="flex justify-end"><button className="btn ghost sm" onClick={present} title="Full-screen, for showing to a room">Present</button></div>
+      {scene(false)}
+    </div>
   );
 }

@@ -1,6 +1,10 @@
 import { useState } from "react";
+import type { ChatMsg } from "../chat";
 import { Disclosure, Head } from "../components/Section";
-import { InvestorStage } from "../components/InvestorStage";
+import { AnalysisPopup } from "../components/AnalysisPopup";
+import { AskInvestor } from "../components/AskInvestor";
+import { DebateSection } from "../components/DebateSection";
+import { InvestorBoard } from "../components/InvestorBoard";
 import { OutlookBlock } from "../components/Outlook";
 import { PanelVerdict } from "../components/PanelParts";
 import { researchHref } from "../route";
@@ -64,13 +68,29 @@ export function ValueTab({ r }: { r: Report }) {
   );
 }
 
-/** What do the investors make of it? The panel, the face-offs and the chat. The proof that the checks work lives on the Track record page. */
+/** What do the investors make of it? The answer, then the investors and their calls, then a box to question any of them, then the
+    debate. Everything here is open at once; the 3D debate is an optional extra inside the last part. The proof that the checks work
+    lives on the Track record page. */
 export function InvestorsTab({ r, fromLoading }: { r: Report; fromLoading: boolean }) {
+  const a = r.analysis;
+  const [sel, setSel] = useState<number | null>(0);                 // who the ask box is talking to (the first investor until you choose)
+  const [chosen, setChosen] = useState(false);                      // you chose someone: only then does the cursor jump into the box
+  const [popup, setPopup] = useState<number | null>(null);
+  const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
+  if (!a || a.lenses.length === 0) return <p className="card p-5 m-0 text-sm">There is not enough in the filings for the investors to give a view.</p>;
+
+  const ask = (i: number) => {
+    setPopup(null); setSel(i); setChosen(true);
+    window.setTimeout(() => document.getElementById("ask")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
   return (
-    <div className="grid gap-6 grid-cols-[minmax(0,1fr)]">
-      {r.analysis && <PanelVerdict a={r.analysis} name={r.company.name} title="After the debates, the panel's verdict on" />}
-      <InvestorStage r={r} fromLoading={fromLoading} />
+    <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
+      <PanelVerdict a={a} name={r.company.name} title="The panel's view on" />
+      <InvestorBoard lenses={a.lenses} onAnalysis={setPopup} onAsk={ask} />
+      <AskInvestor cik={r.company.cik} lenses={a.lenses} sel={sel} setSel={(i) => { setSel(i); setChosen(i != null); }} chats={chats} setChats={setChats} focus={chosen} />
+      <DebateSection r={r} fromLoading={fromLoading} onPick={setPopup} />
       <EvidenceLink />
+      {popup != null && a.lenses[popup] && <AnalysisPopup l={a.lenses[popup]} onClose={() => setPopup(null)} onAsk={() => ask(popup)} />}
     </div>
   );
 }

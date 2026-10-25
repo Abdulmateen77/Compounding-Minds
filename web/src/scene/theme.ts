@@ -23,7 +23,6 @@ export type Look = {
 
 const LOOKS: Record<string, Look> = {
   buffett: { shirt: "#2f4b8f", hair: "#dcd7cf", tie: "#d8433a", glasses: true, hairStyle: "swoop" },
-  graham: { shirt: "#5c6670", hair: "#8f8f8f", bowtie: "#26263d", hairStyle: "side" },
   munger: { shirt: "#3d3d4f", hair: "#ececec", tie: "#27408b", glasses: true, hairStyle: "bald" },
   dalio: { shirt: "#2b7a78", hair: "#b9b2a6", hairStyle: "flat" },
   lynch: { shirt: "#7a4b2b", hair: "#6b4a32", tie: "#e0b33a", glasses: true, hairStyle: "side" },

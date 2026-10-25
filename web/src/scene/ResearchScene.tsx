@@ -4,9 +4,7 @@ import { STANCE_COLOR } from "../api/client";
 import type { ChatMsg } from "../chat";
 import type { Lens, Overall } from "../research";
 import { Director, useDirectorTick } from "./director";
-import { InvestorRoster } from "../components/InvestorRoster";
 import InvestorPanel from "./InvestorPanel";
-import { ThinkingCards } from "./ThinkingCards";
 import type { Speech } from "../components/DebateLog";
 import { Avatar } from "../components/Avatar";
 import SceneContents, { type Els, type Orbit, type SceneAgent, type SceneCard, type SceneVerdict, type StanceView } from "./SceneContents";
@@ -41,7 +39,7 @@ type Props = {
   fromLoading?: boolean; // the investors were just shown researching: carry on from the end of the opening, not from the start
   debates?: boolean;
   speech?: Speech | null; // the debate's current line (Investor panel tab), said over the speaker's head
-  thinkingBelow?: boolean; // the Investor panel tab: what each investor is thinking goes in cards under the scene, not over their head
+  onPick?: (i: number) => void; // clicking an investor in the scene: the page opens their analysis (without it the scene opens its own chat)
 };
 
 const ORBIT_AZ = 0.5, ORBIT_POL = 0.2;
@@ -132,7 +130,7 @@ function Notebook({ lens, i, dir, big, color }: { lens: Lens; i: number; dir: Di
   );
 }
 
-export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, overall, onFail, demo = false, onExitDemo, fromLoading = false, debates = true, thinkingBelow = false, speech = null }: Props) {
+export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, overall, onFail, demo = false, onExitDemo, fromLoading = false, debates = true, onPick, speech = null }: Props) {
   const n = lenses.length;
   // debates off (the Report tab): each investor analyses and gives a reading; the face-offs live on the Investor panel tab
   const faceoffs = useMemo(() => (debates ? pickFaceOffs(lenses) : []), [lenses, debates]);
@@ -160,15 +158,13 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
   dir.inputs = { calls: n, verdict: true, done: true, failed: false };
   useDirectorTick(dir);
 
-  // The prologue is meant to be watched through: questions open once it has played to the end (or in presenter mode).
-  const [seen, setSeen] = useState(false);
-  const unlocked = demo || seen || dir.wasDone;
-  const unlockedRef = useRef(unlocked); unlockedRef.current = unlocked;
-  useEffect(() => { if (dir.finished) setSeen(true); });
+  // Nothing waits on the show: questions and chapters are open from the first second. The progress is still kept, so leaving and coming back resumes.
+  const everDone = useRef(dir.wasDone);
+  useEffect(() => { if (dir.finished) everDone.current = true; });
   useEffect(() => {
     if (demo) return;
     const sig = dir.tl.end.toFixed(1);
-    const save = () => saveProgress(cik, sig, { clock: dir.clock, done: unlockedRef.current || dir.finished });
+    const save = () => saveProgress(cik, sig, { clock: dir.clock, done: everDone.current || dir.finished });
     const id = window.setInterval(save, 1000);
     window.addEventListener("pagehide", save);
     document.addEventListener("visibilitychange", save);
@@ -196,7 +192,6 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
 
   const [hover, setHover] = useState<number | null>(null);
   const [sel, setSel] = useState<number | null>(null);
-  const [card, setCard] = useState<number | null>(null);      // the analysis pop-up (Investor panel tab)
   const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
   const [hint, setHint] = useState(true);
   const [large, setLarge] = useState(false);
@@ -213,7 +208,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
   const thinker = idx.find((i) => thinkProgress(tl, i, t) != null) ?? -1;
   const ad = dir.activeDebate(t), sp = dir.speakerAt(t);
   const said = speech?.who ?? null;
-  const focus = said != null ? said : sel != null || (thinkingBelow && !demo) ? -1 : (hover ?? (ad ? -1 : speaking >= 0 ? speaking : thinker));
+  const focus = said != null ? said : sel != null ? -1 : (hover ?? (ad ? -1 : speaking >= 0 ? speaking : thinker));
   els.current.focus = focus;
   dir.spot = sel;                                             // the camera and that investor lean toward the viewer
 
@@ -263,7 +258,6 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
     opener.current?.focus({ preventScroll: true });          // keyboard users land back where they were
   };
   const choose = (i: number) => {
-    if (!unlocked) return;                                   // questions open when the prologue has been watched through
     if (i === sel) { closePanel(); return; }
     if (sel == null) { wasPlaying.current = dir.playing; dir.setPlaying(false); opener.current = document.activeElement as HTMLElement | null; }
     setSel(i);
@@ -374,7 +368,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
         >
           <SceneContents dir={dir} agents={agents} cards={cards} verdict={sceneVerdict} getView={getView}
             orbit={orbit} els={els} company={{ name, sector: sub, asOf }}
-            onHover={setHover} onSelect={thinkingBelow ? (i: number) => setCard(i) : choose} />
+            onHover={setHover} onSelect={onPick && !demo ? onPick : choose} />
         </Canvas>
 
         {/* per desk: the face-off turns, then the reading */}
@@ -447,7 +441,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
               <div key={k} className={`grid gap-1 ${big ? "text-sm" : "text-xs"}`} style={{ lineHeight: 1.35 }}>
                 <div className="flex items-center justify-between gap-2">
                   <b>{faceName(k)}</b>
-                  {unlocked && <button className="btn ghost sm" onClick={() => jump(tl.debates[k].start)}>Watch</button>}
+                  <button className="btn ghost sm" onClick={() => jump(tl.debates[k].start)}>Watch</button>
                 </div>
                 {f.turns.filter((turn) => turn.role !== "ruling").slice(0, 2).map((turn, j) => (
                   <div key={j}><b style={{ color: turn.quote.color }}>{turn.quote.mark}</b> {surname(lenses[turn.by])}: {turn.quote.head}<span className="num mute"> · {turn.quote.shown}</span></div>
@@ -485,20 +479,16 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
       {!demo && (
         <>
           <p className="mt-3 mb-0 text-sm" role="status">
-            {unlocked
-              ? <><b>Prologue complete.</b> <span className="mute">Question any investor below, revisit a chapter, or replay it.</span></>
-              : <><b>Prologue.</b> <span className="mute">Watch it through, each investor's research, their readings and the face-offs. Questions open when it ends.</span></>}
+            <b>{dir.finished ? "That is the whole debate." : "The debate is playing."}</b> <span className="mute">Pause it, change the pace, or jump to any chapter whenever you like.</span>
           </p>
           <ol className="m-0 mt-2 p-0 list-none flex flex-wrap gap-2 text-xs" aria-label="Prologue chapters">
             {chapters.map((c, k) => {
-              const past = unlocked && dir.finished ? true : k < now, cur = !dir.finished && k === now;
+              const past = dir.finished ? true : k < now, cur = !dir.finished && k === now;
               const style = cur ? { color: "var(--foreground)", borderColor: "var(--primary)", background: "color-mix(in srgb, var(--primary) 14%, transparent)" } : past ? { color: "var(--success)" } : { opacity: 0.6 };
               const label = <>{past && !cur ? "✓ " : ""}{c.label}{cur && c.sub ? <span className="mute"> · {c.sub}</span> : null}</>;
               return (
                 <li key={c.id}>
-                  {unlocked
-                    ? <button className="chip cursor-pointer" style={{ minHeight: 40, ...style }} aria-current={cur ? "step" : undefined} onClick={() => jump(c.at)}>{label}</button>
-                    : <span className="chip" style={{ minHeight: 40, ...style }} aria-current={cur ? "step" : undefined}>{label}</span>}
+                  <button className="chip cursor-pointer" style={{ minHeight: 40, ...style }} aria-current={cur ? "step" : undefined} onClick={() => jump(c.at)}>{label}</button>
                 </li>
               );
             })}
@@ -522,10 +512,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
             <button className="btn ghost" aria-pressed={large} onClick={() => setLarge((l) => !l)}>Larger text</button>
             <button className="btn ghost" onClick={() => { orbit.current = { az: 0, pol: 0 }; }}>Reset view</button>
           </div>
-          {thinkingBelow
-            ? <ThinkingCards lenses={lenses} tl={tl} t={t} unlocked={unlocked && dir.finished} open={card} setOpen={setCard} onAsk={choose} />
-            : <div className="mt-3"><InvestorRoster lenses={lenses} sel={sel} onChoose={choose} locked={!unlocked} /></div>}
-          <p className="mute text-xs mt-2 mb-0">{thinkingBelow ? "Click an investor, in the scene or on their card, for their analysis and vote. " : unlocked ? "Click an investor in the scene, or choose one above, to question them one-on-one about their reading. " : ""}Drag to tilt the camera. Space pauses; arrow keys tilt the camera.</p>
+          <p className="mute text-xs mt-3 mb-0">{onPick ? "Click an investor in the scene for their analysis. " : "Click an investor in the scene to question them one-on-one. "}Drag to tilt the camera. Space pauses; arrow keys tilt the camera.</p>
         </>
       )}
     </div>

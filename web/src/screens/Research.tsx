@@ -26,7 +26,7 @@ const HOW = [
   ["Reads the filings", "Every figure comes from the company's own SEC reports, worked out by code, not guessed by an AI."],
   ["Asks the investor's questions", "Is it growing? Does profit turn into cash? Is the balance sheet safe?"],
   ["Shows its working", "Each number names its filing; the company's own words are quoted with a link."],
-  ["Lets you question the investors", "Six investors give their calls, face off, and answer your why."],
+  ["Lets you question the investors", "The investors give their calls, face off, and answer your why."],
 ] as const;
 
 function Landing() {
@@ -90,7 +90,7 @@ const TABS: { id: ResearchView; label: string; hint: string }[] = [
   { id: "overview", label: "Overview", hint: "The short answer: is it any good, and what stands out" },
   { id: "financials", label: "Financials", hint: "Growth, profit, cash, debt and risk, one question at a time" },
   { id: "value", label: "Value and outlook", hint: "What the market charges, what it could be worth, and the next five years" },
-  { id: "investors", label: "Investor panel", hint: "Six investors give their calls, face off, and you can question each one" },
+  { id: "investors", label: "Investor panel", hint: "The investors give their calls, face off, and you can question each one" },
   { id: "sources", label: "Sources and data", hint: "Every figure, check and filing as tables, with a CSV export" },
 ];
 

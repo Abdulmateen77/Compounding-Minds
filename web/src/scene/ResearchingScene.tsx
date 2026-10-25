@@ -6,7 +6,7 @@ import { PANEL } from "./panel";
 import SceneContents, { type Els, type Orbit, type SceneAgent } from "./SceneContents";
 import { lookFor } from "./theme";
 
-/* The investor room while the report is being built: the six investors read and type, filings are handed out from the table to
+/* The investor room while the report is being built: the investors read and type, filings are handed out from the table to
    each desk, and the four steps of the lookup tick over. The clock loops inside the settled part of the opening so the camera
    does not pump; when the report arrives the real scene takes over from the same moment (see ResearchScene `fromLoading`). */
 
