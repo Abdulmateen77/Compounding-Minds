@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { ChatMsg } from "../chat";
 import { FadeIn } from "../components/FadeIn";
 import { Disclosure, Head } from "../components/Section";
 import { AnalysisPopup } from "../components/AnalysisPopup";
 import { AskInvestor } from "../components/AskInvestor";
+import type { Speech } from "../components/DebateLog";
 import { DebateSection } from "../components/DebateSection";
+import { InvestorStage } from "../components/InvestorStage";
 import { InvestorBoard } from "../components/InvestorBoard";
 import { OutlookBlock } from "../components/Outlook";
 import { PanelVerdict } from "../components/PanelParts";
@@ -69,15 +71,22 @@ export function ValueTab({ r }: { r: Report }) {
   );
 }
 
-/** What do the investors make of it? The answer, then the investors and their calls, then a box to question any of them, then the
-    debate. Everything here is open at once; the 3D debate is an optional extra inside the last part. The proof that the checks work
-    lives on the Track record page. */
+/** What do the investors make of it? The 3D office first: the investors at their desks, working through their checks and arguing it
+    out. Then the answer, the investors and their calls, a box to question any of them, and the written debate. Everything is open at
+    once. The proof that the checks work lives on the Track record page. */
 export function InvestorsTab({ r, fromLoading }: { r: Report; fromLoading: boolean }) {
   const a = r.analysis;
   const [sel, setSel] = useState<number | null>(0);                 // who the ask box is talking to (the first investor until you choose)
   const [chosen, setChosen] = useState(false);                      // you chose someone: only then does the cursor jump into the box
   const [popup, setPopup] = useState<number | null>(null);
   const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
+  const [speech, setSpeech] = useState<Speech | null>(null);        // who the written debate is on, so the office says the same line
+  const stage = useRef<HTMLDivElement | null>(null), speaking = useRef(false);
+  const onSpeak = useCallback((s: Speech | null) => {
+    if (s && !speaking.current) stage.current?.scrollIntoView({ behavior: "smooth", block: "start" });   // bring the office into sight as the debate starts
+    speaking.current = !!s;
+    setSpeech(s);
+  }, []);
   if (!a || a.lenses.length === 0) return <p className="card p-5 m-0 text-sm">There is not enough in the filings for the investors to give a view.</p>;
 
   const ask = (i: number) => {
@@ -86,10 +95,14 @@ export function InvestorsTab({ r, fromLoading }: { r: Report; fromLoading: boole
   };
   return (
     <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
+      <section ref={stage} className="grid gap-3 grid-cols-[minmax(0,1fr)]" aria-label="The investors at work" style={{ scrollMarginTop: 72 }}>
+        <Head title="The investor panel at work" blurb="Watch the five investors work through their checks on this company, give their readings, and argue where they disagree. Click an investor to open their analysis." />
+        <InvestorStage r={r} fromLoading={fromLoading} speech={speech} onPick={setPopup} />
+      </section>
       <PanelVerdict a={a} name={r.company.name} title="The panel's view on" />
       <FadeIn><InvestorBoard lenses={a.lenses} onAnalysis={setPopup} onAsk={ask} /></FadeIn>
       <FadeIn><AskInvestor cik={r.company.cik} lenses={a.lenses} sel={sel} setSel={(i) => { setSel(i); setChosen(i != null); }} chats={chats} setChats={setChats} focus={chosen} /></FadeIn>
-      <FadeIn><DebateSection r={r} fromLoading={fromLoading} onPick={setPopup} /></FadeIn>
+      <FadeIn><DebateSection r={r} onSpeak={onSpeak} /></FadeIn>
       <FadeIn><EvidenceLink /></FadeIn>
       {popup != null && a.lenses[popup] && <AnalysisPopup l={a.lenses[popup]} onClose={() => setPopup(null)} onAsk={() => ask(popup)} />}
     </div>

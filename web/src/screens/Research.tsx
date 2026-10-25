@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ErrorBox, Skeleton } from "../components/bits";
 import { demoMode, researchHref, type ResearchView } from "../route";
 import { CompanySearch, SearchOptions } from "../components/CompanySearch";
+import { PanelRoster } from "../components/PanelRoster";
 import { ResearchingRoom } from "../components/ResearchingRoom";
 import { recallPicked } from "../recent";
 import { RESEARCH_STEPS, STEP_SECONDS, type Report } from "../research";
@@ -49,6 +50,8 @@ function Landing() {
         <SearchOptions />
         <p className="mute text-xs m-0">Covers companies listed in the United States (NYSE and Nasdaq). London and European listings are coming.</p>
       </section>
+
+      <PanelRoster />
 
       <section aria-label="How it works" className="grid gap-x-6 gap-y-4 sm:grid-cols-2 lg:grid-cols-4">
         {HOW.map(([h, t], i) => (

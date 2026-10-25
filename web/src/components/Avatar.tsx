@@ -1,4 +1,3 @@
-import type { Lens } from "../research";
 import { BOT, lookFor } from "../scene/theme";
 
 /* The investor's face, drawn from the same character as the 3D bot in the office, so a card and the person at the desk are plainly the
@@ -31,10 +30,10 @@ function Hair({ style, c }: { style?: string; c: string }) {
   );
 }
 
-export function Avatar({ l, size = 40, ring }: { l: Lens; size?: number; ring?: string }) {
+export function Avatar({ l, size = 40, ring, round = true }: { l: { key: string }; size?: number; ring?: string; round?: boolean }) {
   const k = lookFor(l.key, l.key), skin = k.skin ?? BOT.skin;   // by key, exactly as the 3D scene does: the full name ("Warren Buffett") matches no look
   return (
-    <svg width={size} height={size} viewBox={`${VIEW.x} ${-VIEW.top} ${VIEW.size} ${VIEW.size}`} aria-hidden className="shrink-0 rounded-full"
+    <svg width={size} height={size} viewBox={`${VIEW.x} ${-VIEW.top} ${VIEW.size} ${VIEW.size}`} aria-hidden className={round ? "shrink-0 rounded-full" : "shrink-0"}
       style={{ background: BOT.wall, boxShadow: ring ? `0 0 0 2px ${ring}` : undefined }}>
       {/* body and sleeves */}
       <Box x={0} y={-0.82} w={0.9} h={0.84} c={k.shirt} />
