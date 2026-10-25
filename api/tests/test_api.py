@@ -1,5 +1,6 @@
 import os
 from datetime import date
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -115,3 +116,23 @@ def test_heldout_report_served_or_404(monkeypatch, tmp_path):
     assert r.status_code == 200 and r.json() == {"path": "heldout_report.json", "report": rep}
     monkeypatch.setattr(D, "HELDOUT_CANDIDATES", (tmp_path / "missing.json",))
     assert client.get("/api/heldout").status_code == 404
+
+
+@pytest.mark.skipif(not (Path(__file__).resolve().parents[2] / "web" / "dist").is_dir(), reason="front end not built")
+@pytest.mark.parametrize("path", ["..%2f..%2fCLAUDE.md", "%2e%2e/%2e%2e/CLAUDE.md", "assets/..%2f..%2f..%2fCLAUDE.md"])
+def test_static_files_cannot_escape_dist(path):
+    r = client.get(f"/{path}")
+    assert not r.text.startswith("# CLAUDE.md")
+
+
+def test_unknown_company_number_is_a_404_not_a_502(monkeypatch):
+    from api import main
+    from ingest.sec import NotFound as SecNotFound
+
+    class Boom:
+        def report(self, cik, force=False):
+            raise SecNotFound("https://data.sec.gov/submissions/CIK0000000000.json")
+
+    monkeypatch.setattr(main, "research_service", lambda: Boom())
+    r = client.get("/api/research/company/0")
+    assert r.status_code == 404 and "data.sec.gov" not in r.text

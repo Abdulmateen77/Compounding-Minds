@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from api import models as M
 from api.service import NotFound, Service, get_service
+from ingest.sec import NotFound as SecNotFound
 
 load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 DIST = Path(__file__).resolve().parent.parent / "web" / "dist"
@@ -185,6 +186,8 @@ def research_evidence():
 def research_company(cik: int, refresh: bool = False):
     try:
         return research_service().report(cik, force=refresh)
+    except SecNotFound:
+        raise HTTPException(404, "The SEC has no company with that number. Search by name or ticker instead.")
     except Exception as e:
         raise HTTPException(502, f"Could not build the report: {e}")
 
@@ -218,5 +221,7 @@ if DIST.is_dir():
 
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
-        f = DIST / path
-        return FileResponse(f if path and f.is_file() else DIST / "index.html")
+        root = DIST.resolve()
+        f = (root / path).resolve()
+        # Only serve files that really sit inside dist: "..%2f" in the URL must never reach .env or the source tree.
+        return FileResponse(f if path and f.is_relative_to(root) and f.is_file() else root / "index.html")
