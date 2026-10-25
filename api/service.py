@@ -243,6 +243,14 @@ class Service:
                 corrections_applied=int(len(corr)), accuracy_trend=trend, last_correction=last, fallback_updater=fallback))
         return out
 
+    def _checked_share(self, agent: str) -> float | None:
+        b = self.bundle
+        if b.grades.empty or b.calls.empty:
+            return None
+        g = b.grades.merge(b.calls[["call_id", "agent", "arm"]], on="call_id")
+        g = g[(g["agent"] == agent) & (g["arm"] == "learned")]
+        return None if g.empty else round(float((g["outcome"] != "unresolvable").mean()), 3)
+
     def track_record(self, agent: str, as_of: date | None = None) -> M.TrackRecord:
         b = self.bundle
         if b.snapshots.empty or b.snapshots[b.snapshots["agent"] == agent].empty:
@@ -272,6 +280,7 @@ class Service:
             accuracy=None if row is None else float(row["accuracy"]),
             brier=None if row is None or pd.isna(row["brier"]) else float(row["brier"]),
             calls_graded=0 if row is None else int(row["calls"]), corrections_applied=len(corr),
+            checked_share=self._checked_share(agent),
             last_correction=self._correction(corr.iloc[-1]) if len(corr) else None,
             fallback_updater=b.uses_fallback_updater())
 

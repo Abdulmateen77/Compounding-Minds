@@ -368,6 +368,8 @@ export interface components {
              * @default 0
              */
             corrections_applied: number;
+            /** Checked Share */
+            checked_share?: number | null;
             last_correction?: components["schemas"]["Correction"] | null;
             /**
              * Fallback Updater

@@ -12,6 +12,8 @@ const ROLE: Record<string, string> = { fundamentals: "Fundamentals", valuation: 
 const last = (x: number[]) => (x.length ? x[x.length - 1] : null);
 const avg = (x: number[]) => (x.length ? x.reduce((a, b) => a + b, 0) / x.length : null);
 
+const isChecked = (d: TrackRecord) => d.checked_share == null || d.checked_share >= 0.5;
+
 export default function Mubit({ agent }: { agent?: string }) {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const qs = useQueries({ queries: AGENTS.map((a) => ({ queryKey: ["track", a], queryFn: () => api.trackRecord(a) })) });
@@ -20,11 +22,13 @@ export default function Mubit({ agent }: { agent?: string }) {
   const failed = qs.every((q) => q.isError);
   const sel = data.find((d) => d.agent === agent) ?? data[0];
 
-  const learnedNow = avg(data.map((d) => last(d.learned)).filter((x): x is number => x != null));
-  const frozenNow = avg(data.map((d) => last(d.frozen)).filter((x): x is number => x != null));
-  const brier = avg(data.map((d) => d.brier).filter((x): x is number => x != null));
+  // An analyst whose calls mostly could not be checked has a hit rate that describes only the few it could: leave it out of the headline.
+  const reliable = data.filter(isChecked);
+  const learnedNow = avg(reliable.map((d) => last(d.learned)).filter((x): x is number => x != null));
+  const frozenNow = avg(reliable.map((d) => last(d.frozen)).filter((x): x is number => x != null));
+  const brier = avg(reliable.map((d) => d.brier).filter((x): x is number => x != null));
   const corrections = data.reduce((n, d) => n + d.corrections_applied, 0);
-  const graded = data.reduce((n, d) => n + d.calls_graded, 0);
+  const graded = reliable.reduce((n, d) => n + d.calls_graded, 0);
   const lift = learnedNow != null && frozenNow != null ? Math.round((learnedNow - frozenNow) * 100) : null;
   const asOf = data[0]?.as_of;
   const [tab, setTab] = useState<"checks" | "learning">(agent ? "learning" : "checks");
@@ -57,8 +61,8 @@ export default function Mubit({ agent }: { agent?: string }) {
         <>
           <section aria-label="Summary" className="grid gap-3 grid-cols-2 md:grid-cols-4">
             <Kpi label="Corrections applied" value={String(corrections)} note="across all analysts" />
-            <Kpi label="Calls graded" value={String(graded)} note="against later filings" />
-            <Kpi label="Accuracy, learning" value={learnedNow == null ? "n/a" : pct(learnedNow)} note={lift == null ? undefined : `${lift >= 0 ? "+" : ""}${lift} pts vs frozen twin`} accent="var(--success)" />
+            <Kpi label="Calls graded" value={String(graded)} note={reliable.length < data.length ? `against later filings, ${data.length - reliable.length} analyst left out (see below)` : "against later filings"} />
+            <Kpi label="Accuracy, learning" value={learnedNow == null ? "n/a" : pct(learnedNow)} note={lift == null ? undefined : `${lift >= 0 ? "+" : ""}${lift} pts vs frozen twin`} accent={lift != null && lift < 0 ? undefined : "var(--success)"} />
             <Kpi label="Average Brier score" value={brier == null ? "n/a" : brier.toFixed(2)} note="lower is better" />
           </section>
 
@@ -76,7 +80,7 @@ export default function Mubit({ agent }: { agent?: string }) {
                   className="card text-left p-4 cursor-pointer" style={{ color: "var(--foreground)", borderColor: on ? "var(--primary)" : undefined, background: on ? "var(--card-alt)" : undefined }}>
                   <div className="font-semibold">{d.investor}</div>
                   <div className="mute text-xs">{ROLE[d.agent] ?? d.agent} analyst</div>
-                  <div className="num text-xl font-semibold mt-3">{d.accuracy == null ? "n/a" : pct(d.accuracy)}</div>
+                  <div className="num text-xl font-semibold mt-3">{d.accuracy == null || !isChecked(d) ? "not checked" : pct(d.accuracy)}</div>
                   <div className="num text-xs mute truncate" title={d.model_version ?? undefined}>{d.model_version ?? "version n/a"}</div>
                 </button>
               );
@@ -180,11 +184,12 @@ function AgentDetail({ d }: { d: TrackRecord }) {
         <span className="chip num" title="Model version in force at this date">{d.model_version ?? "version n/a"}</span>
       </div>
       <div className="flex gap-8 mt-4 flex-wrap">
-        <Stat label="recent accuracy" value={d.accuracy == null ? "n/a" : pct(d.accuracy)} />
+        <Stat label="recent accuracy" value={d.accuracy == null || !isChecked(d) ? "not shown" : pct(d.accuracy)} />
         <Stat label="graded calls" value={String(d.calls_graded)} />
         <Stat label="corrections" value={String(d.corrections_applied)} />
         {d.brier != null && <Stat label="Brier score" value={d.brier.toFixed(2)} />}
       </div>
+      {!isChecked(d) && <p className="mute text-xs mt-3 mb-0">Only {Math.round((d.checked_share ?? 0) * 100)}% of this analyst's calls in this run could be checked against a filing (the rest are stored as unresolvable, because its grades predate a fix to the going-concern check). A hit rate would describe only that small part, so it is not shown or counted in the totals above.</p>}
       <Curve d={d} />
       <div className="mute text-xs mt-2 flex gap-5 flex-wrap">
         <span style={{ color: "var(--success)" }}>With lessons{l != null && <span className="num"> {pct(l)}</span>}</span>

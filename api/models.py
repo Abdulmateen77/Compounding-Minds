@@ -149,5 +149,8 @@ class TrackRecord(BaseModel):
     brier: float | None = None
     calls_graded: int = 0
     corrections_applied: int = 0
+    # Share of this analyst's learning-arm calls the grader could settle. Low means most grades are "unresolvable",
+    # so a hit rate would describe only the few it could check.
+    checked_share: float | None = None
     last_correction: Correction | None = None
     fallback_updater: bool = False
