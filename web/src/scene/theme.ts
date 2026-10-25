@@ -8,6 +8,10 @@ export const C = {
   violet: "#7b5cff", terracotta: "#c8643c", grey: "#9aa0b5",
 };
 
+/** The parts of a bot that are the same for everyone. The 3D character (Analyst.tsx) and the face on the cards (components/Avatar.tsx)
+    both read these, so the icons cannot drift away from the characters. */
+export const BOT = { skin: "#f1c7a0", ink: "#1b1b26", mouth: "#8a3b35", collar: "#f4f1ea", wall: "#1f2647" } as const;
+
 // Three.js needs real hex values (the UI's CSS variables do not resolve inside WebGL).
 export const STANCE_HEX = { for: "#2fd37c", neutral: "#f5b13d", against: "#ff5a67" } as const;
 export const LABEL_HEX = { investable: "#2fd37c", watch: "#f5b13d", not_investable: "#ff5a67" } as const;

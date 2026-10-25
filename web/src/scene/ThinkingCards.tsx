@@ -34,7 +34,7 @@ export function ThinkingCards({ lenses, tl, t, unlocked, open, setOpen, onAsk }:
                 style={{ color: "var(--foreground)", gridTemplateRows: "auto 7.25rem auto", borderColor: live ? c : undefined,
                   boxShadow: live ? `0 0 0 1px ${c}` : undefined, transition: "border-color .4s, box-shadow .4s" }}>
                 <span className="flex items-center gap-2 min-w-0">
-                  <Avatar l={l} size={38} ring={live || voted ? c : undefined} />
+                  <Avatar l={l} size={44} ring={live || voted ? c : undefined} />
                   <span className="grid leading-tight min-w-0">
                     <span className="font-semibold text-sm truncate">{l.name}</span>
                     <span className="mute text-xs truncate">{st === "idle" ? "Waiting their turn" : st === "thinking" ? "Working through their checks" : st === "speaking" ? "Giving their reading" : `${pass} of ${known} checks passed`}</span>
