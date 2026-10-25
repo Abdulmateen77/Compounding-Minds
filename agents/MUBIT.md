@@ -57,6 +57,38 @@ is no API to read it, so `get_model_version` is our own lesson counter, not a Mu
 | Daily training limit (resets 00:00 UTC), pause between trainings, 3 adapter starts per day in Try models | Send the training batch early, not on demo morning |
 | Starter credit: only listed models (we use `claude-haiku-4-5`), body at most 8 MiB, only `POST /v1/messages`, `count_tokens` and `GET /v1/models` on Anthropic | `MubitGateway` default model |
 
+## Getting an adapter to pass (target 96%)
+
+A version passes when it matches the provider model's answers often enough: `Matched {a}% of your provider
+model's answers on {n} test cases · needs {need}%`. It is tested against the provider, not against reality, so
+an adapter cannot match a provider that disagrees with itself. Two things on our side capped that:
+
+1. **The provider varied its own reply.** The same analyst prompt sent twice gave a different probability,
+   evidence list and principles list most of the time. `temperature` can't fix it: Mubit's Anthropic route
+   rejects it (`temperature: Extra inputs are not permitted`). So `agents/runner.py` adds `FORMAT_RULES` to the
+   USER message (the task key is unchanged): two probability levels, every metric as evidence, every principle
+   id listed, three bullets, bare JSON, and the format rules win over a lesson about the reply's shape.
+   Scenarios also gets dalio.04 as its default (start from the bucket of the 5-year mean).
+2. **One session per task.** Mubit sets test cases aside by session. The narrative, chat and news calls sent
+   one fixed session per task, which left nothing to test on. They now send one session per company.
+
+`python -m agents.agreement` measures the provider against itself (each prompt twice, `record=False`, so it
+trains nothing). Real prompts, Haiku 4.5, 25 Oct 2026:
+
+| | before (no rules, no lessons, 15 pairs) | after (rules + learned lessons, 40 pairs) |
+|---|---|---|
+| fundamentals | 33% | 98% |
+| risk | 47% | 95% |
+| scenarios | 33% | 95% |
+
+A pair "matches" on the same answer, probabilities within 0.05, the same evidence set and principles overlapping
+at least 0.75; reasoning wording is reported but does not count. This is our own proxy, not Mubit's test.
+It bounds what an adapter can reach; it does not show that a small adapter will reach it.
+
+Training set: `python -m agents.mubit_batch --source real` sends real prompts from the store, training
+companies only, with the learned lessons, as recorded calls. The pass result itself is only in the console
+(Adapters > History); there is no API to read it.
+
 ## One call that does not go through the gateway
 
 `grader/sapling.py` posts going-concern passages straight to Mubit's Banyan Sapling verifier endpoint (it is a verifier, not a chat model, and has its own interface). Verdicts are cached, so a replay makes no live calls. Every chat-model call in the repo goes through `MubitGateway`.
