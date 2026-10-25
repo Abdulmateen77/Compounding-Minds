@@ -25,6 +25,7 @@ from agents.synthesizer import DIRECTION, committee_score, confidence_for, trail
 from schemas import AgentCall, Grade
 
 ROOT = Path(__file__).resolve().parent.parent
+SNAPSHOT_DIR = ROOT / "demo_data" / "runs_final"   # committed: the real 2018-2024 replay, so a clean clone shows results
 DEFAULT_JSONL_DIR = ROOT / "data" / "runs"
 UNIVERSE_FILE = ROOT / "ingest" / "universe.json"
 
@@ -180,6 +181,8 @@ def resolve_source(requested: str | None = None) -> str:
             return "postgres"
         except Exception:
             pass
+    if not (DEFAULT_JSONL_DIR / "calls.jsonl").exists() and (SNAPSHOT_DIR / "calls.jsonl").exists():
+        return str(SNAPSHOT_DIR)
     return str(DEFAULT_JSONL_DIR)
 
 
