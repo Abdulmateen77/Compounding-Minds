@@ -10,35 +10,21 @@ const PlayIcon = () => (
   <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden><path d="M2 1.2v11.6L12.5 7z" fill="currentColor" /></svg>
 );
 
-/** Intro hero for the Select screen: muted looping preview plus a button that opens the full clip with sound. */
-export function ShowcaseHero() {
+/** Homepage explainer: muted looping preview plus a button that opens the full clip with sound. */
+export function ShowcaseVideo() {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
 
   return (
-    <section aria-label="Product intro video" className="card overflow-hidden grid md:grid-cols-[1fr_1.15fr] items-stretch mb-8"
-      style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--card)), var(--card))" }}>
-      <div className="p-6 md:p-8 flex flex-col justify-center order-2 md:order-1">
-        <h1 className="text-3xl md:text-4xl font-bold m-0">AI stock analysts, tested on the past</h1>
-        <p className="mt-3 mb-5 text-base leading-relaxed max-w-md">
-          Go back to any quarter from 2018 to 2024. Three AI analysts, modelled on Buffett, Munger and Dalio, judge a real company using only what was public that day. Then you see what actually happened, and whether they were right.
+    <section aria-label="Product intro video" className="card overflow-hidden grid md:grid-cols-[1fr_1.15fr] items-stretch">
+      <div className="p-6 md:p-8 flex flex-col justify-center order-2 md:order-1 gap-3">
+        <h2 className="text-xl md:text-2xl font-semibold m-0">Analysts that grade themselves against reality</h2>
+        <p className="m-0 text-sm md:text-base leading-relaxed mute max-w-md">
+          Four AI analysts, modelled on Buffett, Graham, Munger and Dalio, make calls from a company's filings. Later filings show whether they were right, and every wrong call becomes a lesson they read next time.
         </p>
-        <ol className="m-0 mb-6 p-0 list-none grid gap-2 text-sm">
-          {[
-            ["Pick a company and a date", "for example Coca-Cola, March 2018"],
-            ["Read their predictions", "cash and profit, financial trouble, revenue"],
-            ["See what really happened", "checked against the company's later filings"],
-          ].map(([head, eg], i) => (
-            <li key={head} className="flex items-baseline gap-3">
-              <span className="num inline-grid place-items-center w-6 h-6 rounded-full text-xs shrink-0" style={{ background: "var(--accent)", color: "#1a1006" }}>{i + 1}</span>
-              <span><span className="font-semibold">{head}</span> <span className="mute">{eg}</span></span>
-            </li>
-          ))}
-        </ol>
-        <p className="mute text-sm m-0 mb-5 max-w-md">Every wrong prediction becomes a lesson the analyst reads next time, so they should get better. You can check whether they do.</p>
-        <div className="flex items-center gap-3 flex-wrap">
+        <div className="flex items-center gap-3 flex-wrap mt-1">
           <button ref={btn} className="btn inline-flex items-center gap-2" style={{ background: "var(--accent)", color: "#1a1006" }} onClick={() => setOpen(true)}>
             <PlayIcon /> Watch how it works <span className="num text-xs opacity-70">0:23</span>
           </button>

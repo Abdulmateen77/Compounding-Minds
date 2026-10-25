@@ -5,7 +5,7 @@ import {Analyst} from '../three/Analyst';
 import {Box} from '../three/Box';
 import {Label} from '../three/Label';
 import {CameraRig, Desk, Lights, Room} from '../three/Set';
-import {Caption, TitleTape, Vignette} from '../ui/Overlays';
+import {Badge, Caption, TitleTape, Vignette} from '../ui/Overlays';
 import {C, SCENES, TEAM, clamp01, easeInOut, lerp, lerp3} from '../theme';
 import {CALL_CARD} from './TheCall';
 
@@ -16,12 +16,12 @@ const MACHINE_X = 2.3;
 const HEAD: V3 = [DESK_X, 1.75, -0.75];
 const INTAKE: V3 = [MACHINE_X, 2.55, 0];
 
-const tag = (v: string, on: boolean) => ({
+const tag = (label: string, on: boolean) => ({
   w: 360,
   h: 110,
   bg: on ? C.green : '#5b6180',
   radius: 55,
-  lines: [{text: `MODEL ${v}`, size: 54, weight: 900, color: '#ffffff', spacing: 3}],
+  lines: [{text: label, size: 50, weight: 900, color: '#ffffff', spacing: 3}],
 });
 
 const LESSON = {
@@ -128,7 +128,7 @@ export const MubitUpdate: React.FC = () => {
           pose={{t: f, typing: 0, headDrop: sad * 0.8, headTurn: 0.25 * (1 - cheer), armsUp: cheer, jump: hop, glow}}
         />
         <Label
-          spec={upgraded ? tag('v2', true) : tag('v1', false)}
+          spec={upgraded ? tag('1 LESSON', true) : tag('0 LESSONS', false)}
           width={0.95}
           p={[DESK_X, 3.05 + hop, -0.75]}
           scale={upgraded ? 0.7 + 0.3 * tagPop : 1}
@@ -155,8 +155,9 @@ export const MubitUpdate: React.FC = () => {
         <Label spec={LESSON} width={2.4} p={[MACHINE_X + 0.1, 3.0, 0.4]} scale={lesson} />
       </ThreeCanvas>
       <Vignette />
-      <TitleTape text="MISTAKES BECOME MODEL UPDATES" start={4} />
-      <Caption words={['every', 'correction', 'goes', 'through', 'Mubit']} start={58} perWord={5} />
+      <Badge text="EXAMPLE" start={12} />
+      <TitleTape text="EVERY MISS BECOMES A LESSON" start={4} />
+      <Caption words={['every', 'call', 'is', 'recorded', 'in', 'Mubit']} start={58} perWord={5} />
     </AbsoluteFill>
   );
 };

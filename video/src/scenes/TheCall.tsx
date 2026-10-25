@@ -5,7 +5,7 @@ import {Analyst} from '../three/Analyst';
 import {Box} from '../three/Box';
 import {Label} from '../three/Label';
 import {CameraRig, Desk, Lights, Room} from '../three/Set';
-import {Caption, TitleTape, Vignette} from '../ui/Overlays';
+import {Badge, Caption, TitleTape, Vignette} from '../ui/Overlays';
 import {C, SCENES, TEAM, clamp01, easeInOut, lerp3} from '../theme';
 
 export const CALL_CARD = {
@@ -89,6 +89,7 @@ export const TheCall: React.FC = () => {
         )}
       </ThreeCanvas>
       <Vignette />
+      <Badge text="EXAMPLE CALL" start={12} />
       <TitleTape text="EVERY CALL GETS GRADED" start={4} />
       <Caption words={['checked', 'against', 'what', 'the', 'SEC', 'filings', 'actually', 'said']} start={68} perWord={4} />
     </AbsoluteFill>

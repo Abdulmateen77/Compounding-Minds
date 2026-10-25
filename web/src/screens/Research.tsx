@@ -4,6 +4,7 @@ import { BarsLoader, ErrorBox, Skeleton } from "../components/bits";
 import { demoMode, researchHref, type ResearchView } from "../route";
 import { CompanySearch } from "../components/CompanySearch";
 import { PanelRoster } from "../components/PanelRoster";
+import { ShowcaseVideo } from "../components/Showcase";
 import { ResearchingRoom } from "../components/ResearchingRoom";
 import { recallPicked } from "../recent";
 import { RESEARCH_STEPS, STEP_SECONDS, type Report } from "../research";
@@ -51,6 +52,8 @@ function Landing() {
         <Guide title="New to this?">Type the name of any company listed in the US. We read the reports it must publish for investors (called filings) and show the key figures in plain terms, then five famous investing styles give their view. It is a way to learn about a company, not advice on what to buy.</Guide>
         <p className="mute text-xs m-0">Covers companies listed in the United States (NYSE and Nasdaq). London and European listings are coming.</p>
       </section>
+
+      <ShowcaseVideo />
 
       <PanelRoster />
 
