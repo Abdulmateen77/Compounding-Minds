@@ -2,6 +2,7 @@ import { memo, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { useFrame, useThree } from "@react-three/fiber";
 import { Analyst, type Pose } from "./Analyst";
+import { Spring, frameDt } from "./smooth";
 import { Box } from "./Box";
 import type { Director } from "./director";
 import { Label } from "./Label";
@@ -177,30 +178,32 @@ function AgentRig({ i, a, n, dir, getView, onHover, onSelect }: { i: number; a: 
     const since = t - dir.tl.speak[i];
     const speaking = st === "speaking";
     const hop = speaking && since < 0.5 ? Math.sin((since / 0.5) * Math.PI) * 0.22 : 0;
-    let turn = Math.sin(t * 1.2 + i * 2.1) * 0.15;
     // Only the investor whose turn it is to research works; the others wait their turn at their desks.
     const working = st === "thinking" && (dir.tl.thinkLen[i] <= 0 || thinkProgress(dir.tl, i, t) != null);
-    if (working) turn = Math.sin(t * 1.5 + i) * 0.25;
-    if (dir.researching) turn = Math.sin(t * 1.1 + i * 1.7) * 0.32;          // reading, looking between papers and the screen
+    // Idle head drift: the analyst keeps its own time, so this is only the size and speed. Reading is the widest, looking between papers and the screen.
+    let sway = 0.15, swayRate = 1.2;
+    if (working) { sway = 0.25; swayRate = 1.5; }
+    if (dir.researching) { sway = 0.32; swayRate = 1.1; }
+    let look: number | null = null;
     // A face-off: both face each other; whoever is making their point leans in and gestures, the other listens.
     const ad = dir.activeDebate(t), sp = dir.speakerAt(t);
     let arguing = 0, gesture = 0;
     if (ad) {
       const j = ad.pair.indexOf(i), judging = dir.faceoffs[ad.k].judge === i;
       // whoever is speaking turns to the one they address; the other two sides (and the judge) turn to the speaker
-      if (sp) { if (sp.who === i) turn = faceTo(sp.other); else if (j >= 0 || judging) turn = faceTo(sp.who); }
-      else if (j >= 0) turn = faceTo(ad.pair[1 - j]);
-      if (sp?.who === i) { arguing = 1; gesture = Math.abs(Math.sin(t * 5)) * 0.05; }
+      if (sp) { if (sp.who === i) look = faceTo(sp.other); else if (j >= 0 || judging) look = faceTo(sp.who); }
+      else if (j >= 0) look = faceTo(ad.pair[1 - j]);
+      if (sp?.who === i) { arguing = 1; gesture = 0.05 * (0.5 - 0.5 * Math.cos(performance.now() / 1000 * 9)); }
     } else if (!dir.faceoffs.length && dir.tl.cross && t >= dir.tl.cross[0] && t < dir.tl.cross[1]) {
       const k = Math.floor((t - dir.tl.cross[0]) / 0.65) % Math.max(1, n - 1) + 1;
-      turn = faceTo((i + k) % n);
+      look = faceTo((i + k) % n);
     }
     const talking = dir.spot === i;
-    if (talking) turn = 0;                                           // face the viewer
+    if (talking) look = 0;                                           // face the viewer
     const sinceReply = (performance.now() - dir.replyAt) / 1000;
     const nod = talking && sinceReply >= 0 && sinceReply < 0.5 ? Math.sin((sinceReply / 0.5) * Math.PI) * 0.22 : 0;
     const busyTyping = working || dir.researching || (talking && dir.busy);
-    return { t: t * 30 + i * 17, typing: busyTyping ? 1 : st === "idle" ? 0.4 : 0.15, headTurn: turn, jump: hop + nod + gesture, glow: speaking || talking || arguing ? 0.6 : 0 };
+    return { seed: i * 1.7, typing: busyTyping ? 1 : st === "idle" ? 0.4 : 0.15, look, sway, swayRate, lift: hop + nod + gesture, glow: speaking || talking || arguing ? 0.6 : 0 };
   };
 
   useGlow(glow, (set) => {
@@ -212,12 +215,15 @@ function AgentRig({ i, a, n, dir, getView, onHover, onSelect }: { i: number; a: 
     } else set("#2a3150", 0);
   });
 
-  useFrame(({ clock }) => {
+  const dotScale = useRef(new Spring());
+  useFrame(({ clock }, rawDt) => {
     const g = dots.current; if (!g) return;
     const st = agentState(dir.tl, i, dir.clock);
     // Real time, so the dots keep bobbing while the stream is the thing we are waiting on.
-    g.visible = (st === "thinking" && (dir.tl.thinkLen[i] <= 0 || thinkProgress(dir.tl, i, dir.clock) != null)) || (dir.spot === i && dir.busy)
+    const on = (st === "thinking" && (dir.tl.thinkLen[i] <= 0 || thinkProgress(dir.tl, i, dir.clock) != null)) || (dir.spot === i && dir.busy)
       || (dir.researching && Math.sin(clock.elapsedTime * 1.3 + i * 1.1) > 0.2);   // thought dots take turns
+    const s = dotScale.current.to(on ? 1 : 0, 0.16, frameDt(rawDt));
+    g.visible = s > 0.01; g.scale.setScalar(Math.max(0.0001, s));
     g.children.forEach((c, k) => { c.position.y = Math.sin(clock.elapsedTime * 5 - k * 0.8) * 0.07; });
   });
 

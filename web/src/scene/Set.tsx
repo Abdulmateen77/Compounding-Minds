@@ -3,6 +3,7 @@ import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { Box } from "./Box";
 import { Label } from "./Label";
+import { Spring, frameDt } from "./smooth";
 import { C } from "./theme";
 
 type V3 = [number, number, number];
@@ -139,9 +140,16 @@ export const Table = ({ p = [0, 0, 2.4] as V3 }: { p?: V3 }) => (
 
 /** Mutates a material's colour/emissive from a per-frame callback without re-rendering. */
 export function useGlow(ref: React.RefObject<THREE.MeshStandardMaterial | null>, fn: (set: (hex: string, k: number) => void) => void) {
-  const col = useRef(new THREE.Color());
-  useFrame(() => {
+  const target = useRef(new THREE.Color()), col = useRef(new THREE.Color()), lit = useRef(new Spring()), primed = useRef(false);
+  useFrame((_, rawDt) => {
     const m = ref.current; if (!m) return;
-    fn((hex, k) => { col.current.set(hex); m.emissive.copy(col.current); m.emissiveIntensity = k; m.color.copy(col.current).multiplyScalar(0.35 + 0.3 * k); });
+    const dt = frameDt(rawDt);
+    let want = 0;
+    fn((hex, k) => { target.current.set(hex); want = k; });
+    // Ease both the colour and the brightness, so a change of stance or of speaker fades rather than flicks.
+    if (!primed.current) { primed.current = true; col.current.copy(target.current); }
+    else col.current.lerp(target.current, 1 - Math.exp(-dt * 9));
+    const k = lit.current.to(want, 0.14, dt);
+    m.emissive.copy(col.current); m.emissiveIntensity = k; m.color.copy(col.current).multiplyScalar(0.35 + 0.3 * k);
   });
 }

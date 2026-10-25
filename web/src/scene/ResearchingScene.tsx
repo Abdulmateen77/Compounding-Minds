@@ -10,7 +10,7 @@ import { lookFor } from "./theme";
    each desk, and the four steps of the lookup tick over. The clock loops inside the settled part of the opening so the camera
    does not pump; when the report arrives the real scene takes over from the same moment (see ResearchScene `fromLoading`). */
 
-const LOOP_FROM = 2.6, LOOP_TO = 4.9;
+const LOOP_FROM = 3.0, LOOP_TO = 5.3;   // from after the last filing has landed
 
 type Props = { name?: string; step: number; seconds: number; onFail: (why: string) => void; demo?: boolean };
 
