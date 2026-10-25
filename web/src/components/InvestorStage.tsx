@@ -5,8 +5,7 @@ import { demoMode, useReducedMotion } from "../route";
 import InvestorPanel from "../scene/InvestorPanel";
 import { pickFaceOffs, surname } from "../scene/lenses";
 import { hasWebGL } from "../scene/support";
-import { InvestorCards } from "./InvestorCards";
-import { DebateVoices } from "./PanelParts";
+import { DebateLog } from "./DebateLog";
 import { InvestorRoster } from "./InvestorRoster";
 
 // three + react-three-fiber are their own chunk, so the rest of the report stays light.
@@ -106,8 +105,7 @@ export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: R
         <button className="btn ghost" onClick={present} title="Full-screen, for showing to a room">Present</button>
       </div>
       {scene(false)}
-      <DebateVoices lenses={a.lenses} />
-      <InvestorCards lenses={a.lenses} />
+      <DebateLog a={a} company={c.name} />
     </section>
   );
 }
@@ -132,26 +130,7 @@ function Plain({ r, why, onPlay }: { r: Report; why: string; onPlay?: () => void
 
       <InvestorRoster lenses={lenses} sel={sel} onChoose={(i) => setSel((s) => (s === i ? null : i))} />
 
-      <div className="card p-4 grid gap-3" role="region" aria-label={faceoffs.length ? "Where the investors disagree" : "No face-off"}>
-        <div className="mute text-[11px] font-semibold uppercase tracking-wide">{faceoffs.length ? (faceoffs.length > 1 ? `${faceoffs.length} face-offs` : "Where they disagreed") : "No face-off"}</div>
-        {faceoffs.length === 0 && <p className="m-0 text-sm">They all read it much the same way, so there was nothing to argue over.</p>}
-        {faceoffs.map((f, k) => (
-          <div key={k} className="grid gap-1.5">
-            <b className="text-sm">{surname(lenses[f.pair[0]])} vs {surname(lenses[f.pair[1]])}</b>
-            {f.turns.map((turn, j) => (
-              <div key={j} className="text-sm" style={{ lineHeight: 1.4 }}>
-                {turn.role === "ruling" && <div><b style={{ color: "#e6c350" }}>⚖ Judge {lenses[turn.by].name}: {turn.headline}</b> <span className="mute text-xs">Their own check:</span></div>}
-                <b style={{ color: turn.quote.color }}>{turn.quote.mark} {turn.role === "ruling" ? "" : `${lenses[turn.by].name} · `}{turn.quote.head}</b>
-                <div className="num mute text-xs">{turn.quote.shown}</div>
-                <div className="mute text-xs">Idea: {turn.quote.idea}</div>
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
-
-      <DebateVoices lenses={lenses} />
-      <InvestorCards lenses={lenses} />
+      <DebateLog a={r.analysis!} company={r.company.name} />
 
       {sel != null && (
         <InvestorPanel key={key} inline cik={r.company.cik} lens={lenses[sel]} onClose={() => setSel(null)}
