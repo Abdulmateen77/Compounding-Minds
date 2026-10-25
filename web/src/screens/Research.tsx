@@ -96,6 +96,26 @@ const TABS: { id: ResearchView; label: string; hint: string }[] = [
   { id: "sources", label: "Sources and data", hint: "Every figure, check and filing as tables, with a CSV export" },
 ];
 
+/** The page tabs. Sticky, scrolls sideways on a phone, and keeps the current tab in view when the page changes. */
+function TabBar({ cik, view }: { cik: string; view: ResearchView }) {
+  const row = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    const on = row.current?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!on || !row.current) return;
+    const box = row.current, left = on.offsetLeft - (box.clientWidth - on.clientWidth) / 2;
+    box.scrollTo({ left: Math.max(0, left), behavior: "smooth" });   // scrolls the row itself, never the page
+  }, [view]);
+  return (
+    <nav ref={row} aria-label="Pages of this report" className="tabrow sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 flex gap-1" style={{ background: "color-mix(in srgb, var(--bg) 88%, transparent)", backdropFilter: "blur(8px)", borderBottom: "1px solid var(--line)" }}>
+      {TABS.map((t) => (
+        <a key={t.id} href={researchHref(cik, t.id)} title={t.hint} aria-current={view === t.id ? "page" : undefined}
+          className="px-4 py-2 rounded-lg text-sm font-medium no-underline whitespace-nowrap"
+          style={view === t.id ? { background: "var(--panel)", color: "var(--text)", boxShadow: "0 0 0 1px var(--line)" } : { color: "var(--mute)" }}>{t.label}</a>
+      ))}
+    </nav>
+  );
+}
+
 function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
   // ?demo=1 (presenter mode) always means the investor panel, wherever the link points.
   const view: ResearchView = asked === "overview" && demoMode() ? "investors" : asked;
@@ -139,13 +159,7 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
         <DataSource r={r} />
       </header>
 
-      <nav aria-label="Pages of this report" className="sticky top-0 z-20 -mx-4 px-4 py-2 flex gap-1 overflow-x-auto" style={{ background: "color-mix(in srgb, var(--bg) 88%, transparent)", backdropFilter: "blur(8px)", borderBottom: "1px solid var(--line)" }}>
-        {TABS.map((t) => (
-          <a key={t.id} href={researchHref(cik, t.id)} title={t.hint} aria-current={view === t.id ? "page" : undefined}
-            className="px-4 py-1.5 rounded-lg text-sm font-medium no-underline whitespace-nowrap"
-            style={view === t.id ? { background: "var(--panel)", color: "var(--text)", boxShadow: "0 0 0 1px var(--line)" } : { color: "var(--mute)" }}>{t.label}</a>
-        ))}
-      </nav>
+      <TabBar cik={cik} view={view} />
 
       {view === "overview" && <OverviewTab r={r} />}
       {view === "financials" && <FinancialsTab r={r} />}

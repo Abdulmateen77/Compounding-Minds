@@ -40,7 +40,7 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
   return (
     <div ref={box} className={compact ? "relative w-full sm:w-72" : "max-w-2xl relative"}
       onBlur={(e) => { if (!box.current?.contains(e.relatedTarget as Node | null)) setOpen(false); }}>
-      <input autoFocus={autoFocus} value={value} onChange={(e) => set(e.target.value)} onKeyDown={onKeyDown} onFocus={() => setOpen(true)}
+      <input autoFocus={autoFocus && !window.matchMedia("(pointer: coarse)").matches} value={value} onChange={(e) => set(e.target.value)} onKeyDown={onKeyDown} onFocus={() => setOpen(true)}
         role="combobox" aria-expanded={showing} aria-controls={list} aria-autocomplete="list" aria-label="Search a company by name or ticker"
         aria-activedescendant={showing && results[active] ? `${list}-${active}` : undefined} autoComplete="off" spellCheck={false}
         placeholder={compact ? "Search a company or ticker" : "Company name or ticker, for example Tesla or TSLA"}

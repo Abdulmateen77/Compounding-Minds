@@ -22,8 +22,8 @@ export default function App() {
           {health.data.banner}
         </div>
       )}
-      <header className="max-w-5xl w-full mx-auto px-4 pt-5 pb-2 flex items-center justify-between gap-4 flex-wrap">
-        <a href="#/" className="flex items-center gap-2 font-semibold tracking-tight no-underline" style={{ color: "var(--text)" }}>
+      <header className="max-w-5xl xl:max-w-6xl 2xl:max-w-7xl w-full mx-auto px-4 sm:px-6 pt-5 pb-2 flex items-center justify-between gap-x-4 gap-y-2 flex-wrap">
+        <a href="#/" className="flex items-center gap-2 py-2 font-semibold tracking-tight no-underline" style={{ color: "var(--text)" }}>
           <span className="inline-block w-6 h-6 rounded-md" style={{ background: "linear-gradient(135deg,var(--blue),var(--purple))" }} aria-hidden />
           Compounding Minds
         </a>
@@ -33,7 +33,7 @@ export default function App() {
         </nav>
         {route.name !== "home" && <CompanySearch compact />}
       </header>
-      <main className="max-w-5xl w-full mx-auto px-4 py-6 flex-1">
+      <main className="max-w-5xl xl:max-w-6xl 2xl:max-w-7xl w-full mx-auto px-4 sm:px-6 py-6 flex-1">
         <AnimatePresence mode="wait">
           <motion.div key={route.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }}>
             {route.name === "home" && <Research />}
@@ -44,7 +44,7 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </main>
-      <footer className="text-center text-xs mute py-6 px-4">Research tool, not financial advice. Assessments describe business evidence in filings, not investment advice or a recommendation to trade.</footer>
+      <footer className="text-center text-xs mute py-6 px-4" style={{ paddingBottom: "max(1.5rem, env(safe-area-inset-bottom))" }}>Research tool, not financial advice. Assessments describe business evidence in filings, not investment advice or a recommendation to trade.</footer>
     </div>
   );
 }

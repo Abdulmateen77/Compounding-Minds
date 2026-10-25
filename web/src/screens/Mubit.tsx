@@ -38,9 +38,9 @@ export default function Mubit({ agent }: { agent?: string }) {
         <p className="mute mt-2 mb-0 max-w-2xl">Two tests of whether this can be trusted: do the checks tell good businesses from weak ones, and do the AI analysts improve when they are wrong?</p>
       </div>
 
-      <div role="tablist" aria-label="Track record" className="flex gap-1 p-1 rounded-xl justify-self-start flex-wrap" style={{ background: "var(--panel2)", border: "1px solid var(--line)" }}>
+      <div role="tablist" aria-label="Track record" className="flex gap-1 p-1 rounded-xl justify-self-start max-w-full tabrow" style={{ background: "var(--panel2)", border: "1px solid var(--line)" }}>
         {([["checks", "Do the checks work?"], ["learning", "Do the analysts learn?"]] as const).map(([id, label]) => (
-          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className="px-4 py-1.5 rounded-lg text-sm font-medium cursor-pointer border-0"
+          <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className="px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border-0 whitespace-nowrap"
             style={tab === id ? { background: "var(--panel)", color: "var(--text)", boxShadow: "0 0 0 1px var(--line)" } : { background: "transparent", color: "var(--mute)" }}>{label}</button>
         ))}
       </div>
