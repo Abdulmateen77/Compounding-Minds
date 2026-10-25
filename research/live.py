@@ -11,7 +11,7 @@ import os
 import threading
 import time
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path
 
 from ingest.parse_facts import parse_companyfacts
@@ -166,14 +166,17 @@ def _shares(data: dict) -> list[dict]:
     for e in (data.get("facts", {}).get("dei", {}).get("EntityCommonStockSharesOutstanding", {}).get("units", {}).get("shares", [])):
         if e.get("val") is not None and e.get("end") and e.get("filed"):
             rows.append({"end": e["end"], "filed": e["filed"], "value": float(e["val"]), "accession": e.get("accn")})
-    if not rows:
-        w = (data.get("facts", {}).get("us-gaap", {}).get("WeightedAverageNumberOfDilutedSharesOutstanding", {}).get("units", {}).get("shares", []))
-        for e in w:
-            if e.get("val") is not None and e.get("end") and e.get("filed") and e.get("form") in ("10-Q", "10-K"):
-                rows.append({"end": e["end"], "filed": e["filed"], "value": float(e["val"]), "accession": e.get("accn"), "weighted": True})
-        rows.sort(key=lambda r: (r["filed"], r["end"]), reverse=True)
-        return rows[:1]
     rows.sort(key=lambda r: (r["filed"], r["end"]), reverse=True)
+    weighted = []
+    w = (data.get("facts", {}).get("us-gaap", {}).get("WeightedAverageNumberOfDilutedSharesOutstanding", {}).get("units", {}).get("shares", []))
+    for e in w:
+        if e.get("val") is not None and e.get("end") and e.get("filed") and e.get("form") in ("10-Q", "10-K"):
+            weighted.append({"end": e["end"], "filed": e["filed"], "value": float(e["val"]), "accession": e.get("accn"), "weighted": True})
+    weighted.sort(key=lambda r: (r["filed"], r["end"]), reverse=True)
+    # A multi-class company (UPS, Visa) can have a cover-page count that stops years ago: the SEC summary drops the per-class
+    # rows. When the diluted count is clearly newer, it is the better total.
+    if weighted and (not rows or date.fromisoformat(weighted[0]["end"]) - date.fromisoformat(rows[0]["end"]) > timedelta(days=366)):
+        return weighted[:1]
     return rows
 
 

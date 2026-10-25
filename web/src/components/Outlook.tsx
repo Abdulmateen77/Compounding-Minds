@@ -61,6 +61,14 @@ export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Mar
           </div>
         )}
 
+        {!o.value_path.length && (
+          <p className="m-0 rounded-xl p-4 text-sm leading-relaxed" style={{ background: "var(--card-alt)" }}>
+            No bear, base or bull value per share can be drawn for this company. {market?.shares
+              ? "Its free cash flow has been zero or negative in a typical recent year, so a cash-flow valuation would not mean anything."
+              : "Its filings do not give one total share count (it has several share classes), and a value per share needs one."}
+          </p>
+        )}
+
         {children}
 
         <div className="grid gap-1 text-xs mute">

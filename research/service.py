@@ -90,6 +90,8 @@ class ResearchService:
         shares = market.shares_outstanding(c.shares)
         if shares and date.fromisoformat(shares[1]) < today - timedelta(days=SHARES_MAX_AGE_DAYS):
             shares = None
+        if shares is None:                                       # several share classes: read the filing's cover page
+            shares = market.cover_page_shares(self.sec, cik, c.filings)
         report = build_report(c.company_id, today, profile, quote=quote, shares=shares, plans=plans, share_history=c.share_history)
         report["news"] = news
         report["latest_filing"] = c.latest_filing
