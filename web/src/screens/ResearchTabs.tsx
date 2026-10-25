@@ -3,11 +3,11 @@ import type { ChatMsg } from "../chat";
 import { FadeIn } from "../components/FadeIn";
 import { Disclosure, Head } from "../components/Section";
 import { AnalysisPopup } from "../components/AnalysisPopup";
-import { AskInvestor } from "../components/AskInvestor";
 import type { Speech } from "../components/DebateLog";
 import { DebateSection } from "../components/DebateSection";
 import { InvestorStage } from "../components/InvestorStage";
 import { InvestorBoard } from "../components/InvestorBoard";
+import { PanelDeck } from "../components/PanelDeck";
 import { OutlookBlock } from "../components/Outlook";
 import { PanelVerdict } from "../components/PanelParts";
 import { researchHref } from "../route";
@@ -21,16 +21,26 @@ import { useEffectiveLevel } from "../literacy";
 
 /* One component per company page. Each answers one question and shows each thing once; the tab bar in Research.tsx moves between them. */
 
-/** Is it any good? The verdict, the headline figures, what stands out, the quick screen and the latest news. */
+/** Is it any good? The verdict, the headline figures, what stands out, the quick screen, then the investors and their calls (each
+    opens their analysis, or a chat with them), and the latest news. */
 export function OverviewTab({ r }: { r: Report }) {
+  const a = r.analysis;
+  const [open, setOpen] = useState<{ i: number; on: "analysis" | "ask" } | null>(null);
+  const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
+  const lens = open && a ? a.lenses[open.i] : undefined;
   return (
     <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
       <Guide title="How to read this page">This is the short answer. The top box is what five famous investing styles make of the company. The tiles are its key figures, and the lists show what stands out, good and bad. The colours describe what the filings show; they are not a tip to buy or sell.</Guide>
-      {r.analysis && <PanelVerdict a={r.analysis} name={r.company.name} title="The investors' take on" />}
+      {a && <PanelVerdict a={a} name={r.company.name} title="The investors' take on" />}
       <Summary r={r} />
       <FadeIn><Highlights r={r} /></FadeIn>
       {r.quick_check && <FadeIn><QuickCheckBlock q={r.quick_check} /></FadeIn>}
+      {a && a.lenses.length > 0 && <InvestorBoard lenses={a.lenses} onAnalysis={(i) => setOpen({ i, on: "analysis" })} onAsk={(i) => setOpen({ i, on: "ask" })} />}
       {r.news && <FadeIn><NewsBlock n={r.news} /></FadeIn>}
+      {lens && open && (
+        <AnalysisPopup key={`${lens.key}-${open.on}`} l={lens} startOn={open.on} onClose={() => setOpen(null)}
+          ask={{ cik: r.company.cik, messages: chats[lens.key] ?? [], setMessages: (f) => setChats((c) => ({ ...c, [lens.key]: f(c[lens.key] ?? []) })) }} />
+      )}
     </div>
   );
 }
@@ -81,8 +91,6 @@ export function ValueTab({ r }: { r: Report }) {
     once. The proof that the checks work lives on the Track record page. */
 export function InvestorsTab({ r, fromLoading }: { r: Report; fromLoading: boolean }) {
   const a = r.analysis;
-  const [sel, setSel] = useState<number | null>(0);                 // who the ask box is talking to (the first investor until you choose)
-  const [chosen, setChosen] = useState(false);                      // you chose someone: only then does the cursor jump into the box
   const [popup, setPopup] = useState<number | null>(null);
   const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
   const [speech, setSpeech] = useState<Speech | null>(null);        // who the written debate is on, so the office says the same line
@@ -94,23 +102,23 @@ export function InvestorsTab({ r, fromLoading }: { r: Report; fromLoading: boole
   }, []);
   if (!a || a.lenses.length === 0) return <p className="card p-5 m-0 text-sm">There is not enough in the filings for the investors to give a view.</p>;
 
-  const ask = (i: number) => {
-    setPopup(null); setSel(i); setChosen(true);
-    window.setTimeout(() => document.getElementById("ask")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-  };
   return (
-    <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
+    <div className="grid gap-6 grid-cols-[minmax(0,1fr)]">
       <Guide title="How to read this page">Five well-known investors, each with their own habits of thought, are applied to this company as a list of rule checks. They often disagree, and that is the point. Press play to watch them argue, or ask any of them why they reached their call.</Guide>
       <section ref={stage} className="grid gap-3 grid-cols-[minmax(0,1fr)]" aria-label="The investors at work" style={{ scrollMarginTop: 72 }}>
-        <Head title="The investor panel at work" blurb="Watch the five investors work through their checks on this company, give their readings, and argue where they disagree. Click an investor to open their analysis." />
+        <Head title="The investor panel at work" blurb="Watch the five investors work through their checks, give their readings and argue where they disagree. Click an investor, here or in the office, for their analysis." />
         <InvestorStage r={r} fromLoading={fromLoading} speech={speech} onPick={setPopup} />
       </section>
-      <PanelVerdict a={a} name={r.company.name} title="The panel's view on" />
-      <FadeIn><InvestorBoard lenses={a.lenses} onAnalysis={setPopup} onAsk={ask} /></FadeIn>
-      <FadeIn><AskInvestor cik={r.company.cik} lenses={a.lenses} sel={sel} setSel={(i) => { setSel(i); setChosen(i != null); }} chats={chats} setChats={setChats} focus={chosen} /></FadeIn>
-      <FadeIn><DebateSection r={r} onSpeak={onSpeak} /></FadeIn>
+      <PanelDeck lenses={a.lenses} speaking={speech?.who ?? null} onOpen={setPopup} />
+      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] items-start">
+        <FadeIn><DebateSection r={r} onSpeak={onSpeak} /></FadeIn>
+        <FadeIn><PanelVerdict a={a} name={r.company.name} title="The panel's view on" compact /></FadeIn>
+      </div>
       <FadeIn><EvidenceLink /></FadeIn>
-      {popup != null && a.lenses[popup] && <AnalysisPopup l={a.lenses[popup]} onClose={() => setPopup(null)} onAsk={() => ask(popup)} />}
+      {popup != null && a.lenses[popup] && (
+        <AnalysisPopup key={a.lenses[popup].key} l={a.lenses[popup]} onClose={() => setPopup(null)}
+          ask={{ cik: r.company.cik, messages: chats[a.lenses[popup].key] ?? [], setMessages: (f) => setChats((c) => ({ ...c, [a.lenses[popup].key]: f(c[a.lenses[popup].key] ?? []) })) }} />
+      )}
     </div>
   );
 }

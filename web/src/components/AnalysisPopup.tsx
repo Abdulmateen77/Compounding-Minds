@@ -1,4 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { ChatMsg } from "../chat";
+import InvestorPanel from "../scene/InvestorPanel";
 import { CALL_COLOR, type Lens } from "../research";
 import { MARK, counts, surname } from "../scene/lenses";
 import { Avatar } from "./Avatar";
@@ -7,7 +9,10 @@ import { Say } from "./Say";
 
 /** One investor's analysis, in their own voice, as a pop-up: the call and why, the strongest points each way, what they would
     watch, and every check behind it folded away. Esc, the backdrop or Close shuts it. */
-export function AnalysisPopup({ l, onClose, onAsk }: { l: Lens; onClose: () => void; onAsk?: () => void }) {
+export type AskProps = { cik: number; messages: ChatMsg[]; setMessages: (f: (m: ChatMsg[]) => ChatMsg[]) => void };
+
+export function AnalysisPopup({ l, onClose, ask, startOn = "analysis" }: { l: Lens; onClose: () => void; ask?: AskProps; startOn?: "analysis" | "ask" }) {
+  const [tab, setTab] = useState<"analysis" | "ask">(ask ? startOn : "analysis");
   const color = l.decision ? CALL_COLOR[l.decision.call] : "var(--muted)", { pass, known } = counts(l);
   const { pros, cons } = forAndAgainst(l), watch = myWatch(l), why = myWhy(l);
   const close = useRef<HTMLButtonElement | null>(null);
@@ -34,6 +39,20 @@ export function AnalysisPopup({ l, onClose, onAsk }: { l: Lens; onClose: () => v
           <button ref={close} className="btn ghost" onClick={onClose} aria-label="Close">Close</button>
         </header>
 
+        {ask && (
+          <div role="tablist" aria-label={`${l.name}`} className="flex gap-2">
+            {(["analysis", "ask"] as const).map((t) => (
+              <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className="chip cursor-pointer"
+                style={tab === t ? { color: "var(--foreground)", borderColor: color, background: `color-mix(in srgb, ${color} 14%, transparent)` } : undefined}>
+                {t === "analysis" ? "Analysis" : `Ask ${surname(l)}`}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {tab === "ask" && ask ? (
+          <InvestorPanel inline autoFocus cik={ask.cik} lens={l} onClose={() => setTab("analysis")} messages={ask.messages} setMessages={ask.setMessages} />
+        ) : (<>
         <section className="rounded-xl p-3 grid gap-1" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
           <b className="text-lg" style={{ color }}>{myCall(l)}.</b>
           {why && <span className="text-sm"><Say>{why}</Say>.</span>}
@@ -61,8 +80,9 @@ export function AnalysisPopup({ l, onClose, onAsk }: { l: Lens; onClose: () => v
 
         <footer className="flex items-center justify-between gap-3 flex-wrap">
           <span className="mute text-xs">My rules applied to the filings: a reading of the evidence, not personal advice.</span>
-          {onAsk && <button className="btn" onClick={onAsk}>Question {surname(l)}</button>}
+          {ask && <button className="btn" onClick={() => setTab("ask")}>Question {surname(l)}</button>}
         </footer>
+        </>)}
       </article>
     </div>
   );

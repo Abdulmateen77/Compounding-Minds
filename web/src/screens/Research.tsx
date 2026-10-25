@@ -6,7 +6,6 @@ import { CompanySearch } from "../components/CompanySearch";
 import { PanelRoster } from "../components/PanelRoster";
 import { ShowcaseVideo } from "../components/Showcase";
 import { ResearchingRoom } from "../components/ResearchingRoom";
-import { recallPicked } from "../recent";
 import { RESEARCH_STEPS, STEP_SECONDS, type Report } from "../research";
 import { DataSource } from "./ResearchParts";
 import { FinancialsTab, InvestorsTab, OverviewTab, SourcesTab, ValueTab } from "./ResearchTabs";
@@ -156,8 +155,9 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
   const q = useQuery({ queryKey: ["report", cik], queryFn: () => j<Report>(`/api/research/company/${cik}`), staleTime: 10 * 60_000, retry: 0 });
   const waited = useRef(false);               // the investors were shown researching, so the readings continue from there
   if (q.isLoading) {
-    if (view === "investors") { waited.current = true; return <ResearchingRoom cik={cik} plain={(name) => <Loading name={name} />} />; }
-    return <Loading name={recallPicked(cik)?.name} />;
+    // the investors research in their office on every tab; the plain card is the fallback (no 3D, reduced motion, an error)
+    if (view === "investors") waited.current = true;
+    return <ResearchingRoom cik={cik} plain={(name) => <Loading name={name} />} />;
   }
   if (q.isError || !q.data) return <div className="grid gap-3"><ErrorBox msg={q.error instanceof Error ? q.error.message : "Could not build the report."} onRetry={() => q.refetch()} /><a className="btn ghost justify-self-start no-underline" href="#/">← Search again</a></div>;
   const r = q.data, c = r.company;

@@ -8,14 +8,14 @@ import { spokenForm, useEffectiveLevel } from "../literacy";
 
 /** The headline over the investors' take (Report tab) and over the debates (Investor panel tab): the panel's tally, the overall
     reading, and each investor's call as a chip. */
-export function PanelVerdict({ a, name, title }: { a: Analysis; name: string; title: string }) {
+export function PanelVerdict({ a, name, title, compact = false }: { a: Analysis; name: string; title: string; compact?: boolean }) {
   const p = a.panel, o = a.overall;
   const color = p ? TONE[p.tone].color : TONE[o.tone].color;
   return (
-    <section className="card p-6 md:p-7 grid gap-4" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 12%, var(--card)), var(--card))`, borderColor: `color-mix(in srgb, ${color} 45%, var(--divider))` }}>
+    <section className={`card grid gap-4 ${compact ? "p-5" : "p-6 md:p-7"}`} style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 12%, var(--card)), var(--card))`, borderColor: `color-mix(in srgb, ${color} 45%, var(--divider))` }}>
       <div>
         <p className="mute text-sm m-0">{title} {name}</p>
-        <h2 className="text-2xl md:text-3xl font-bold my-1" style={{ color }}><Say>{p?.headline ?? o.headline}</Say></h2>
+        <h2 className={`${compact ? "text-xl" : "text-2xl md:text-3xl"} font-bold my-1`} style={{ color }}><Say>{p?.headline ?? o.headline}</Say></h2>
         <p className="m-0 max-w-3xl leading-relaxed">{p && <b>{o.headline}. </b>}<Say>{o.why}</Say></p>
       </div>
       <div className="flex flex-wrap gap-2" aria-label="Each investor's call">

@@ -10,3 +10,4 @@ agents/memory/
 .vercel
 /public/
 web/dist/
+.env.local
