@@ -63,7 +63,7 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
   const [own, setOwn] = useState("");
   const value = q ?? own, set = onQ ?? setOwn;
   const [debounced, setDebounced] = useState("");
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(false);              // opens when the box is focused, never on its own
   const [active, setActive] = useState(0);
   const [recent, setRecent] = useState<Picked[]>([]);
   const prefs = usePrefs();
@@ -74,7 +74,7 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
   const term = value.trim();
   const typing = term.length >= 1;
   useEffect(() => { const t = setTimeout(() => setDebounced(term), 200); return () => clearTimeout(t); }, [term]);
-  useEffect(() => { setActive(0); setOpen(true); }, [debounced]);
+  useEffect(() => { setActive(0); if (document.activeElement === input.current) setOpen(true); }, [debounced]);
   const s = useQuery({ queryKey: ["rsearch", debounced], enabled: debounced.length >= 1, queryFn: () => getJson<SearchResult>(`/api/research/search?q=${encodeURIComponent(debounced)}`) });
 
   const searching = typing && debounced === term;       // results on screen belong to what is in the box
@@ -100,7 +100,7 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
     <div ref={box} className={compact ? "relative w-full max-w-sm" : "max-w-2xl relative"}
       onBlur={(e) => { if (!box.current?.contains(e.relatedTarget as Node | null)) setOpen(false); }}>
       {compact && <svg aria-hidden viewBox="0 0 20 20" width="14" height="14" className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"><circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" /></svg>}
-      <input ref={input} maxLength={80} autoFocus={autoFocus && !window.matchMedia("(pointer: coarse)").matches} value={value} onChange={(e) => set(e.target.value)} onKeyDown={onKeyDown} onFocus={() => { refreshRecent(); setOpen(true); }}
+      <input ref={input} maxLength={80} autoFocus={autoFocus && !window.matchMedia("(pointer: coarse)").matches} value={value} onChange={(e) => set(e.target.value)} onKeyDown={onKeyDown} onFocus={() => { refreshRecent(); setOpen(true); }} onClick={() => setOpen(true)}
         role="combobox" aria-expanded={showing} aria-controls={list} aria-autocomplete="list" aria-label="Search a company by name or ticker"
         aria-activedescendant={showing && rows[active] ? `${list}-${active}` : undefined} autoComplete="off" spellCheck={false} enterKeyHint="go"
         placeholder={compact ? "Search a company or ticker" : "Company name or ticker, for example Tesla or TSLA"}

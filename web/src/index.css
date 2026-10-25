@@ -6,8 +6,10 @@
    durations and radii. Components use these names, not raw numbers. */
 
 @theme {
-  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  /* TradingView's own stack: the system UI font on Apple devices, Trebuchet MS on Windows, Roboto from Google Fonts everywhere else */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Trebuchet MS", Roboto, Ubuntu, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: var(--font-sans);   /* one family across the app; kept as a name for large figures */
 
   /* type scale: 16px base, 1.25 ratio, rounded to the nearest whole pixel (caption floor 12px).
      The three display sizes are fluid so a phone gets the lower end and a desktop the full size. */
@@ -94,7 +96,7 @@ section[id], div[id] { scroll-margin-top: 5rem; }
 body {
   margin: 0; background: var(--background); color: var(--foreground);
   font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased;
-  font-size: var(--text-sm); font-feature-settings: "tnum" 1, "cv11" 1;
+  font-size: var(--text-sm); font-feature-settings: "tnum" 1;
 }
 img, svg, video, canvas { max-width: 100%; }
 
@@ -109,7 +111,7 @@ img, svg, video, canvas { max-width: 100%; }
 
 .card { background: var(--card); border: var(--border-thin) solid var(--divider); border-radius: var(--radius-2xl); }
 .mute { color: var(--muted); }
-.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.num { font-variant-numeric: tabular-nums; }
 
 /* button: a pill, md is 40px tall with 16px side padding; .sm is 32/12 and .lg is 48/20. Hover changes colour, it does not move.
    justify-self keeps a button its own width inside a grid, where it would otherwise stretch to the whole row. */

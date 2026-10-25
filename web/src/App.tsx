@@ -10,6 +10,7 @@ import Research from "./screens/Research";
 import { CompanySearch } from "./components/CompanySearch";
 import { LevelQuiz } from "./components/LevelQuiz";
 import { LevelSwitch } from "./components/LevelSwitch";
+import { LogoMark, Wordmark } from "./components/Logo";
 import { useLevel } from "./literacy";
 import { DUR, EASE_SOFT } from "./motion";
 
@@ -33,9 +34,9 @@ export default function App() {
       )}
       <header className="topbar sm:sticky sm:top-0 z-[var(--z-overlay)]">
         <div className="page sm:h-12 py-1 sm:py-0 flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-1">
-          <a href="#/" className="flex items-center gap-2 text-sm font-semibold no-underline shrink-0" style={{ color: "var(--foreground)" }}>
-            <span className="inline-block w-5 h-5 rounded-lg" style={{ background: "var(--primary-solid)" }} aria-hidden />
-            <span className="hidden xs:inline">Compounding Minds</span>
+          <a href="#/" aria-label="Compounding Minds, home" className="flex items-center gap-2 no-underline shrink-0" style={{ color: "var(--foreground)" }}>
+            <LogoMark size={28} />
+            <Wordmark className="hidden xs:inline text-lg" />
           </a>
           <div className="order-last sm:order-none basis-full sm:basis-auto sm:flex-1 min-w-0 pb-2 sm:pb-0 flex sm:justify-start">{route.name !== "home" && <CompanySearch compact />}</div>
           <nav aria-label="Pages" className="flex gap-4 text-sm font-medium sm:h-full shrink-0 ml-auto sm:ml-0">
