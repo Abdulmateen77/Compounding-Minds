@@ -16,6 +16,8 @@ import { EvidenceLink } from "./EvidenceLink";
 import { Future, QuickCheckBlock, Worth } from "./ResearchAnalysis";
 import ProView from "./ResearchPro";
 import { DataSource, FinSection, Highlights, MarketBlock, NewsBlock, Plans, RiskChecks, Summary, TrendChart } from "./ResearchParts";
+import { Guide, Say } from "../components/Say";
+import { useEffectiveLevel } from "../literacy";
 
 /* One component per company page. Each answers one question and shows each thing once; the tab bar in Research.tsx moves between them. */
 
@@ -23,6 +25,7 @@ import { DataSource, FinSection, Highlights, MarketBlock, NewsBlock, Plans, Risk
 export function OverviewTab({ r }: { r: Report }) {
   return (
     <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
+      <Guide title="How to read this page">This is the short answer. The top box is what five famous investing styles make of the company. The tiles are its key figures, and the lists show what stands out, good and bad. The colours describe what the filings show; they are not a tip to buy or sell.</Guide>
       {r.analysis && <PanelVerdict a={r.analysis} name={r.company.name} title="The investors' take on" />}
       <Summary r={r} />
       <FadeIn><Highlights r={r} /></FadeIn>
@@ -38,6 +41,7 @@ export function FinancialsTab({ r }: { r: Report }) {
   const [mode, setMode] = useState<{ open: boolean; n: number }>({ open: false, n: 0 });   // n re-keys the sections so "Expand all" takes effect
   return (
     <div className="grid gap-6 grid-cols-[minmax(0,1fr)]">
+      <Guide title="How to read this page">Sales are the money a company takes in. Profit is what is left after its costs. Cash is what actually arrives in the bank, and it can differ from profit. Debt is money it has to pay back. Each section below asks one of those questions; open one to see the figures.</Guide>
       <TrendChart sections={sections} />
       <div className="grid gap-3">
         <Head title="The numbers, one question at a time" blurb="Each line shows its leading figures; open it for the reading and every figure."
@@ -55,6 +59,7 @@ export function FinancialsTab({ r }: { r: Report }) {
 export function ValueTab({ r }: { r: Report }) {
   return (
     <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
+      <Guide title="How to read this page">Price is what the stock market charges for the company today. Value is what the business itself might be worth from the cash it earns. The two can stay apart for years. The cases below show what would have to be true for the price to make sense.</Guide>
       {r.market && <MarketBlock m={r.market} />}
       {r.analysis && <FadeIn><Worth a={r.analysis} /></FadeIn>}
       {r.outlook
@@ -95,6 +100,7 @@ export function InvestorsTab({ r, fromLoading }: { r: Report; fromLoading: boole
   };
   return (
     <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
+      <Guide title="How to read this page">Five well-known investors, each with their own habits of thought, are applied to this company as a list of rule checks. They often disagree, and that is the point. Press play to watch them argue, or ask any of them why they reached their call.</Guide>
       <section ref={stage} className="grid gap-3 grid-cols-[minmax(0,1fr)]" aria-label="The investors at work" style={{ scrollMarginTop: 72 }}>
         <Head title="The investor panel at work" blurb="Watch the five investors work through their checks on this company, give their readings, and argue where they disagree. Click an investor to open their analysis." />
         <InvestorStage r={r} fromLoading={fromLoading} speech={speech} onPick={setPopup} />
@@ -112,8 +118,10 @@ export function InvestorsTab({ r, fromLoading }: { r: Report; fromLoading: boole
 /** Where does it all come from? The data source, every table, the economy and the notes. Reference, not reading. */
 export function SourcesTab({ r }: { r: Report }) {
   const econ = r.economy ?? [];
+  const level = useEffectiveLevel();
   return (
     <div className="grid gap-6 grid-cols-[minmax(0,1fr)]">
+      <Guide title="How to read this page">This is the reference page. Every figure comes from a report the company had to file with the US regulator (the SEC). The tables at the bottom can be downloaded if you want to check anything yourself.</Guide>
       <Head title="Where the numbers come from" blurb="Computed in Python from filings the company made to the SEC. No figure on these pages is written by an AI." />
       <DataSource r={r} full />
       {econ.length > 0 && (
@@ -121,8 +129,8 @@ export function SourcesTab({ r }: { r: Report }) {
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {econ.map((e) => (
               <div key={e.key} className="rounded-xl p-4 grid gap-1" style={{ background: "var(--card-alt)" }}>
-                <div className="flex items-baseline justify-between gap-2"><span className="text-sm font-medium">{e.label}</span><span className="num text-lg font-semibold">{fmtValue(e.unit, e.value)}</span></div>
-                <span className="mute text-xs">{e.meaning}</span>
+                <div className="flex items-baseline justify-between gap-2"><span className="text-sm font-medium"><Say>{e.label}</Say></span><span className="num text-lg font-semibold">{fmtValue(e.unit, e.value)}</span></div>
+                {level !== "advanced" && <span className="mute text-xs"><Say>{e.meaning}</Say></span>}
               </div>
             ))}
           </div>

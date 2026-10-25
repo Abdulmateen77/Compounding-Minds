@@ -3,6 +3,7 @@ import { CALL_COLOR, type Lens } from "../research";
 import { MARK, counts, surname } from "../scene/lenses";
 import { Avatar } from "./Avatar";
 import { forAndAgainst, myCall, myWatch, myWhy, said } from "./firstPerson";
+import { Say } from "./Say";
 
 /** One investor's analysis, in their own voice, as a pop-up: the call and why, the strongest points each way, what they would
     watch, and every check behind it folded away. Esc, the backdrop or Close shuts it. */
@@ -35,7 +36,7 @@ export function AnalysisPopup({ l, onClose, onAsk }: { l: Lens; onClose: () => v
 
         <section className="rounded-xl p-3 grid gap-1" style={{ background: `color-mix(in srgb, ${color} 10%, transparent)` }}>
           <b className="text-lg" style={{ color }}>{myCall(l)}.</b>
-          {why && <span className="text-sm">{why}.</span>}
+          {why && <span className="text-sm"><Say>{why}</Say>.</span>}
           <span className="num mute text-xs">{pass} of {known} of my checks passed</span>
         </section>
 
@@ -44,7 +45,7 @@ export function AnalysisPopup({ l, onClose, onAsk }: { l: Lens; onClose: () => v
           <Points title="Against it" items={cons} empty="Nothing against it on my checks." />
         </div>
 
-        {watch && <p className="m-0 text-sm"><b>What I'd watch next.</b> {watch}</p>}
+        {watch && <p className="m-0 text-sm"><b>What I'd watch next.</b> <Say>{watch}</Say></p>}
 
         <details className="text-xs">
           <summary className="cursor-pointer mute">All {l.checks.length} of my checks</summary>
@@ -52,7 +53,7 @@ export function AnalysisPopup({ l, onClose, onAsk }: { l: Lens; onClose: () => v
             {l.checks.map((k) => (
               <li key={k.id} className="flex gap-2 items-start">
                 <span style={{ color: MARK[k.result].color }} aria-hidden>{MARK[k.result].mark}</span>
-                <span>{said(k)}<span className="mute"> · {k.principle}</span></span>
+                <span><Say>{said(k)}</Say><span className="mute"> · <Say>{k.principle}</Say></span></span>
               </li>
             ))}
           </ul>
@@ -76,7 +77,7 @@ function Points({ title, items, empty }: { title: string; items: Lens["checks"];
         {items.map((k) => (
           <li key={k.id} className="flex gap-2 items-start">
             <span style={{ color: MARK[k.result].color }} aria-hidden>{MARK[k.result].mark}</span>
-            <span>{said(k)}</span>
+            <span><Say>{said(k)}</Say></span>
           </li>
         ))}
       </ul>

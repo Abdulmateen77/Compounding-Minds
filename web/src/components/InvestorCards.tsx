@@ -3,6 +3,7 @@ import { Avatar } from "./Avatar";
 import { STANCE_COLOR } from "../api/client";
 import { CALL_COLOR, type Check, type Lens } from "../research";
 import { MARK, checkLabel, counts, cut, stanceOf, surname } from "../scene/lenses";
+import { Say } from "./Say";
 
 /* Everything each investor analysed, in two forms: a row of boxes (avatar, name, their call) that open the full card, and
    the cards themselves. Everything comes from the report: the checks, the investor's guide and the written view. */
@@ -87,7 +88,7 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
           </span>
           <CallChip l={l} big={wide} />
         </div>
-        <p className="m-0 text-sm mute">Asks: {l.question}</p>
+        <p className="m-0 text-sm mute">Asks: <Say>{l.question}</Say></p>
         {l.fit != null && (
           <div className="flex items-center gap-2">
             <div className="h-1.5 flex-1 rounded-full overflow-hidden" style={{ background: "var(--divider)" }}>
@@ -96,20 +97,20 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
             <span className="num text-xs mute shrink-0">{pass} of {known} checks passed</span>
           </div>
         )}
-        {l.note && <p className="m-0 text-xs"><b>Looks like a {l.note.category.toLowerCase()}:</b> <span className="mute">{l.note.why}</span></p>}
+        {l.note && <p className="m-0 text-xs"><b>Looks like a {l.note.category.toLowerCase()}:</b> <span className="mute"><Say>{l.note.why}</Say></span></p>}
       </header>
 
       <div className="grid gap-4 content-start">
         {l.decision && (
           <Block title="Final call">
-            <p className="m-0 text-sm"><b style={{ color }}>{l.decision.label}.</b> {l.decision.why}</p>
+            <p className="m-0 text-sm"><b style={{ color }}>{l.decision.label}.</b> <Say>{l.decision.why}</Say></p>
           </Block>
         )}
-        {reading && <Block title="The reading"><p className="m-0 text-sm leading-relaxed">{reading}</p></Block>}
+        {reading && <Block title="The reading"><p className="m-0 text-sm leading-relaxed"><Say>{reading}</Say></p></Block>}
         {(l.looks_for?.length ?? 0) > 0 && (
           <Block title="Looks for">
             <ul className="m-0 p-0 list-none grid gap-1 text-sm">
-              {l.looks_for!.map((x) => <li key={x} className="flex gap-2"><span aria-hidden className="mute shrink-0">•</span><span>{x}</span></li>)}
+              {l.looks_for!.map((x) => <li key={x} className="flex gap-2"><span aria-hidden className="mute shrink-0">•</span><span><Say>{x}</Say></span></li>)}
             </ul>
           </Block>
         )}
@@ -121,15 +122,15 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
             {(wide ? l.checks : found).map((k) => (
               <li key={k.id} className="flex gap-2 items-start">
                 <span aria-hidden className="font-bold shrink-0 w-3 text-center" style={{ color: MARK[k.result].color }}>{MARK[k.result].mark}</span>
-                <span><span className="font-medium">{checkLabel(k)}</span> <span className="num mute text-xs">{cut(k.shown, wide ? 160 : 90)}</span>
-                  {wide && <span className="block mute text-xs">Idea: {k.principle}. <i>{k.source}</i></span>}</span>
+                <span><span className="font-medium"><Say>{checkLabel(k)}</Say></span> <span className="num mute text-xs">{cut(k.shown, wide ? 160 : 90)}</span>
+                  {wide && <span className="block mute text-xs">Idea: <Say>{k.principle}</Say>. <i>{k.source}</i></span>}</span>
               </li>
             ))}
             {known === 0 && <li className="mute">Not enough data to test.</li>}
           </ul>
         </Block>
-        {wide && l.narrative && <Block title="Their view in full"><p className="m-0 text-sm leading-relaxed">{l.narrative}</p></Block>}
-        {watch && <Block title="Watches next"><p className="m-0 text-sm leading-relaxed">{wide && l.ahead ? l.ahead : watch}</p></Block>}
+        {wide && l.narrative && <Block title="Their view in full"><p className="m-0 text-sm leading-relaxed"><Say>{l.narrative}</Say></p></Block>}
+        {watch && <Block title="Watches next"><p className="m-0 text-sm leading-relaxed"><Say>{wide && l.ahead ? l.ahead : watch}</Say></p></Block>}
       </div>
 
       <footer className={`mute text-xs flex flex-wrap gap-x-3 gap-y-1 ${wide ? "md:col-span-2" : ""}`}>

@@ -1,12 +1,16 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AnimatePresence, motion } from "framer-motion";
 import { api } from "./api/client";
-import { useRoute } from "./route";
+import { demoMode, useRoute } from "./route";
 import Run from "./screens/Run";
 import Verdict from "./screens/Verdict";
 import Mubit from "./screens/Mubit";
 import Research from "./screens/Research";
 import { CompanySearch } from "./components/CompanySearch";
+import { LevelQuiz } from "./components/LevelQuiz";
+import { LevelSwitch } from "./components/LevelSwitch";
+import { useLevel } from "./literacy";
 import { DUR, EASE_SOFT } from "./motion";
 
 export default function App() {
@@ -14,6 +18,10 @@ export default function App() {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const onMubit = route.name === "mubit";
   const onResearch = route.name === "home" || route.name === "research";
+  // The quiz opens by itself until a level is chosen (not in presenter mode), and again whenever the reader asks for it.
+  const level = useLevel();
+  const [asked, setAsked] = useState(false);
+  const quiz = asked || (level === null && !demoMode());
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -23,7 +31,7 @@ export default function App() {
           {health.data.banner}
         </div>
       )}
-      <header className="topbar sm:sticky sm:top-0 z-[var(--z-sticky)]">
+      <header className="topbar sm:sticky sm:top-0 z-[var(--z-overlay)]">
         <div className="page sm:h-12 py-1 sm:py-0 flex flex-wrap sm:flex-nowrap items-center gap-x-4 gap-y-1">
           <a href="#/" className="flex items-center gap-2 text-sm font-semibold no-underline shrink-0" style={{ color: "var(--foreground)" }}>
             <span className="inline-block w-5 h-5 rounded-lg" style={{ background: "var(--primary-solid)" }} aria-hidden />
@@ -34,8 +42,10 @@ export default function App() {
             <a href="#/" aria-current={onResearch ? "page" : undefined} className="navlink inline-flex items-center no-underline">Research</a>
             <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="navlink inline-flex items-center no-underline">Track record</a>
           </nav>
+          <LevelSwitch onQuiz={() => setAsked(true)} />
         </div>
       </header>
+      {quiz && <LevelQuiz onClose={() => setAsked(false)} />}
       <main id="main" tabIndex={-1} className="page py-4 flex-1 outline-none">
         <AnimatePresence mode="wait">
           <motion.div key={route.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0, transition: { duration: DUR.slow, ease: EASE_SOFT } }} exit={{ opacity: 0, transition: { duration: DUR.fast } }}>

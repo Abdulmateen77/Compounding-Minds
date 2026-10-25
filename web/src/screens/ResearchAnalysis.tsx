@@ -1,6 +1,7 @@
 import { motion } from "framer-motion";
 import { Disclosure, Explain, Head } from "../components/Section";
 import { jumpTo } from "../route";
+import { Say } from "../components/Say";
 import { TONE, money, pctOf, type Analysis, type Check, type Lens, type QuickCheck } from "../research";
 
 /* The verdict, the investors, the value, the future: everything here is rendered from the numbers the API
@@ -24,7 +25,7 @@ export function Verdict({ a, name }: { a: Analysis; name: string }) {
       <div>
         <p className="mute text-sm m-0">What the evidence says about {name}</p>
         <h2 className="text-2xl md:text-3xl font-bold my-1" style={{ color }}>{o.headline}</h2>
-        <p className="m-0 max-w-3xl leading-relaxed">{o.why}</p>
+        <p className="m-0 max-w-3xl leading-relaxed"><Say>{o.why}</Say></p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {a.lenses.map((l) => {
@@ -34,12 +35,12 @@ export function Verdict({ a, name }: { a: Analysis; name: string }) {
               style={{ background: `color-mix(in srgb, ${c} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${c} 35%, var(--divider))`, color: "var(--foreground)" }}>
               <span className="text-xs mute">{l.name}</span>
               <span className="font-semibold">{l.word}</span>
-              <span className="text-xs mute">{l.question}</span>
+              <span className="text-xs mute"><Say>{l.question}</Say></span>
             </a>
           );
         })}
       </div>
-      {v.available && v.position_text && <p className="m-0 text-sm"><b>Price:</b> {v.position_text}</p>}
+      {v.available && v.position_text && <p className="m-0 text-sm"><b>Price:</b> <Say>{v.position_text}</Say></p>}
       <p className="m-0 text-xs mute">This describes the evidence and the price. It is not personal advice and not a prediction of the share price. Your own goals, time frame and other holdings matter.</p>
     </motion.section>
   );
@@ -62,21 +63,21 @@ function LensCard({ l }: { l: Lens }) {
   return (
     <article id={`lens-${l.key}`} className="card p-5 grid gap-3 content-start">
       <div className="flex items-start justify-between gap-3">
-        <div><h3 className="text-lg font-semibold m-0">{l.name}</h3><p className="mute text-sm m-0">{l.question}</p></div>
+        <div><h3 className="text-lg font-semibold m-0">{l.name}</h3><p className="mute text-sm m-0"><Say>{l.question}</Say></p></div>
         <span className="chip shrink-0" style={{ color: c, borderColor: c }}>{l.word}</span>
       </div>
       {l.note && (
         <div className="rounded-xl p-3 text-sm" style={{ background: "var(--card-alt)" }}>
-          <b>Looks like a {l.note.category.toLowerCase()}.</b> <span className="mute">{l.note.why}.</span>
+          <b>Looks like a {l.note.category.toLowerCase()}.</b> <span className="mute"><Say>{l.note.why}</Say>.</span>
         </div>
       )}
       {l.narrative && (
         <div className="grid gap-2">
-          <p className="m-0 text-sm leading-relaxed">{l.narrative}</p>
+          <p className="m-0 text-sm leading-relaxed"><Say>{l.narrative}</Say></p>
           {l.ahead && (
             <div className="grid gap-1 pl-3" style={{ borderLeft: "4px solid var(--primary)" }}>
               <span className="text-xs font-semibold">Looking ahead</span>
-              <p className="m-0 text-sm leading-relaxed">{l.ahead}</p>
+              <p className="m-0 text-sm leading-relaxed"><Say>{l.ahead}</Say></p>
             </div>
           )}
           <span className="mute text-xs">Summarised by an AI from this investor's books and the checks below. Every number in it is checked against them.</span>
@@ -98,9 +99,9 @@ function CheckRow({ k }: { k: Check }) {
     <li className="flex gap-3 items-start">
       <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 14%, transparent)`, color: C.color }}>{C.mark}</span>
       <div className="grid gap-1 text-sm">
-        <span className="font-medium">{k.check}</span>
+        <span className="font-medium"><Say>{k.check}</Say></span>
         <span className="num text-xs">{k.shown}</span>
-        <span className="mute text-xs leading-snug">Idea: {k.principle}. <i>{k.source}</i></span>
+        <span className="mute text-xs leading-snug">Idea: <Say>{k.principle}</Say>. <i>{k.source}</i></span>
       </div>
     </li>
   );
@@ -117,7 +118,7 @@ export function Worth({ a }: { a: Analysis }) {
           <div className="grid gap-3 sm:grid-cols-3">
             {v.scenarios!.map((s) => (
               <div key={s.name} className="rounded-xl p-4 grid gap-1" style={{ background: "var(--card-alt)" }}>
-                <span className="text-xs mute">{s.name} case</span>
+                <span className="text-xs mute"><Say>{`${s.name} case`}</Say></span>
                 <span className="num text-2xl font-semibold">{s.value_per_share != null ? usd(s.value_per_share) : money(s.equity_value)}</span>
                 {s.value_per_share == null && <span className="mute text-xs">total value of the shares (no reliable share count)</span>}
                 <span className="mute text-xs">cash flow grows {pctOf(s.start_growth)} a year at first, fading to {pctOf(v.long_run_growth)}</span>
@@ -126,7 +127,7 @@ export function Worth({ a }: { a: Analysis }) {
           </div>
           {v.price != null && (
             <div className="grid gap-1 text-sm">
-              <span><b>Share price today:</b> <span className="num">{usd(v.price)}</span>. {v.position_text}</span>
+              <span><b>Share price today:</b> <span className="num">{usd(v.price)}</span>. <Say>{v.position_text}</Say></span>
               {v.implied_growth != null
                 ? <span>To justify today's price, cash flow would have to grow about <b className="num">{pctOf(v.implied_growth)}</b> a year at first, against {pctOf(v.scenarios![1].start_growth)} in the base case.</span>
                 : v.position === "above_bull" && <span>No growth rate within a plausible range justifies today's price on this method.</span>}
@@ -264,8 +265,8 @@ export function QuickCheckBlock({ q }: { q: QuickCheck }) {
                 <li key={i.key} className="flex gap-3 items-start">
                   <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 14%, transparent)`, color: C.color }}>{C.mark}</span>
                   <div className="grid gap-1 text-sm">
-                    <span className="font-medium">{i.label}: <span className="font-normal">{i.found}</span></span>
-                    <span className="mute text-xs">Look for: {i.rule}</span>
+                    <span className="font-medium"><Say>{i.label}</Say>: <span className="font-normal">{i.found}</span></span>
+                    <span className="mute text-xs">Look for: <Say>{i.rule}</Say></span>
                   </div>
                 </li>
               );

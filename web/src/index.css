@@ -189,3 +189,10 @@ input:focus-visible, textarea:focus-visible { outline-offset: 0; }
 }
 
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* Finance terms explained for the reader's level (components/Say.tsx) and the beginner guide strip. */
+.term { text-decoration: underline dotted; text-decoration-color: var(--muted); text-underline-offset: 3px; cursor: help; border-radius: var(--radius-sm); }
+.term:hover, .term:focus-visible { text-decoration-color: var(--primary); background: color-mix(in srgb, var(--primary) 12%, transparent); }
+.term-pop { position: fixed; z-index: var(--z-tooltip); width: max-content; max-width: min(280px, calc(100vw - 16px)); padding: var(--space-sm) var(--space-md); background: var(--card-alt); color: var(--foreground); border: var(--border-thin) solid var(--divider); border-radius: var(--radius-xl); font-size: var(--text-xs); font-weight: 400; line-height: 1.45; text-align: left; box-shadow: 0 8px 24px color-mix(in srgb, #000 35%, transparent); pointer-events: none; }
+.guide { display: grid; gap: var(--space-xs); padding: var(--space-sm) var(--space-md); border-left: var(--border-thick, 4px) solid var(--primary); background: color-mix(in srgb, var(--primary) 8%, transparent); border-radius: var(--radius-lg); font-size: var(--text-sm); line-height: 1.5; max-width: 48rem; }
+.guide > b { font-size: var(--text-xs); color: var(--primary); }

@@ -2,13 +2,14 @@ import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { ErrorBox, Skeleton } from "../components/bits";
 import { demoMode, researchHref, type ResearchView } from "../route";
-import { CompanySearch, SearchOptions } from "../components/CompanySearch";
+import { CompanySearch } from "../components/CompanySearch";
 import { PanelRoster } from "../components/PanelRoster";
 import { ResearchingRoom } from "../components/ResearchingRoom";
 import { recallPicked } from "../recent";
 import { RESEARCH_STEPS, STEP_SECONDS, type Report } from "../research";
 import { DataSource } from "./ResearchParts";
 import { FinancialsTab, InvestorsTab, OverviewTab, SourcesTab, ValueTab } from "./ResearchTabs";
+import { Guide, Say } from "../components/Say";
 
 const j = async <T,>(url: string): Promise<T> => {
   const r = await fetch(url);
@@ -47,7 +48,7 @@ function Landing() {
           <span className="mute">Try</span>
           {EXAMPLES.map((e) => <button key={e} className="chip cursor-pointer bg-transparent" onClick={() => setQ(e)}>{e}</button>)}
         </div>
-        <SearchOptions />
+        <Guide title="New to this?">Type the name of any company listed in the US. We read the reports it must publish for investors (called filings) and show the key figures in plain terms, then five famous investing styles give their view. It is a way to learn about a company, not advice on what to buy.</Guide>
         <p className="mute text-xs m-0">Covers companies listed in the United States (NYSE and Nasdaq). London and European listings are coming.</p>
       </section>
 
@@ -57,7 +58,7 @@ function Landing() {
         {HOW.map(([h, t], i) => (
           <div key={h} className="grid gap-1 content-start">
             <span className="text-sm font-semibold"><span className="num mute">{i + 1}</span>  {h}</span>
-            <span className="mute text-sm leading-relaxed">{t}</span>
+            <span className="mute text-sm leading-relaxed"><Say>{t}</Say></span>
           </div>
         ))}
       </section>

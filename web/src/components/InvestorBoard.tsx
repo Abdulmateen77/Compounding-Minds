@@ -3,6 +3,7 @@ import { CALL_COLOR, type Lens } from "../research";
 import { counts, stanceOf, surname } from "../scene/lenses";
 import { Avatar } from "./Avatar";
 import { opening } from "./firstPerson";
+import { Say } from "./Say";
 
 /* The investors at a glance: who they are, the call they make, and why in their own words. It reads straight from the report, so it
    is complete the moment the page opens and never waits on the 3D scene. Each card opens that investor's full analysis, or goes to the
@@ -31,7 +32,7 @@ export function InvestorBoard({ lenses, onAnalysis, onAsk }: { lenses: Lens[]; o
                     <span className="num mute text-xs">{l.fit == null ? "no data" : `${pass} of ${known} checks passed`}</span>
                   </div>
                 </header>
-                <p className="m-0 text-sm leading-relaxed">“{opening(l)}”</p>
+                <p className="m-0 text-sm leading-relaxed">“<Say>{opening(l)}</Say>”</p>
                 <footer className="flex items-center justify-between gap-2 flex-wrap pt-3" style={{ borderTop: "1px solid var(--divider)" }}>
                   <button className="btn ghost sm" onClick={() => onAnalysis(i)} aria-haspopup="dialog">Full analysis</button>
                   <button className="btn sm" onClick={() => onAsk(i)}>Ask {surname(l)}</button>

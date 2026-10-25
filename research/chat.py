@@ -33,6 +33,23 @@ INSTRUCTIONS = (
     "Reply in plain text only, with no headings, lists or markdown."
 )
 
+# How much finance jargon the answer may use, from the reader's quiz level. It rides on the user turn, not the system prompt, so the
+# system prompt stays one stable task per investor. Comparisons must be in words: a made-up number would fail the number guard.
+LEVEL_STYLE = {
+    "beginner": ("The reader is new to investing. Use everyday words and short sentences. Whenever you use a finance term, explain it "
+                 "in a few plain words straight after it. A simple comparison from daily life helps, but write it without numbers. "
+                 "Say what each result means for the business, not just what it was."),
+    "intermediate": ("The reader knows the basics of investing. Explain only the less common terms, briefly, and skip the basics."),
+    "advanced": ("The reader is fluent in finance. Use the precise terms without defining them, name the ratios and checks directly, "
+                 "and keep the answer tight."),
+}
+DEFAULT_LEVEL = "intermediate"
+
+
+def style_note(level: str | None) -> str:
+    return f"\n\n(Style for this reader: {LEVEL_STYLE.get(level or DEFAULT_LEVEL, LEVEL_STYLE[DEFAULT_LEVEL])})"
+
+
 ADVICE = re.compile(r"\b(buy|sell|hold|short|invest in|price target|will (?:it|the (?:stock|share price)) (?:go|rise|fall|drop|double)|"
                     r"predict|forecast|worth buying|good investment|should i)\b", re.I)
 STOP = {"what", "which", "that", "this", "with", "have", "does", "your", "about", "from", "they", "their", "there", "would",
@@ -109,8 +126,9 @@ def _ask(gateway, lens: dict, user_block: str, history: list[dict], note: str, c
     return out or None
 
 
-def answer(gateway, report: dict, lens: dict, question: str, history: list[dict] | None = None) -> dict:
-    """{"answer", "source": "model" | "rules", "lens"}. Never raises on a model failure; the rules answer takes over."""
+def answer(gateway, report: dict, lens: dict, question: str, history: list[dict] | None = None, level: str | None = None) -> dict:
+    """{"answer", "source": "model" | "rules", "lens"}. Never raises on a model failure; the rules answer takes over.
+    `level` (beginner, intermediate or advanced) sets how much jargon the model may use."""
     question = question.strip()[:MAX_QUESTION]
     turns = [{"role": t["role"], "content": str(t["content"])[:MAX_TURN_CHARS]} for t in (history or [])
              if t.get("role") in ("user", "assistant") and str(t.get("content", "")).strip()][-MAX_TURNS:]
@@ -124,6 +142,7 @@ def answer(gateway, report: dict, lens: dict, question: str, history: list[dict]
             turns[0] = {"role": "user", "content": f"{sheet}\n\n{turns[0]['content']}"}
         elif turns:
             block = f"{sheet}\n\nReader's question: {question}"
+        block += style_note(level)
         note = ""
         for _ in range(2):
             text = _ask(gateway, lens, block, turns, note, company)

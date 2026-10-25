@@ -6,6 +6,7 @@ import { ErrorBox, Skeleton, StubChip } from "../components/bits";
 import { go, mubitHref } from "../route";
 import { EvidencePanel } from "./ResearchAnalysis";
 import { DUR } from "../motion";
+import { Guide, Say } from "../components/Say";
 
 const AGENTS = ["fundamentals", "risk", "scenarios"] as const; // the MVP committee; Valuation is a stretch agent
 const ROLE: Record<string, string> = { fundamentals: "Fundamentals", valuation: "Valuation", moat: "Moat", risk: "Risk", scenarios: "Scenarios" };
@@ -40,7 +41,8 @@ export default function Mubit({ agent }: { agent?: string }) {
           <h1 className="text-3xl md:text-4xl font-bold m-0">Track record</h1>
           {health.data?.stub !== false && tab === "learning" && <StubChip />}
         </div>
-        <p className="mute mt-2 mb-0 max-w-2xl">Two tests of whether this can be trusted: do the checks tell good businesses from weak ones, and do the AI analysts improve when they are wrong?</p>
+        <p className="mute mt-2 mb-0 max-w-2xl"><Say>Two tests of whether this can be trusted: do the checks tell good businesses from weak ones, and do the AI analysts improve when they are wrong?</Say></p>
+        <div className="mt-3"><Guide>We pretended it was an earlier year and ran the same checks using only what was public then. Then we compared the answers with what really happened next. If the checks were just guessing, it would show here.</Guide></div>
       </div>
 
       <div role="tablist" aria-label="Track record" className="flex gap-1 p-1 rounded-xl justify-self-start max-w-full tabrow" style={{ background: "var(--card-alt)", border: "1px solid var(--divider)" }}>

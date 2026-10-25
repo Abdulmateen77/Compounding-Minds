@@ -18,12 +18,14 @@ export function stopSpeaking() {
 }
 
 /** Play one line in this investor's voice ("judge" for the judge). Resolves when it finishes, or rejects if voices are off. */
-export async function speak(investor: string, text: string, signal?: AbortSignal): Promise<void> {
+export async function speak(investor: string, text: string, signal?: AbortSignal, rate = 1): Promise<void> {
   const r = await fetch("/api/voice", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ investor, text }), signal });
   if (!r.ok) throw new Error((await r.json().catch(() => ({ detail: r.statusText }))).detail ?? r.statusText);
   const url = URL.createObjectURL(await r.blob());
   stopSpeaking();
   const audio = new Audio(url);
+  audio.playbackRate = rate;   // faster without a higher pitch (Eleven v4 has no speed setting)
+  audio.preservesPitch = true;
   current = audio;
   await new Promise<void>((resolve, reject) => {
     audio.onended = () => resolve();
@@ -36,12 +38,12 @@ export async function speak(investor: string, text: string, signal?: AbortSignal
 export type Line = { investor: string; name: string; text: string };
 
 /** Play a debate line by line, in each speaker's voice. `onLine` reports which line is playing (or null at the end). */
-export async function playDebate(lines: Line[], onLine: (i: number | null) => void, signal: AbortSignal) {
+export async function playDebate(lines: Line[], onLine: (i: number | null) => void, signal: AbortSignal, rate = 1.5) {
   try {
     for (let i = 0; i < lines.length; i++) {
       if (signal.aborted) break;
       onLine(i);
-      await speak(lines[i].investor, lines[i].text, signal);
+      await speak(lines[i].investor, lines[i].text, signal, rate);
     }
   } finally {
     onLine(null);

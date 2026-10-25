@@ -201,13 +201,14 @@ class ChatIn(BaseModel):
     lens: str = Field(min_length=1, max_length=30)
     question: str = Field(min_length=1, max_length=400)
     history: list[ChatTurn] = Field(default_factory=list, max_length=12)
+    level: Literal["beginner", "intermediate", "advanced"] = "intermediate"     # the reader's finance level (web onboarding quiz)
 
 
 @app.post("/api/research/company/{cik}/chat")
 def research_chat(cik: int, body: ChatIn):
     """Ask one investor lens why it reached its reading. Answers come only from that lens's checks in the report."""
     try:
-        out = research_service().chat(cik, body.lens, body.question, [t.model_dump() for t in body.history])
+        out = research_service().chat(cik, body.lens, body.question, [t.model_dump() for t in body.history], body.level)
     except Exception as e:
         raise HTTPException(502, f"Could not answer: {e}")
     if out is None:

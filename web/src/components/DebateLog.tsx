@@ -4,6 +4,8 @@ import { pickFaceOffs, surname } from "../scene/lenses";
 import { Avatar } from "./Avatar";
 import { fact, opening } from "./firstPerson";
 import { speak, stopSpeaking, useVoiceStatus } from "../voice";
+import { Say } from "./Say";
+import { spokenForm, useEffectiveLevel } from "../literacy";
 
 /* The debate as a chat log. Every line comes from the report: each investor's reading and call, the face-offs picked from their
    own checks (a case, an objection, the judge's ruling), and the panel's verdict. Nothing is invented for the debate. */
@@ -47,9 +49,15 @@ const pause = (m: Msg) => (m.kind === "heading" ? 700 : Math.min(4200, 1100 + (m
 export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis; company: string; onSpeak?: (s: Speech | null) => void; heading?: boolean }) {
   const msgs = useMemo(() => script(a, company), [a, company]);
   const voice = useVoiceStatus();
+  const level = useEffectiveLevel();
+  const levelRef = useRef(level);              // what the voices read out follows the reader's level (abbreviations said in full)
+  levelRef.current = level;
   const [shown, setShown] = useState(0);              // how many lines are visible
   const [running, setRunning] = useState(false);
   const [useVoice, setUseVoice] = useState(false);
+  const [speed, setSpeed] = useState(1.5);           // 1x, 1.5x or 2x: the voices and the pauses between lines
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
   const [typing, setTyping] = useState(false);
   const log = useRef<HTMLDivElement | null>(null);
   const stop = useRef<AbortController | null>(null);
@@ -68,7 +76,7 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
     setRunning(true);
     for (let i = from; i < msgs.length && !ctl.signal.aborted; i++) {
       setTyping(msgs[i].kind === "investor");
-      await new Promise((r) => setTimeout(r, msgs[i].kind === "investor" ? 650 : 250));
+      await new Promise((r) => setTimeout(r, (msgs[i].kind === "investor" ? 650 : 250) / speedRef.current));
       if (ctl.signal.aborted) break;
       setTyping(false);
       setShown(i + 1);
@@ -76,9 +84,9 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
       if (sp) onSpeak?.(sp);
       if (useVoice && voice.data?.enabled && m.kind !== "heading") {
         const who = m.kind === "investor" && m.who != null ? a.lenses[m.who].key : "judge";
-        try { await speak(who, spoken(m), ctl.signal); } catch { await new Promise((r) => setTimeout(r, pause(m))); }
+        try { await speak(who, spokenForm(spoken(m), levelRef.current), ctl.signal, speedRef.current); } catch { await new Promise((r) => setTimeout(r, pause(m) / speedRef.current)); }
       } else {
-        await new Promise((r) => setTimeout(r, pause(m)));
+        await new Promise((r) => setTimeout(r, pause(m) / speedRef.current));
       }
     }
     setTyping(false);
@@ -103,6 +111,11 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
           <label className="text-xs mute flex items-center gap-2" title={voice.data?.enabled ? "AI-generated voices, one per investor: not the real people" : "Voices are off: add ELEVENLABS_API_KEY to the server's .env"}>
             <input type="checkbox" checked={useVoice} disabled={!voice.data?.enabled || running} onChange={(e) => setUseVoice(e.target.checked)} /> AI voices
           </label>
+          <label className="text-xs mute flex items-center gap-2">Speed
+            <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Debate speed">
+              <option value={1}>1x</option><option value={1.25}>1.25x</option><option value={1.5}>1.5x</option><option value={2}>2x</option>
+            </select>
+          </label>
           {!running && shown === 0 && <button className="btn" onClick={start}>Start the debate</button>}
           {running && <button className="btn ghost" onClick={pauseRun}>Pause</button>}
           {!running && shown > 0 && !done && <button className="btn" onClick={resume}>Resume</button>}
@@ -123,13 +136,13 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
 
 function Line({ m, lenses, a }: { m: Msg; lenses: Lens[]; a: Analysis }) {
   if (m.kind === "heading") return <div className="text-xs font-semibold mute pt-2" style={{ borderTop: "1px solid var(--divider)" }}>{m.text}</div>;
-  if (m.kind === "moderator") return <p className="m-0 text-sm mute italic">{m.text}</p>;
+  if (m.kind === "moderator") return <p className="m-0 text-sm mute italic"><Say>{m.text}</Say></p>;
   if (m.kind === "verdict") {
     const c = TONE[a.panel?.tone ?? a.overall.tone].color;
     return (
       <div className="rounded-xl p-4 grid gap-2" style={{ background: `color-mix(in srgb, ${c} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${c} 40%, var(--divider))` }}>
-        <b style={{ color: c }} className="text-base">{m.text}</b>
-        <span className="text-sm">{m.detail}</span>
+        <b style={{ color: c }} className="text-base"><Say>{m.text}</Say></b>
+        <span className="text-sm"><Say>{m.detail}</Say></span>
         <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
           {lenses.map((l) => <span key={l.key}>{surname(l)}: <b style={{ color: l.decision ? CALL_COLOR[l.decision.call] : undefined }}>{l.decision?.label ?? l.word}</b></span>)}
         </span>
@@ -144,8 +157,8 @@ function Line({ m, lenses, a }: { m: Msg; lenses: Lens[]; a: Analysis }) {
       <Avatar l={l} size={34} ring={c} />
       <div className="grid gap-1 min-w-0 rounded-xl px-3 py-2" style={{ background: m.role === "ruling" ? "color-mix(in srgb, #e6c350 12%, var(--card-alt))" : "var(--card-alt)" }}>
         <span className="text-xs"><b>{l.name}</b> <span className="mute">· {tag}</span></span>
-        <span className="text-sm leading-relaxed">{m.text}</span>
-        {m.detail && <span className="mute text-xs leading-snug">Why it matters: {m.detail}</span>}
+        <span className="text-sm leading-relaxed"><Say>{m.text}</Say></span>
+        {m.detail && <span className="mute text-xs leading-snug">Why it matters: <Say>{m.detail}</Say></span>}
       </div>
     </div>
   );

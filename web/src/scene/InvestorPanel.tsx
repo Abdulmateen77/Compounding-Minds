@@ -3,12 +3,15 @@ import { STANCE_COLOR } from "../api/client";
 import { askInvestor, type ChatMsg } from "../chat";
 import type { Lens } from "../research";
 import { MARK, stanceOf, surname } from "./lenses";
+import { Say } from "../components/Say";
+import { useEffectiveLevel } from "../literacy";
 
 /* A one-on-one chat with the selected investor, plus their checks. Used inside the animation (a panel beside the stage, a bottom
    sheet on small screens) and on its own in the 2D fallback. The answers come from research/chat.py, which answers only from this
    investor's checks in the report. */
 
 const ASKS = ["Why did you give this reading?", "Which check hurt most?", "What would change your mind?", "What did pass?"];
+const PLAIN_ASK = "Explain that in plain words";      // offered first to beginners
 
 type Props = {
   cik: number;
@@ -24,6 +27,7 @@ type Props = {
 };
 
 export default function InvestorPanel({ cik, lens, messages, setMessages, onClose, big, inline, autoFocus = true, onBusy, onReply }: Props) {
+  const level = useEffectiveLevel();
   const [tab, setTab] = useState<"chat" | "checks">("chat");
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -55,7 +59,7 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
     setMessages((m) => [...m, { role: "user", content: q }]);
     setDraft(""); setBusy(true); setErr(null); onBusy?.(true);
     try {
-      const out = await askInvestor(cik, lens.key, q, history);
+      const out = await askInvestor(cik, lens.key, q, history, level);
       setMessages((m) => [...m, { role: "assistant", content: out.answer, source: out.source }]);
       onReply?.();
     } catch (e) {
@@ -72,7 +76,8 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
     onPointerDown: (e: React.PointerEvent) => e.stopPropagation(),
   };
   const asked = new Set(messages.filter((m) => m.role === "user").map((m) => m.content));
-  const follow = ASKS.filter((q) => !asked.has(q)).slice(0, 3);
+  const asks = level === "beginner" ? [PLAIN_ASK, ...ASKS] : ASKS;
+  const follow = asks.filter((q) => !asked.has(q)).slice(0, 3);
   const lastAssistant = messages.map((m) => m.role).lastIndexOf("assistant");
 
   const frame = inline
@@ -107,14 +112,14 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
               <div className="grid gap-2">
                 <p className="m-0 mute" style={{ lineHeight: 1.45 }}>Ask {first} why they reached this reading. They answer from their own checks on this company, and say so when something isn't in them.</p>
                 <div className="flex flex-wrap gap-2">
-                  {ASKS.slice(0, 3).map((q) => <button key={q} className="btn ghost sm text-left" style={{ fontSize: "inherit" }} onClick={() => send(q)}>{q}</button>)}
+                  {asks.slice(0, 3).map((q) => <button key={q} className="btn ghost sm text-left" style={{ fontSize: "inherit" }} onClick={() => send(q)}>{q}</button>)}
                 </div>
               </div>
             )}
             {messages.map((m, i) => (
               <div key={i} ref={i === lastAssistant ? lastAnswer : undefined} className={m.role === "user" ? "justify-self-end" : "justify-self-start"} style={{ maxWidth: "92%", scrollMarginTop: 8 }}>
                 <div className="sr-only">{m.role === "user" ? "You asked:" : `${first} answered:`}</div>
-                <div className="rounded-xl px-3 py-2" style={{ lineHeight: 1.45, background: m.role === "user" ? "var(--primary-solid)" : "var(--card-alt)", color: m.role === "user" ? "var(--on-primary)" : "var(--foreground)" }}>{m.content}</div>
+                <div className="rounded-xl px-3 py-2" style={{ lineHeight: 1.45, background: m.role === "user" ? "var(--primary-solid)" : "var(--card-alt)", color: m.role === "user" ? "var(--on-primary)" : "var(--foreground)" }}>{m.role === "user" ? m.content : <Say>{m.content}</Say>}</div>
                 {m.role === "assistant" && <div className="mute text-xs mt-1">{m.source === "rules" ? "Read straight from their checks" : "AI portrayal, from their checks"}</div>}
               </div>
             ))}
@@ -139,13 +144,13 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
         </>
       ) : (
         <div className={`flex-1 overflow-auto p-3 ${text}`}>
-          <p className="mute m-0 mb-2">{lens.question}</p>
-          {lens.narrative && <p className="m-0 mb-3" style={{ lineHeight: 1.45 }}>{lens.narrative}</p>}
+          <p className="mute m-0 mb-2"><Say>{lens.question}</Say></p>
+          {lens.narrative && <p className="m-0 mb-3" style={{ lineHeight: 1.45 }}><Say>{lens.narrative}</Say></p>}
           <ul className="m-0 p-0 list-none grid gap-2">
             {lens.checks.map((k) => (
               <li key={k.id} className="flex gap-2 items-start">
                 <span aria-label={k.result} className="inline-grid place-items-center w-5 h-5 rounded-full shrink-0" style={{ background: `color-mix(in srgb, ${MARK[k.result].color} 20%, transparent)`, color: MARK[k.result].color }}>{MARK[k.result].mark}</span>
-                <span><span className="font-medium">{k.check}</span> <span className="num mute">{k.shown}</span></span>
+                <span><span className="font-medium"><Say>{k.check}</Say></span> <span className="num mute">{k.shown}</span></span>
               </li>
             ))}
           </ul>

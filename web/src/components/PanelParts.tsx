@@ -3,6 +3,8 @@ import { CALL_COLOR, TONE, type Analysis, type Lens } from "../research";
 import { pickFaceOffs, surname } from "../scene/lenses";
 import { playDebate, stopSpeaking, useVoiceStatus, type Line } from "../voice";
 import { CallChip } from "./InvestorCards";
+import { Say } from "./Say";
+import { spokenForm, useEffectiveLevel } from "../literacy";
 
 /** The headline over the investors' take (Report tab) and over the debates (Investor panel tab): the panel's tally, the overall
     reading, and each investor's call as a chip. */
@@ -13,8 +15,8 @@ export function PanelVerdict({ a, name, title }: { a: Analysis; name: string; ti
     <section className="card p-6 md:p-7 grid gap-4" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 12%, var(--card)), var(--card))`, borderColor: `color-mix(in srgb, ${color} 45%, var(--divider))` }}>
       <div>
         <p className="mute text-sm m-0">{title} {name}</p>
-        <h2 className="text-2xl md:text-3xl font-bold my-1" style={{ color }}>{p?.headline ?? o.headline}</h2>
-        <p className="m-0 max-w-3xl leading-relaxed">{p && <b>{o.headline}. </b>}{o.why}</p>
+        <h2 className="text-2xl md:text-3xl font-bold my-1" style={{ color }}><Say>{p?.headline ?? o.headline}</Say></h2>
+        <p className="m-0 max-w-3xl leading-relaxed">{p && <b>{o.headline}. </b>}<Say>{o.why}</Say></p>
       </div>
       <div className="flex flex-wrap gap-2" aria-label="Each investor's call">
         {a.lenses.map((l) => (
@@ -36,12 +38,13 @@ export function PanelVerdict({ a, name, title }: { a: Analysis; name: string; ti
 /** The face-offs read aloud, each speaker in their own voice (ElevenLabs). Off, with a note, until the server has a key. */
 export function DebateVoices({ lenses }: { lenses: Lens[] }) {
   const status = useVoiceStatus();
+  const level = useEffectiveLevel();
   const faceoffs = useMemo(() => pickFaceOffs(lenses), [lenses]);
   const lines: Line[] = useMemo(() => faceoffs.flatMap((f) => f.turns.map((t) => {
     const who = lenses[t.by], q = t.quote;
     const text = t.role === "ruling" ? `${t.headline} ${q.head}: ${q.shown}.` : t.role === "objection" ? `But ${q.head.toLowerCase()} ${q.shown}.` : `${q.head} ${q.shown}.`;
-    return { investor: who.key, name: who.name, text };
-  })), [faceoffs, lenses]);
+    return { investor: who.key, name: who.name, text: spokenForm(text, level) };
+  })), [faceoffs, lenses, level]);
   const [playing, setPlaying] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const ctl = useRef<AbortController | null>(null);

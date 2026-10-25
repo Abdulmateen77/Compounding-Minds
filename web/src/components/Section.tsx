@@ -1,4 +1,6 @@
 import { useEffect, useId, useState, type ReactNode } from "react";
+import { useEffectiveLevel } from "../literacy";
+import { sayNode } from "./Say";
 
 /* Shared building blocks for keeping a page short: a section heading with one sentence under it, an optional "how this works" toggle
    for the longer explanation, and a collapsible block whose closed state still says something useful. */
@@ -9,7 +11,7 @@ export function Head({ title, blurb, more, right }: { title: string; blurb?: Rea
     <div className="flex items-end justify-between gap-3 flex-wrap">
       <div className="grid gap-1 min-w-0">
         <h2 className="text-xl font-semibold m-0">{title}</h2>
-        {blurb && <p className="mute text-sm m-0 max-w-3xl">{blurb}</p>}
+        {blurb && <p className="mute text-sm m-0 max-w-3xl">{sayNode(blurb)}</p>}
         {more && <Explain>{more}</Explain>}
       </div>
       {right}
@@ -19,7 +21,7 @@ export function Head({ title, blurb, more, right }: { title: string; blurb?: Rea
 
 /** "How this works": a small toggle that reveals the longer explanation. */
 export function Explain({ children, label = "How this works" }: { children: ReactNode; label?: string }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(useEffectiveLevel() === "beginner");   // a beginner starts with the explanation showing
   const id = useId();
   return (
     <div className="text-xs">

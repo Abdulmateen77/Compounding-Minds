@@ -43,13 +43,13 @@ class ResearchService:
                 "message": None if found else NOT_FOUND.format(q=q.strip())}
 
     # ---- one-on-one chat with an investor lens ------------------------------------------------------------------
-    def chat(self, cik: int, lens_key: str, question: str, history: list[dict] | None = None) -> dict | None:
+    def chat(self, cik: int, lens_key: str, question: str, history: list[dict] | None = None, level: str | None = None) -> dict | None:
         """Answer a reader's question about one lens of this company's report; None if the report or lens does not exist."""
         report = self.report(int(cik))
         lens = next((l for l in (report.get("analysis") or {}).get("lenses", []) if l["key"] == lens_key), None)
         if not report.get("supported") or lens is None:
             return None
-        return chat.answer(self._gw(), report, lens, question, history)
+        return chat.answer(self._gw(), report, lens, question, history, level)
 
     # ---- report ----------------------------------------------------------------------------------------------
     def _gw(self):

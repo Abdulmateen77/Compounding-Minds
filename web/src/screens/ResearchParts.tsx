@@ -3,6 +3,8 @@ import { motion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Spark } from "../components/bits";
 import { Disclosure, Head } from "../components/Section";
+import { Say } from "../components/Say";
+import { useEffectiveLevel } from "../literacy";
 import { researchHref } from "../route";
 import {
   POINT_IN_TIME, TONE, fmtValue, longDate, monthYear, money, multiple, pctOf, year,
@@ -13,6 +15,13 @@ import {
 
 const CARDS_SHOWN = 6;     // figure cards a section shows before "Show all"
 const NEWS_SHOWN = 3;
+
+/** What a figure means, for the reader's level: explained for beginners and intermediates, the filing it came from for advanced readers. */
+function Meaning({ text, sources }: { text: string; sources?: string[] }) {
+  const level = useEffectiveLevel();
+  if (level === "advanced") return sources?.length ? <span className="mute text-xs leading-snug">Source: {sources.join(", ")}</span> : null;
+  return <span className="mute text-xs leading-snug"><Say>{text}</Say></span>;
+}
 
 function ToneChip({ tone }: { tone: Figure["tone"] }) {
   if (!tone) return null;
@@ -32,7 +41,7 @@ export function Summary({ r }: { r: Report }) {
       {r.plans?.about && (
         <div>
           <span className="text-xs mute">What it does, in its own words</span>
-          <p className="m-0 mt-1 text-base md:text-lg leading-relaxed max-w-3xl">“{r.plans.about}”</p>
+          <p className="m-0 mt-1 text-base md:text-lg leading-relaxed max-w-3xl">“<Say>{r.plans.about}</Say>”</p>
         </div>
       )}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
@@ -40,7 +49,7 @@ export function Summary({ r }: { r: Report }) {
           const color = f.tone ? TONE[f.tone].color : "var(--divider)";
           return (
             <div key={f.key} className="rounded-xl p-3 md:p-4 grid gap-1" style={{ background: `color-mix(in srgb, ${color} 8%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 35%, var(--divider))` }}>
-              <span className="text-xs mute">{f.label}</span>
+              <span className="text-xs mute"><Say>{f.label}</Say></span>
               <span className="num text-xl md:text-2xl font-semibold">{fmtValue(f.unit, f.value)}{f.approx ? " ≈" : ""}</span>
               <span className="text-xs" style={{ color }}>{f.tone ? TONE[f.tone].word : "context"}</span>
             </div>
@@ -63,8 +72,8 @@ function Pick({ items, tone, empty }: { items: { label: string; value: string; m
       {items.length === 0 && <span className="mute text-sm">{empty}</span>}
       {items.map((i) => (
         <div key={i.label} className="grid gap-1">
-          <span className="text-sm"><b>{i.label}</b> <span className="num">{i.value}</span></span>
-          <span className="mute text-xs leading-snug">{i.meaning}</span>
+          <span className="text-sm"><b><Say>{i.label}</Say></b> <span className="num">{i.value}</span></span>
+          <Meaning text={i.meaning} />
         </div>
       ))}
     </div>
@@ -105,7 +114,7 @@ export function NewsBlock({ n }: { n: News }) {
         {lines.length > 0
           ? lines.slice(0, all ? undefined : NEWS_SHOWN).map((l) => (
               <div key={l.url} className="grid gap-1">
-                <p className="m-0 text-sm leading-relaxed">{l.text}</p>
+                <p className="m-0 text-sm leading-relaxed"><Say>{l.text}</Say></p>
                 <a href={l.url} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "var(--primary)" }}>{l.source}{l.age ? `, ${l.age}` : ""}: {l.title}</a>
               </div>
             ))
@@ -189,7 +198,7 @@ export function FinSection({ s, through, defaultOpen = false }: { s: Section; th
   const cards = all ? shown : shown.slice(0, CARDS_SHOWN);
   return (
     <Disclosure title={s.title} count={toneCounts(shown) || undefined} summary={<span className="num">{lead}</span>} defaultOpen={defaultOpen}>
-      {s.reading.length > 0 && <p className="m-0 max-w-3xl leading-relaxed text-sm">{s.reading.join(" ")}</p>}
+      {s.reading.length > 0 && <p className="m-0 max-w-3xl leading-relaxed text-sm"><Say>{s.reading.join(" ")}</Say></p>}
       <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">{cards.map((f) => <FigureCard key={f.key} f={f} through={through} />)}</div>
       {shown.length > CARDS_SHOWN && <button className="btn ghost justify-self-start" onClick={() => setAll((x) => !x)}>{all ? "Show fewer" : `Show all ${shown.length}`}</button>}
     </Disclosure>
@@ -202,12 +211,12 @@ function FigureCard({ f, through }: { f: Figure; through: string }) {
   return (
     <div className="rounded-xl p-4 grid gap-1 content-start" style={{ background: "var(--card-alt)" }} title={f.sources.length ? `From SEC filings: ${f.sources.join(", ")}` : undefined}>
       <div className="flex items-start justify-between gap-2">
-        <span className="text-sm font-medium">{f.label}</span>
+        <span className="text-sm font-medium"><Say>{f.label}</Say></span>
         <ToneChip tone={f.tone} />
       </div>
       <span className="num text-2xl font-semibold">{fmtValue(f.unit, f.value)}{f.approx && <span className="mute text-sm" title="Approximate: see the notes on the Sources page"> ≈</span>}</span>
       <span className="text-xs mute">{when}</span>
-      <span className="mute text-xs leading-snug">{f.meaning}</span>
+      <Meaning text={f.meaning} sources={f.sources} />
       {h.length > 2 && (
         <div className="mt-1">
           <Spark data={h.map((x) => x.value as number)} w={220} h={34} />
@@ -234,8 +243,8 @@ export function RiskChecks({ flags }: { flags: Flag[] }) {
             <div key={f.key} className="rounded-xl p-4 flex items-start gap-3" style={{ background: "var(--card-alt)" }} title={f.sources.length ? `From SEC filings: ${f.sources.join(", ")}` : undefined}>
               <span aria-hidden className="inline-grid place-items-center w-7 h-7 rounded-full shrink-0 text-sm" style={{ background: `color-mix(in srgb, ${T?.color ?? "var(--muted)"} 20%, transparent)`, color: T?.color }}>{f.tone === "good" ? "✓" : f.tone === "warn" ? "!" : "•"}</span>
               <div className="grid gap-1">
-                <span className="font-medium text-sm">{f.label}: <span style={{ color: T?.color }}>{f.detail}</span></span>
-                <span className="mute text-xs">{f.meaning}</span>
+                <span className="font-medium text-sm"><Say>{f.label}</Say>: <span style={{ color: T?.color }}>{f.detail}</span></span>
+                <Meaning text={f.meaning} sources={f.sources} />
               </div>
             </div>
           );
@@ -276,7 +285,7 @@ export function MarketBlock({ m }: { m: NonNullable<Report["market"]> }) {
         {rows.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {rows.map(([l, v, t]) => (
-              <div key={l} className="grid gap-1"><span className="text-xs mute">{l}</span><span className="num text-lg font-semibold">{v}</span><span className="mute text-xs leading-snug">{t}</span></div>
+              <div key={l} className="grid gap-1"><span className="text-xs mute"><Say>{l}</Say></span><span className="num text-lg font-semibold">{v}</span><Meaning text={t} /></div>
             ))}
           </div>
         )}
@@ -299,7 +308,7 @@ export function Plans({ p }: { p: NonNullable<Report["plans"]> }) {
         {live.map(([title, items]) => (
           <div key={title} className="rounded-xl p-4 grid gap-3 content-start" style={{ background: "var(--card-alt)" }}>
             <span className="font-semibold text-sm">{title}</span>
-            {items.map((t) => <blockquote key={t} className="m-0 pl-3 text-sm leading-relaxed" style={{ borderLeft: "4px solid var(--primary)" }}>{t}</blockquote>)}
+            {items.map((t) => <blockquote key={t} className="m-0 pl-3 text-sm leading-relaxed" style={{ borderLeft: "4px solid var(--primary)" }}><Say>{t}</Say></blockquote>)}
           </div>
         ))}
       </div>

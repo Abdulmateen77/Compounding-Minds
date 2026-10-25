@@ -4,12 +4,15 @@ import { motion } from "framer-motion";
 import { api, pct, type AgentView, type MubitState } from "../api/client";
 import { ErrorBox, Skeleton, Spark, StubChip } from "../components/bits";
 import { jumpTo, mubitHref } from "../route";
+import { Say } from "../components/Say";
+import { useEffectiveLevel } from "../literacy";
 import {
   AGENTS, HEADLINE, METRICS, SIGNAL, bottomLine, certainty, humanize, longDate, metricLabel, metricValue, plainAnswer,
 } from "../plain";
 
 export default function Verdict({ id }: { id: string }) {
   const [copied, setCopied] = useState(false);
+  const level = useEffectiveLevel();
   const q = useQuery({ queryKey: ["assessment", id], queryFn: () => api.assessment(id) });
   if (q.isLoading) return <div className="grid gap-4"><Skeleton h={200} /><div className="grid gap-3"><Skeleton /><Skeleton /></div></div>;
   if (q.isError || !q.data) return <div className="grid gap-3"><ErrorBox msg="Could not load this assessment." onRetry={() => q.refetch()} /><a className="btn ghost justify-self-start no-underline" href="#/">← Another company</a></div>;
@@ -38,7 +41,7 @@ export default function Verdict({ id }: { id: string }) {
           <div>
             <p className="mute m-0 text-sm">Does the evidence in {name}'s filings support investing?</p>
             <h1 className="text-3xl md:text-4xl font-bold mt-1 mb-2" style={{ color: tone }}>{H.text}</h1>
-            <p className="m-0 text-base md:text-lg max-w-3xl leading-relaxed">{bottomLine(a.committee)}</p>
+            <p className="m-0 text-base md:text-lg max-w-3xl leading-relaxed"><Say>{bottomLine(a.committee)}</Say></p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
             {a.committee.map((v) => {
@@ -81,10 +84,10 @@ export default function Verdict({ id }: { id: string }) {
               {cards.map((m) => (
                 <div key={m.name} className="card p-4 grid gap-1" title={m.accessions?.[0] ? `SEC filing ${m.accessions[0]}` : "Computed in Python from stored filings"}>
                   <div className="flex items-baseline justify-between gap-2">
-                    <span className="text-sm font-medium">{metricLabel(m.name)}</span>
+                    <span className="text-sm font-medium"><Say>{metricLabel(m.name)}</Say></span>
                     <span className="num text-lg font-semibold">{metricValue(m.name, m.value)}</span>
                   </div>
-                  <span className="mute text-xs leading-snug">{METRICS[m.name]?.meaning}</span>
+                  {level !== "advanced" && <span className="mute text-xs leading-snug"><Say>{METRICS[m.name]?.meaning}</Say></span>}
                   {m.trend.length > 1 && <Spark data={m.trend} w={200} h={30} />}
                 </div>
               ))}
@@ -134,7 +137,7 @@ function Prediction({ v, m, when, delay }: { v: AgentView; m?: MubitState; when:
         </div>
         <div className="grid gap-1 text-sm">
           <span className="font-medium">Why</span>
-          <ul className="m-0 pl-5 grid gap-1">{(open ? reasons : reasons.slice(0, 2)).map((r) => <li key={r}>{r}</li>)}</ul>
+          <ul className="m-0 pl-5 grid gap-1">{(open ? reasons : reasons.slice(0, 2)).map((r) => <li key={r}><Say>{r}</Say></li>)}</ul>
           {reasons.length > 2 && (
             <button className="justify-self-start text-sm mt-1" style={{ color: "var(--primary)", background: "none", border: 0, padding: 0, cursor: "pointer" }}
               onClick={() => setOpen(!open)} aria-expanded={open}>

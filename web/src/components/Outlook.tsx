@@ -2,6 +2,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import type { ReactNode } from "react";
 import { TONE, type Market, type Outlook } from "../research";
 import { Head } from "./Section";
+import { Say } from "./Say";
 
 const pct = (x: number | null | undefined, d = 0) => (x == null ? "n/a" : `${x >= 0 ? "+" : ""}${(x * 100).toFixed(d)}%`);
 const usd = (v: number | null | undefined) => (v == null ? "n/a" : `$${v >= 100 ? v.toFixed(0) : v.toFixed(2)}`);
@@ -26,8 +27,8 @@ export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Mar
         more={<p className="m-0">Worked out from every figure on the Financials page. The share price can stay far from the business's value for years.</p>} />
       <div className="card p-5 grid gap-5" style={{ borderColor: `color-mix(in srgb, ${color} 40%, var(--divider))` }}>
         <div className="grid gap-1">
-          <p className="m-0 text-lg font-semibold" style={{ color }}>{v.headline}</p>
-          <p className="m-0 text-sm leading-relaxed max-w-3xl">{v.why}</p>
+          <p className="m-0 text-lg font-semibold" style={{ color }}><Say>{v.headline}</Say></p>
+          <p className="m-0 text-sm leading-relaxed max-w-3xl"><Say>{v.why}</Say></p>
         </div>
 
         {odds && (
@@ -76,7 +77,7 @@ function Stat({ big, label }: { big: string; label: string }) {
   return (
     <div className="rounded-xl p-4 grid gap-1" style={{ background: "var(--card-alt)" }}>
       <span className="num text-2xl font-semibold">{big}</span>
-      <span className="mute text-xs leading-snug">{label}</span>
+      <span className="mute text-xs leading-snug"><Say>{label}</Say></span>
     </div>
   );
 }
