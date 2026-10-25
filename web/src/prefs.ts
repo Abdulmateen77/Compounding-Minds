@@ -7,7 +7,7 @@ export type Speed = 1 | 1.5 | 2;
 export const SPEEDS: Speed[] = [1, 1.5, 2];
 export type Level = "beginner" | "intermediate" | "advanced";
 export const LEVEL_KEYS: Level[] = ["beginner", "intermediate", "advanced"];
-/** `level` is null until the reader has taken the onboarding quiz or skipped it; it decides how much finance jargon the whole site uses. */
+/** `level` is null until the reader has answered the onboarding question or skipped it; it decides how much finance jargon the whole site uses. */
 export type Prefs = { open: ResearchView; speed: Speed; level: Level | null };
 
 const KEY = "cm.prefs.v1";

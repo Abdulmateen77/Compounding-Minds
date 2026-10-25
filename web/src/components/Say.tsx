@@ -36,7 +36,7 @@ function Term({ term, def }: { term: string; def: string }) {
   );
 }
 
-/** A string with its finance terms explained for this reader. Pass `level` only to override the reader's own (the quiz preview does). */
+/** A string with its finance terms explained for this reader. Pass `level` only to override the reader's own (a preview does). */
 export function Say({ children, level }: { children?: string | null; level?: Level }) {
   const mine = useEffectiveLevel();
   if (!children) return null;

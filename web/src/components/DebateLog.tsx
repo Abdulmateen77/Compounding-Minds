@@ -4,7 +4,7 @@ import { pickFaceOffs, surname } from "../scene/lenses";
 import { Avatar } from "./Avatar";
 import { Switch } from "./bits";
 import { fact, opening } from "./firstPerson";
-import { speak, stopSpeaking, useVoiceStatus } from "../voice";
+import { fetchVoice, playVoice, stopSpeaking, useVoiceStatus } from "../voice";
 import { Say } from "./Say";
 import { spokenForm, useEffectiveLevel } from "../literacy";
 
@@ -56,7 +56,7 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
   const [shown, setShown] = useState(0);              // how many lines are visible
   const [running, setRunning] = useState(false);
   const [useVoice, setUseVoice] = useState(false);
-  const [speed, setSpeed] = useState(1.5);           // 1x, 1.5x or 2x: the voices and the pauses between lines
+  const [speed, setSpeed] = useState(2);             // 1x to 2x: the voices and the pauses between lines (fast by default: a full debate is long)
   const speedRef = useRef(speed);
   speedRef.current = speed;
   const [typing, setTyping] = useState(false);
@@ -75,20 +75,36 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
     const ctl = new AbortController();
     stop.current = ctl;
     setRunning(true);
-    for (let i = from; i < msgs.length && !ctl.signal.aborted; i++) {
-      setTyping(msgs[i].kind === "investor");
-      await new Promise((r) => setTimeout(r, (msgs[i].kind === "investor" ? 650 : 250) / speedRef.current));
-      if (ctl.signal.aborted) break;
-      setTyping(false);
-      setShown(i + 1);
-      const m = msgs[i], sp = speechOf(m, a);
-      if (sp) onSpeak?.(sp);
-      if (useVoice && voice.data?.enabled && m.kind !== "heading") {
-        const who = m.kind === "investor" && m.who != null ? a.lenses[m.who].key : "judge";
-        try { await speak(who, spokenForm(spoken(m), levelRef.current), ctl.signal, speedRef.current); } catch { await new Promise((r) => setTimeout(r, pause(m) / speedRef.current)); }
-      } else {
-        await new Promise((r) => setTimeout(r, pause(m) / speedRef.current));
+    const withVoice = useVoice && !!voice.data?.enabled;
+    // a line's audio is fetched before its text appears, so the voice starts the moment the text does; the next line is fetched while this one plays
+    const audio = new Map<number, Promise<string | null>>();
+    const load = (i: number) => {
+      while (i < msgs.length && msgs[i].kind === "heading") i++;   // headings are silent: fetch the next spoken line during their pause
+      if (!withVoice || i >= msgs.length || audio.has(i)) return;
+      const m = msgs[i], who = m.kind === "investor" && m.who != null ? a.lenses[m.who].key : "judge";
+      audio.set(i, fetchVoice(who, spokenForm(spoken(m), levelRef.current), ctl.signal).catch(() => null));
+    };
+    try {
+      load(from);
+      for (let i = from; i < msgs.length && !ctl.signal.aborted; i++) {
+        const m = msgs[i];
+        setTyping(m.kind === "investor");
+        const [url] = await Promise.all([audio.get(i) ?? null, new Promise((r) => setTimeout(r, (m.kind === "investor" ? 650 : 250) / speedRef.current))]);
+        audio.delete(i);
+        if (ctl.signal.aborted) { if (url) URL.revokeObjectURL(url); break; }
+        load(i + 1);
+        setTyping(false);
+        setShown(i + 1);
+        const sp = speechOf(m, a);
+        if (sp) onSpeak?.(sp);
+        if (url) {
+          try { await playVoice(url, ctl.signal, speedRef.current); } catch { await new Promise((r) => setTimeout(r, pause(m) / speedRef.current)); }
+        } else {
+          await new Promise((r) => setTimeout(r, pause(m) / speedRef.current));
+        }
       }
+    } finally {
+      for (const p of audio.values()) void p.then((u) => u && URL.revokeObjectURL(u));
     }
     setTyping(false);
     if (!ctl.signal.aborted) setRunning(false);

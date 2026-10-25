@@ -1,8 +1,8 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { LEVELS, LEVEL_KEYS, setLevel, useLevel } from "../literacy";
 
-/** The top-right control: shows the current level and lets the reader change it or retake the quiz at any time. */
-export function LevelSwitch({ onQuiz }: { onQuiz: () => void }) {
+/** The top-right control: shows the current level and lets the reader change it at any time. */
+export function LevelSwitch() {
   const level = useLevel();
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
@@ -33,7 +33,6 @@ export function LevelSwitch({ onQuiz }: { onQuiz: () => void }) {
               <span className="text-xs mute">{LEVELS[k].short}</span>
             </button>
           ))}
-          <button type="button" className="btn ghost sm justify-self-start mt-1" onClick={() => { setOpen(false); onQuiz(); }}>Retake the quiz</button>
         </div>
       )}
     </div>

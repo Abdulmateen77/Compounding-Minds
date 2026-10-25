@@ -8,7 +8,7 @@ import Verdict from "./screens/Verdict";
 import Mubit from "./screens/Mubit";
 import Research from "./screens/Research";
 import { CompanySearch } from "./components/CompanySearch";
-import { LevelQuiz } from "./components/LevelQuiz";
+import { LevelPicker } from "./components/LevelPicker";
 import { LevelSwitch } from "./components/LevelSwitch";
 import { LogoMark, Wordmark } from "./components/Logo";
 import { useLevel } from "./literacy";
@@ -19,10 +19,10 @@ export default function App() {
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const onMubit = route.name === "mubit";
   const onResearch = route.name === "home" || route.name === "research";
-  // The quiz opens by itself until a level is chosen (not in presenter mode), and again whenever the reader asks for it.
+  // The level question opens by itself until a level is chosen (not in presenter mode); the top-bar control changes it later.
   const level = useLevel();
-  const [asked, setAsked] = useState(false);
-  const quiz = asked || (level === null && !demoMode());
+  const [closed, setClosed] = useState(false);
+  const ask = level === null && !closed && !demoMode();
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -43,10 +43,10 @@ export default function App() {
             <a href="#/" aria-current={onResearch ? "page" : undefined} className="navlink inline-flex items-center no-underline">Research</a>
             <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="navlink inline-flex items-center no-underline">Track record</a>
           </nav>
-          <LevelSwitch onQuiz={() => setAsked(true)} />
+          <LevelSwitch />
         </div>
       </header>
-      {quiz && <LevelQuiz onClose={() => setAsked(false)} />}
+      {ask && <LevelPicker onClose={() => setClosed(true)} />}
       <main id="main" tabIndex={-1} className="page py-4 flex-1 outline-none">
         <AnimatePresence mode="wait">
           <motion.div key={route.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0, transition: { duration: DUR.slow, ease: EASE_SOFT } }} exit={{ opacity: 0, transition: { duration: DUR.fast } }}>
