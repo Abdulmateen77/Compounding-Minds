@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { ChatMsg } from "../chat";
+import { FadeIn } from "../components/FadeIn";
 import { Disclosure, Head } from "../components/Section";
 import { AnalysisPopup } from "../components/AnalysisPopup";
 import { AskInvestor } from "../components/AskInvestor";
@@ -22,9 +23,9 @@ export function OverviewTab({ r }: { r: Report }) {
     <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
       {r.analysis && <PanelVerdict a={r.analysis} name={r.company.name} title="The investors' take on" />}
       <Summary r={r} />
-      <Highlights r={r} />
-      {r.quick_check && <QuickCheckBlock q={r.quick_check} />}
-      {r.news && <NewsBlock n={r.news} />}
+      <FadeIn><Highlights r={r} /></FadeIn>
+      {r.quick_check && <FadeIn><QuickCheckBlock q={r.quick_check} /></FadeIn>}
+      {r.news && <FadeIn><NewsBlock n={r.news} /></FadeIn>}
     </div>
   );
 }
@@ -53,7 +54,7 @@ export function ValueTab({ r }: { r: Report }) {
   return (
     <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
       {r.market && <MarketBlock m={r.market} />}
-      {r.analysis && <Worth a={r.analysis} />}
+      {r.analysis && <FadeIn><Worth a={r.analysis} /></FadeIn>}
       {r.outlook
         ? <OutlookBlock o={r.outlook} market={r.market}>
             {r.analysis?.future && (
@@ -63,7 +64,7 @@ export function ValueTab({ r }: { r: Report }) {
             )}
           </OutlookBlock>
         : r.analysis?.future && <Future a={r.analysis} />}
-      {r.plans && <Plans p={r.plans} />}
+      {r.plans && <FadeIn><Plans p={r.plans} /></FadeIn>}
     </div>
   );
 }
@@ -86,10 +87,10 @@ export function InvestorsTab({ r, fromLoading }: { r: Report; fromLoading: boole
   return (
     <div className="grid gap-8 grid-cols-[minmax(0,1fr)]">
       <PanelVerdict a={a} name={r.company.name} title="The panel's view on" />
-      <InvestorBoard lenses={a.lenses} onAnalysis={setPopup} onAsk={ask} />
-      <AskInvestor cik={r.company.cik} lenses={a.lenses} sel={sel} setSel={(i) => { setSel(i); setChosen(i != null); }} chats={chats} setChats={setChats} focus={chosen} />
-      <DebateSection r={r} fromLoading={fromLoading} onPick={setPopup} />
-      <EvidenceLink />
+      <FadeIn><InvestorBoard lenses={a.lenses} onAnalysis={setPopup} onAsk={ask} /></FadeIn>
+      <FadeIn><AskInvestor cik={r.company.cik} lenses={a.lenses} sel={sel} setSel={(i) => { setSel(i); setChosen(i != null); }} chats={chats} setChats={setChats} focus={chosen} /></FadeIn>
+      <FadeIn><DebateSection r={r} fromLoading={fromLoading} onPick={setPopup} /></FadeIn>
+      <FadeIn><EvidenceLink /></FadeIn>
       {popup != null && a.lenses[popup] && <AnalysisPopup l={a.lenses[popup]} onClose={() => setPopup(null)} onAsk={() => ask(popup)} />}
     </div>
   );

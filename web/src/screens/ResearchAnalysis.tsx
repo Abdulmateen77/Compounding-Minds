@@ -254,8 +254,8 @@ export function QuickCheckBlock({ q }: { q: QuickCheck }) {
   return (
     <section className="grid gap-3">
       <Head title="The 5-minute check: is it worth researching further?" blurb="Five quick tests that filter out companies to avoid. Meant for manufacturing and other non-financial companies." />
-      {!q.applies ? <div className="card p-5 text-sm">{q.note}</div> : (
-        <div className="card p-5 grid gap-4">
+      {!q.applies ? <div className="card p-5 text-sm max-w-3xl">{q.note}</div> : (
+        <div className="card p-5 grid gap-4 max-w-3xl">
           {q.verdict && <p className="m-0 text-lg font-semibold" style={{ color }}>{q.verdict}</p>}
           <ul className="m-0 p-0 list-none grid gap-3">
             {q.items.map((i) => {

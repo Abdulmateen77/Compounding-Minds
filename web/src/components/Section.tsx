@@ -1,4 +1,4 @@
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useState, type ReactNode } from "react";
 
 /* Shared building blocks for keeping a page short: a section heading with one sentence under it, an optional "how this works" toggle
    for the longer explanation, and a collapsible block whose closed state still says something useful. */
@@ -25,7 +25,19 @@ export function Explain({ children, label = "How this works" }: { children: Reac
     <div className="text-xs">
       <button type="button" className="bg-transparent border-0 p-0 cursor-pointer underline underline-offset-4" style={{ color: "var(--primary)" }}
         aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}>{open ? "Hide" : label}</button>
-      {open && <div id={id} className="mute leading-relaxed mt-1 max-w-3xl grid gap-1">{children}</div>}
+      <Collapse open={open} id={id}><div className="mute leading-relaxed mt-1 max-w-3xl grid gap-1">{children}</div></Collapse>
+    </div>
+  );
+}
+
+/** The body of anything that opens and closes. It slides open and shut (the row grows from 0fr to 1fr), stays out of the tab order and
+    the accessibility tree while shut, and only mounts its children the first time it opens, so a closed section costs nothing. */
+export function Collapse({ open, id, children }: { open: boolean; id?: string; children: ReactNode }) {
+  const [seen, setSeen] = useState(open);
+  useEffect(() => { if (open) setSeen(true); }, [open]);
+  return (
+    <div id={id} className="collapse" data-open={open} inert={!open}>
+      <div className="collapse-inner">{(open || seen) && children}</div>
     </div>
   );
 }
@@ -41,8 +53,8 @@ export function Disclosure({ title, summary, count, defaultOpen = false, level =
     <section className="card">
       <H className="m-0">
         <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}
-          className="w-full text-left bg-transparent border-0 cursor-pointer p-4 md:px-5 flex items-start gap-3" style={{ color: "var(--foreground)" }}>
-          <span aria-hidden className="mute mt-1 inline-block w-3 shrink-0 text-xs" style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform var(--duration-fast)" }}>▶</span>
+          className="disclosure-head w-full text-left bg-transparent border-0 cursor-pointer p-4 md:px-5 flex items-start gap-3" style={{ color: "var(--foreground)" }}>
+          <span aria-hidden className="mute mt-1 inline-block w-3 shrink-0 text-xs" style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform var(--duration-slow) var(--ease-out)" }}>▶</span>
           <span className="grid gap-1 min-w-0 flex-1">
             <span className="flex items-baseline gap-2 flex-wrap">
               <span className={level === 2 ? "text-lg font-semibold" : "text-base font-semibold"}>{title}</span>
@@ -52,7 +64,7 @@ export function Disclosure({ title, summary, count, defaultOpen = false, level =
           </span>
         </button>
       </H>
-      {open && <div id={id} className="px-4 md:px-5 pb-5 grid gap-3 grid-cols-[minmax(0,1fr)]">{children}</div>}
+      <Collapse open={open} id={id}><div className="px-4 md:px-5 pb-5 grid gap-3 grid-cols-[minmax(0,1fr)]">{children}</div></Collapse>
     </section>
   );
 }

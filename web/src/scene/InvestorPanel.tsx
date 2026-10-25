@@ -76,12 +76,12 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
   const lastAssistant = messages.map((m) => m.role).lastIndexOf("assistant");
 
   const frame = inline
-    ? "flex flex-col rounded-xl overflow-hidden"
+    ? "flex flex-col rounded-xl overflow-hidden w-full max-w-3xl"
     : `absolute inset-x-2 bottom-2 top-14 sm:inset-x-auto sm:right-3 sm:top-3 sm:bottom-3 ${big ? "sm:w-[400px]" : "sm:w-[330px]"} flex flex-col rounded-xl overflow-hidden`;
 
   return (
     <aside {...quiet} role="dialog" aria-modal="false" aria-label={`Talk to ${lens.name}`} className={frame}
-      style={{ background: "var(--card)", border: `2px solid ${color}`, color: "var(--foreground)", ...(inline ? { minHeight: 420, maxHeight: 560 } : {}) }}>
+      style={{ background: "var(--card)", border: `2px solid ${color}`, color: "var(--foreground)", ...(inline ? { minHeight: 320, maxHeight: 560 } : {}) }}>
       <div className="flex items-start justify-between gap-2 p-3" style={{ borderBottom: "1px solid var(--divider)" }}>
         <div>
           <b className={big ? "text-base" : "text-sm"}>{lens.name}</b>
@@ -96,7 +96,7 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
       <div className="flex gap-1 px-3 pt-2" role="tablist" aria-label="Chat or checks">
         {(["chat", "checks"] as const).map((t) => (
           <button key={t} role="tab" aria-selected={tab === t} onClick={() => setTab(t)} className="chip cursor-pointer"
-            style={{ minHeight: 32, ...(tab === t ? { color: "var(--foreground)", borderColor: "var(--primary)" } : {}) }}>{t === "chat" ? `Ask ${first}` : `Their checks (${lens.checks.length})`}</button>
+            style={tab === t ? { color: "var(--foreground)", borderColor: "var(--primary)" } : undefined}>{t === "chat" ? `Ask ${first}` : `Their checks (${lens.checks.length})`}</button>
         ))}
       </div>
 
@@ -106,7 +106,9 @@ export default function InvestorPanel({ cik, lens, messages, setMessages, onClos
             {messages.length === 0 && (
               <div className="grid gap-2">
                 <p className="m-0 mute" style={{ lineHeight: 1.45 }}>Ask {first} why they reached this reading. They answer from their own checks on this company, and say so when something isn't in them.</p>
-                {ASKS.slice(0, 3).map((q) => <button key={q} className="btn ghost text-left" style={{ fontSize: "inherit" }} onClick={() => send(q)}>{q}</button>)}
+                <div className="flex flex-wrap gap-2">
+                  {ASKS.slice(0, 3).map((q) => <button key={q} className="btn ghost sm text-left" style={{ fontSize: "inherit" }} onClick={() => send(q)}>{q}</button>)}
+                </div>
               </div>
             )}
             {messages.map((m, i) => (

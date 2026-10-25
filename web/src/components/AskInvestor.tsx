@@ -32,7 +32,7 @@ export function AskInvestor({ cik, lenses, sel, setSel, chats, setChats, focus }
       {lens
         ? <InvestorPanel key={lens.key} inline autoFocus={focus} cik={cik} lens={lens} onClose={() => setSel(null)}
             messages={chats[lens.key] ?? []} setMessages={(f) => setChats((c) => ({ ...c, [lens.key]: f(c[lens.key] ?? []) }))} />
-        : <p className="card p-4 m-0 text-sm mute">Choose an investor above to start.</p>}
+        : <p className="card p-4 m-0 text-sm mute max-w-3xl">Choose an investor above to start.</p>}
     </section>
   );
 }

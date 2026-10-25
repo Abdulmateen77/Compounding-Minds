@@ -107,8 +107,7 @@ function TabBar({ cik, view }: { cik: string; view: ResearchView }) {
     <nav ref={row} aria-label="Pages of this report" className="tabrow sticky top-0 z-[var(--z-sticky)] -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 flex gap-1" style={{ background: "color-mix(in srgb, var(--background) 88%, transparent)", backdropFilter: "blur(8px)", borderBottom: "1px solid var(--divider)" }}>
       {TABS.map((t) => (
         <a key={t.id} href={researchHref(cik, t.id)} title={t.hint} aria-current={view === t.id ? "page" : undefined}
-          className="px-4 py-2 rounded-lg text-sm font-medium no-underline whitespace-nowrap"
-          style={view === t.id ? { background: "var(--card)", color: "var(--foreground)", boxShadow: "0 0 0 1px var(--divider)" } : { color: "var(--muted)" }}>{t.label}</a>
+          className="tab px-4 py-2 text-sm font-medium no-underline whitespace-nowrap">{t.label}</a>
       ))}
     </nav>
   );

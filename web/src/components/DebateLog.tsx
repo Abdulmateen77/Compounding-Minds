@@ -111,8 +111,9 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
         </div>
       </div>
 
-      <div ref={log} role="log" aria-live="polite" className="grid gap-3 max-h-[560px] overflow-y-auto pr-1" style={{ minHeight: shown ? 120 : 0 }}>
-        {msgs.slice(0, shown).map((m, i) => <Line key={i} m={m} lenses={a.lenses} a={a} />)}
+      {/* nothing to show before the debate starts: an empty log would still add a gap to the card */}
+      <div ref={log} role="log" aria-live="polite" className={shown || typing ? "grid gap-3 max-h-[560px] overflow-y-auto pr-1" : "sr-only"} style={{ minHeight: shown ? 120 : 0 }}>
+        {msgs.slice(0, shown).map((m, i) => <div key={i} style={{ animation: "popin var(--duration-slow) var(--ease-soft) both" }}><Line m={m} lenses={a.lenses} a={a} /></div>)}
         {typing && <div className="mute text-xs pl-11">…</div>}
       </div>
       {shown === 0 && <p className="m-0 mute text-sm">Press “Start the debate” to watch the panel argue it out.</p>}
