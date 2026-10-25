@@ -69,7 +69,7 @@ export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: R
         <ResearchScene
           cik={c.cik} name={c.name} sub={[c.ticker, c.exchange].filter(Boolean).join(" · ")} asOf={r.as_of ?? r.data_through ?? ""}
           lenses={a.lenses} cards={cards} overall={a.overall} onFail={() => setFailed(true)} demo={demo} onExitDemo={exit} fromLoading={fromLoading}
-          debates={mode === "panel"} />
+          debates={mode === "panel"} thinkingBelow={mode === "panel"} />
       </Suspense>
     </SceneBoundary>
   );

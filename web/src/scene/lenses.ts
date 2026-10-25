@@ -31,7 +31,8 @@ export const speakSeconds = (text: string) => 1.6 + Math.min(text.length, 280) /
 export function readingOf(l: Lens): string {
   const text = l.narrative?.trim();
   if (text) {
-    const s = text.match(/[^.!?]+[.!?]+(?=\s|$)/g) ?? [text];
+    // lazy up to a stop followed by space, so "1.5 times" stays inside its sentence instead of losing the words before it
+    const s = text.match(/[\s\S]+?[.!?]+(?=\s|$)/g) ?? [text];
     let out = "";
     for (const sent of s) { if ((out + sent).length > 280 && out) break; out = `${out}${sent}`.trimStart() + " "; if (out.length > 160) break; }
     return cut(out.trim(), 280);

@@ -6,6 +6,7 @@ import type { Lens, Overall } from "../research";
 import { Director, useDirectorTick } from "./director";
 import { InvestorRoster } from "../components/InvestorRoster";
 import InvestorPanel from "./InvestorPanel";
+import { ThinkingCards } from "./ThinkingCards";
 import SceneContents, { type Els, type Orbit, type SceneAgent, type SceneCard, type SceneVerdict, type StanceView } from "./SceneContents";
 import {
   MARK, checkLabel, counts, cut, pickFaceOffs, readingOf, speakSeconds, stanceOf, surname, thinkSeconds, faceTurnSeconds, typed,
@@ -37,6 +38,7 @@ type Props = {
   onExitDemo?: () => void;
   fromLoading?: boolean; // the investors were just shown researching: carry on from the end of the opening, not from the start
   debates?: boolean;
+  thinkingBelow?: boolean; // the Investor panel tab: what each investor is thinking goes in cards under the scene, not over their head
 };
 
 const ORBIT_AZ = 0.5, ORBIT_POL = 0.2;
@@ -107,7 +109,7 @@ function Notebook({ lens, i, dir, big, color }: { lens: Lens; i: number; dir: Di
   );
 }
 
-export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, overall, onFail, demo = false, onExitDemo, fromLoading = false, debates = true }: Props) {
+export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, overall, onFail, demo = false, onExitDemo, fromLoading = false, debates = true, thinkingBelow = false }: Props) {
   const n = lenses.length;
   // debates off (the Report tab): each investor analyses and gives a reading; the face-offs live on the Investor panel tab
   const faceoffs = useMemo(() => (debates ? pickFaceOffs(lenses) : []), [lenses, debates]);
@@ -186,7 +188,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
   const speaking = idx.find((i) => agentState(tl, i, t) === "speaking") ?? -1;
   const thinker = idx.find((i) => thinkProgress(tl, i, t) != null) ?? -1;
   const ad = dir.activeDebate(t), sp = dir.speakerAt(t);
-  const focus = sel != null ? -1 : (hover ?? (ad ? -1 : speaking >= 0 ? speaking : thinker));
+  const focus = sel != null || (thinkingBelow && !demo) ? -1 : (hover ?? (ad ? -1 : speaking >= 0 ? speaking : thinker));
   els.current.focus = focus;
   dir.spot = sel;                                              // the camera and that investor lean toward the viewer
 
@@ -492,8 +494,10 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
             <button className="btn ghost" aria-pressed={large} onClick={() => setLarge((l) => !l)}>Larger text</button>
             <button className="btn ghost" onClick={() => { orbit.current = { az: 0, pol: 0 }; }}>Reset view</button>
           </div>
-          <div className="mt-3"><InvestorRoster lenses={lenses} sel={sel} onChoose={choose} locked={!unlocked} /></div>
-          <p className="mute text-xs mt-2 mb-0">{unlocked ? "Click an investor in the scene, or choose one above, to question them one-on-one about their reading. " : ""}Drag to tilt the camera. Space pauses; arrow keys tilt the camera.</p>
+          {thinkingBelow
+            ? <ThinkingCards lenses={lenses} readings={readings} tl={tl} t={t} unlocked={unlocked && dir.finished} onAsk={choose} />
+            : <div className="mt-3"><InvestorRoster lenses={lenses} sel={sel} onChoose={choose} locked={!unlocked} /></div>}
+          <p className="mute text-xs mt-2 mb-0">{thinkingBelow ? "Click a card for that investor's checks and vote. " : ""}{unlocked ? `Click an investor in the scene${thinkingBelow ? "" : ", or choose one above,"} to question them one-on-one about their reading. ` : ""}Drag to tilt the camera. Space pauses; arrow keys tilt the camera.</p>
         </>
       )}
     </div>
