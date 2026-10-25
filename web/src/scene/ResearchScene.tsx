@@ -36,6 +36,7 @@ type Props = {
   demo?: boolean;        // presenter mode: big type, no toolbar, keyboard stepping, loops
   onExitDemo?: () => void;
   fromLoading?: boolean; // the investors were just shown researching: carry on from the end of the opening, not from the start
+  debates?: boolean;
 };
 
 const ORBIT_AZ = 0.5, ORBIT_POL = 0.2;
@@ -106,9 +107,10 @@ function Notebook({ lens, i, dir, big, color }: { lens: Lens; i: number; dir: Di
   );
 }
 
-export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, overall, onFail, demo = false, onExitDemo, fromLoading = false }: Props) {
+export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, overall, onFail, demo = false, onExitDemo, fromLoading = false, debates = true }: Props) {
   const n = lenses.length;
-  const faceoffs = useMemo(() => pickFaceOffs(lenses), [lenses]);
+  // debates off (the Report tab): each investor analyses and gives a reading; the face-offs live on the Investor panel tab
+  const faceoffs = useMemo(() => (debates ? pickFaceOffs(lenses) : []), [lenses, debates]);
   const readings = useMemo(() => lenses.map(readingOf), [lenses]);
   const dir = useMemo(() => {
     const d = new Director(n, false, {
@@ -283,7 +285,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
     capHead = faceoffs.length > 1 ? `Face-off ${ad.k + 1} of ${faceoffs.length}` : "Face-off";
     capDetail = sp?.judge ? `Judge ${lenses[sp.who].name}: ${faceoffs[ad.k].turns[sp.turn].headline}` : `${lenses[a].name} (${lenses[a].word}) and ${lenses[b].name} (${lenses[b].word})`;
   } else if (phase === "synthesis" && faceoffs.length === 0) {
-    capDetail = "No face-off: all six read it much the same way, so there was nothing to argue over";
+    capDetail = "No face-off: they all read it much the same way, so there was nothing to argue over";
   }
   const srLine = speaking >= 0
     ? `${lenses[speaking].name}: ${lenses[speaking].word}. ${readings[speaking]}`
@@ -410,7 +412,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
           <div className="absolute left-3 top-3 max-w-[46%] max-h-[62%] overflow-auto rounded-xl p-3 grid gap-2 pointer-events-auto content-start" style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
             onPointerDown={(e) => e.stopPropagation()}>
             <div className="mute text-[11px] font-semibold uppercase tracking-wide">{faceoffs.length ? (faceoffs.length > 1 ? `${faceoffs.length} face-offs` : "Where they disagreed") : "No face-off"}</div>
-            {faceoffs.length === 0 && <div className={big ? "text-sm" : "text-xs"} style={{ lineHeight: 1.4 }}>All six read it much the same way, so there was nothing to argue over.</div>}
+            {faceoffs.length === 0 && <div className={big ? "text-sm" : "text-xs"} style={{ lineHeight: 1.4 }}>They all read it much the same way, so there was nothing to argue over.</div>}
             {faceoffs.map((f, k) => (
               <div key={k} className={`grid gap-0.5 ${big ? "text-sm" : "text-xs"}`} style={{ lineHeight: 1.35 }}>
                 <div className="flex items-center justify-between gap-2">

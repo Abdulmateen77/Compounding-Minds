@@ -67,8 +67,7 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
 
 const OPEN: { id: ResearchView; label: string; hint: string }[] = [
   { id: "report", label: "Report", hint: "The written report in plain English" },
-  { id: "investors", label: "Investor panel", hint: "Six investors read it and you can question each one" },
-  { id: "pro", label: "Professional", hint: "The same numbers as dense tables, with sources and CSV" },
+  { id: "investors", label: "Investor panel", hint: "The investors debate it face to face, and you can question each one" },
 ];
 
 const chipStyle = (on: boolean) => (on ? { color: "var(--text)", borderColor: "var(--blue)", background: "color-mix(in srgb, var(--blue) 14%, transparent)" } : undefined);

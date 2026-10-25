@@ -6,6 +6,7 @@ import InvestorPanel from "../scene/InvestorPanel";
 import { pickFaceOffs, surname } from "../scene/lenses";
 import { hasWebGL } from "../scene/support";
 import { InvestorCards } from "./InvestorCards";
+import { DebateVoices } from "./PanelParts";
 import { InvestorRoster } from "./InvestorRoster";
 
 // three + react-three-fiber are their own chunk, so the rest of the report stays light.
@@ -21,7 +22,7 @@ class SceneBoundary extends Component<{ onError: (why: string) => void; children
 /** The investors, animated: they read the filings, run their checks, give their reading, and the two who disagree most face off;
     you can question any of them. Presenter mode (`?demo=1`, or the Present button) fills the window and loops. When the 3D scene
     cannot or should not run (reduced motion, no WebGL, an error) the same roster, face-off and chat are shown as plain 2D. */
-export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoading?: boolean }) {
+export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: Report; fromLoading?: boolean; mode?: "take" | "panel" }) {
   const reduced = useReducedMotion();
   const [failed, setFailed] = useState(false);
   const [playAnyway, setPlayAnyway] = useState(false);
@@ -59,6 +60,7 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
 
   if (!motionOk) {
     const why = failed ? "The 3D view could not start on this device." : !webgl ? "This device can't draw the 3D view." : "The 3D view is off because your device asks for reduced motion.";
+    if (mode === "take") return <p className="m-0 mute text-sm">{why} Each investor's analysis is in the boxes below.</p>;
     return <Plain r={r} why={why} onPlay={reduced && webgl && !failed ? () => setPlayAnyway(true) : undefined} />;
   }
 
@@ -67,7 +69,8 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
       <Suspense fallback={<div className="grid place-items-center mute text-sm" style={{ aspectRatio: "16 / 9", minHeight: 380 }} role="status">Setting up the office…</div>}>
         <ResearchScene
           cik={c.cik} name={c.name} sub={[c.ticker, c.exchange].filter(Boolean).join(" · ")} asOf={r.as_of ?? r.data_through ?? ""}
-          lenses={a.lenses} cards={cards} overall={a.overall} onFail={() => setFailed(true)} demo={demo} onExitDemo={exit} fromLoading={fromLoading} />
+          lenses={a.lenses} cards={cards} overall={a.overall} onFail={() => setFailed(true)} demo={demo} onExitDemo={exit} fromLoading={fromLoading}
+          debates={mode === "panel"} />
       </Suspense>
     </SceneBoundary>
   );
@@ -81,6 +84,18 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
     );
   }
 
+  if (mode === "take") {
+    return (
+      <section className="grid gap-3" aria-label="The investors' take">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <p className="mute text-sm m-0 max-w-3xl">Each investor works through their own checks on the filings and gives a reading. Their face-offs are on the Investor panel tab.</p>
+          <button className="btn ghost" onClick={present} title="Full-screen, for showing to a room">Present</button>
+        </div>
+        {scene(false)}
+      </section>
+    );
+  }
+
   return (
     <section className="grid gap-3" aria-label="Investor panel">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -91,6 +106,7 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
         <button className="btn ghost" onClick={present} title="Full-screen, for showing to a room">Present</button>
       </div>
       {scene(false)}
+      <DebateVoices lenses={a.lenses} />
       <InvestorCards lenses={a.lenses} />
     </section>
   );
@@ -118,7 +134,7 @@ function Plain({ r, why, onPlay }: { r: Report; why: string; onPlay?: () => void
 
       <div className="card p-4 grid gap-3" role="region" aria-label={faceoffs.length ? "Where the investors disagree" : "No face-off"}>
         <div className="mute text-[11px] font-semibold uppercase tracking-wide">{faceoffs.length ? (faceoffs.length > 1 ? `${faceoffs.length} face-offs` : "Where they disagreed") : "No face-off"}</div>
-        {faceoffs.length === 0 && <p className="m-0 text-sm">All six read it much the same way, so there was nothing to argue over.</p>}
+        {faceoffs.length === 0 && <p className="m-0 text-sm">They all read it much the same way, so there was nothing to argue over.</p>}
         {faceoffs.map((f, k) => (
           <div key={k} className="grid gap-1.5">
             <b className="text-sm">{surname(lenses[f.pair[0]])} vs {surname(lenses[f.pair[1]])}</b>
@@ -134,6 +150,7 @@ function Plain({ r, why, onPlay }: { r: Report; why: string; onPlay?: () => void
         ))}
       </div>
 
+      <DebateVoices lenses={lenses} />
       <InvestorCards lenses={lenses} />
 
       {sel != null && (

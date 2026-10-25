@@ -18,7 +18,7 @@ function read(): Prefs {
     if (raw) {
       const p = JSON.parse(raw);
       return {
-        open: p.open === "investors" || p.open === "pro" || p.open === "report" ? p.open : DEFAULTS.open,
+        open: p.open === "investors" || p.open === "report" ? p.open : DEFAULTS.open,       // "pro" is now part of the report
         speed: SPEEDS.includes(p.speed) ? p.speed : DEFAULTS.speed,
       };
     }

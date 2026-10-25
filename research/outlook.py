@@ -79,7 +79,7 @@ def _verdict(odds: dict | None, implied: float | None) -> dict:
                 "why": "The company has fewer than four years of comparable revenue, so its own record says little yet."}
     p = odds["chance_higher"]
     grow = "very likely" if p >= 0.85 else "likely" if p >= 0.65 else "about as likely as not" if p >= 0.4 else "unlikely"
-    head = f"The business is {grow} to be bigger in five years ({p * 100:.0f}% on its own record)"
+    head = f"The business is {grow} to be bigger in five years ({min(p, 0.99) * 100:.0f}% on its own record)"        # never claim 100%
     if implied is None:
         return {"tone": "good" if p >= 0.65 else "watch" if p >= 0.4 else "warn", "headline": head,
                 "why": "There is no reliable share count or price, so the page cannot compare value with price."}

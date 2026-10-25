@@ -24,11 +24,11 @@ export type Report = {
   scorecard?: Figure[]; tally?: { good: number; watch: number; warn: number };
   sections?: Section[]; risk_flags?: Flag[];
   economy?: { key: string; label: string; meaning: string; unit: string; value: number }[];
-  market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[]; analysis?: Analysis; news?: News | null; quick_check?: QuickCheck;
+  market?: Market | null; plans?: Plans | null; notes?: string[]; missing?: string[]; analysis?: Analysis; news?: News | null; quick_check?: QuickCheck; outlook?: Outlook;
   latest_filing?: { form: string; filed: string; period: string | null; accession: string | null } | null; facts_through?: string | null; checked_at?: string;
 };
 export type Check = { id: string; principle: string; source: string; check: string; result: "pass" | "partial" | "fail" | "unknown"; shown: string };
-export type Lens = { key: string; name: string; question: string; fit: number | null; word: string; checks: Check[]; narrative?: string | null; ahead?: string | null; note?: { category: string; why: string }; backtested?: boolean; caveat?: string | null; looks_for?: string[]; book?: string | null };
+export type Lens = { key: string; name: string; question: string; fit: number | null; word: string; checks: Check[]; narrative?: string | null; ahead?: string | null; note?: { category: string; why: string }; backtested?: boolean; caveat?: string | null; looks_for?: string[]; book?: string | null; decision?: Decision };
 export type Scenario = { name: string; start_growth: number; value_per_share: number | null; equity_value: number; fcf_path: number[]; revenue_path: number[] | null };
 export type Valuation = {
   available: boolean; reason?: string; normalised_fcf?: number; discount_rate?: number; long_run_growth?: number; years?: number;
@@ -37,7 +37,7 @@ export type Valuation = {
 };
 export type Future = { scenarios: { name: string; start_growth: number; value_per_share: number | null; revenue: Record<string, number | null>; fcf: Record<string, number | null> }[] };
 export type Overall = { key: string; tone: "good" | "watch" | "warn"; headline: string; why: string };
-export type Analysis = { valuation: Valuation; lenses: Lens[]; overall: Overall; future: Future | null };
+export type Analysis = { valuation: Valuation; lenses: Lens[]; overall: Overall; future: Future | null; panel?: PanelTally };
 export type Candidate = { cik: number; name: string; ticker: string; exchange: string | null; market: string };
 export type SearchResult = { query: string; results: Candidate[]; message: string | null };
 
@@ -97,3 +97,14 @@ export type QuickCheck = { applies: boolean; note?: string; items: QuickItem[]; 
 /** What the report is doing while it is built (the first lookup takes 20 to 30 seconds). Shown by the loading screen and the investor room. */
 export const RESEARCH_STEPS = ["Finding the company's filings", "Reading the financial statements", "Reading the annual report for plans and R&D", "Reading the latest news and checking the share price"];
 export const STEP_SECONDS = 4.5;
+
+export type Decision = { call: "invest" | "wait" | "avoid"; label: string; why: string };
+export type PanelTally = { counts: { invest: number; wait: number; avoid: number }; total: number; headline: string; tone: "good" | "watch" | "warn" };
+export type Outlook = {
+  odds: { years: number; history_years: number; chance_higher: number; chance_down_a_fifth: number; median_change: number;
+          low_change: number; high_change: number; worst_year: number; best_year: number } | null;
+  value_path: { name: string; start_growth: number; points: { year: number; value: number }[] }[];
+  price: number | null; base_value_in_5y: number | null; return_if_price_meets_base: number | null;
+  verdict: { tone: "good" | "watch" | "warn"; headline: string; why: string };
+};
+export const CALL_COLOR = { invest: "var(--green)", wait: "var(--amber)", avoid: "var(--red)" } as const;

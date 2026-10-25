@@ -4,9 +4,12 @@ import { motion } from "framer-motion";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { ErrorBox, Skeleton, Spark } from "../components/bits";
 import { demoMode, researchHref, go, type ResearchView } from "../route";
-import { EvidencePanel, Future, Lenses, QuickCheckBlock, Verdict, Worth } from "./ResearchAnalysis";
+import { EvidencePanel, Future, QuickCheckBlock, Worth } from "./ResearchAnalysis";
 import { CompanySearch, SearchOptions } from "../components/CompanySearch";
 import { InvestorStage } from "../components/InvestorStage";
+import { InvestorBoxes } from "../components/InvestorCards";
+import { OutlookBlock } from "../components/Outlook";
+import { PanelVerdict } from "../components/PanelParts";
 import { ResearchingRoom } from "../components/ResearchingRoom";
 import { recallPicked } from "../recent";
 import ProView from "./ResearchPro";
@@ -57,7 +60,7 @@ function Landing() {
           ["1", "It reads the filings", "Every figure comes from the company's own 10-K and 10-Q reports filed with the SEC, worked out by code, not guessed by an AI."],
           ["2", "It asks the investor's questions", "Is the business growing? Does profit turn into cash? Is the balance sheet safe? What is it investing in, and what does that earn?"],
           ["3", "It shows its working", "Each number lists the filing it came from. What the company says about its plans is quoted word for word, with a link to the page."],
-          ["4", "You can question the investors", "The investor panel gives six investors' readings side by side. Ask any one of them why, and they answer from their own checks."],
+          ["4", "You can question the investors", "The investor panel shows each investor's reading and call, and their face-offs. Ask any one of them why, and they answer from their own checks."],
         ].map(([n, h, t]) => (
           <div key={n} className="card p-5 grid gap-2 content-start">
             <span className="num inline-grid place-items-center w-7 h-7 rounded-full text-sm" style={{ background: "var(--blue)", color: "#fff" }}>{n}</span>
@@ -100,13 +103,13 @@ function Loading({ name }: { name?: string }) {
 
 const TABS: { id: ResearchView; label: string; hint: string }[] = [
   { id: "report", label: "Report", hint: "The written report in plain English" },
-  { id: "investors", label: "Investor panel", hint: "Six investors read it, and you can question each one" },
-  { id: "pro", label: "Professional", hint: "The same numbers as dense tables, with sources and CSV" },
+  { id: "investors", label: "Investor panel", hint: "The investors debate it face to face, give their calls, and you can question each one" },
 ];
 
 function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
   // ?demo=1 (presenter mode) always means the investor panel, wherever the link points.
-  const view: ResearchView = asked === "report" && demoMode() ? "investors" : asked;
+  // ?demo=1 (presenter mode) always means the investor panel; the old Professional view is now part of the report
+  const view: ResearchView = asked === "report" && demoMode() ? "investors" : asked === "pro" ? "report" : asked;
   const [copied, setCopied] = useState(false);
   const q = useQuery({ queryKey: ["report", cik], queryFn: () => j<Report>(`/api/research/company/${cik}`), staleTime: 10 * 60_000, retry: 0 });
   const waited = useRef(false);               // the investors were shown researching, so the readings continue from there
@@ -156,10 +159,19 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
         ))}
       </nav>
 
-      {view === "investors" && <InvestorStage r={r} fromLoading={waited.current} />}
-      {view === "pro" && <ProView r={r} />}
+      {view === "investors" && (<>
+        {r.analysis && <PanelVerdict a={r.analysis} name={c.name} title="After the debates, the panel's verdict on" />}
+        <InvestorStage r={r} fromLoading={waited.current} mode="panel" />
+      </>)}
       {view === "report" && (<>
-      {r.analysis && <Verdict a={r.analysis} name={c.name} />}
+      {r.analysis && <PanelVerdict a={r.analysis} name={c.name} title="The investors' take on" />}
+      {r.analysis && <InvestorStage r={r} mode="take" />}
+      {r.analysis && (
+        <section className="grid gap-2" aria-label="Each investor's analysis">
+          <h2 className="text-xl font-semibold m-0">Each investor's analysis</h2>
+          <InvestorBoxes lenses={r.analysis.lenses} />
+        </section>
+      )}
       <Summary r={r} />
       {r.quick_check && <QuickCheckBlock q={r.quick_check} />}
       {r.news && <NewsBlock n={r.news} />}
@@ -170,9 +182,9 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
       <RiskChecks flags={r.risk_flags ?? []} />
       {r.plans && <Plans p={r.plans} />}
       {r.market && <MarketBlock m={r.market} />}
-      {r.analysis && <Lenses lenses={r.analysis.lenses} />}
       {r.analysis && <Worth a={r.analysis} />}
       {r.analysis?.future && <Future a={r.analysis} outlook={r.plans?.outlook ?? []} />}
+      {r.outlook && <OutlookBlock o={r.outlook} market={r.market} />}
       {r.analysis && <EvidencePanel />}
       {r.economy && r.economy.length > 0 && (
         <section className="grid gap-3">
@@ -188,6 +200,10 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
         </section>
       )}
 
+      <section className="grid gap-3" aria-label="Full detail">
+        <div><h2 className="text-xl font-semibold m-0">Full detail</h2><p className="mute text-sm m-0 mt-1">Every figure, check and source as tables, with a CSV export.</p></div>
+        <ProView r={r} />
+      </section>
       </>)}
 
       <footer className="grid gap-2 text-xs mute">
