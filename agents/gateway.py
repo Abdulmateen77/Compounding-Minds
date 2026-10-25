@@ -7,6 +7,7 @@ Findings from the docs and the questions still open: agents/MUBIT.md.
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 from abc import ABC, abstractmethod
@@ -21,7 +22,7 @@ class LLMGateway(ABC):
     """All LLM calls go through here -> Mubit base URL."""
 
     @abstractmethod
-    def complete(self, agent: str, messages: list[dict], **kw) -> str: ...
+    def complete(self, agent: str, messages: list[dict], record: bool = True, **kw) -> str: ...
 
 
 @dataclass(frozen=True)
@@ -62,6 +63,12 @@ class MubitRequest:
     model: str
     input_tokens: int | None = None
     output_tokens: int | None = None
+    system_sha: str | None = None   # first 12 hex of sha256(system prompt): with `model`, Mubit's task key
+    recorded: bool = True           # False when sent with x-middleware-record: off
+
+
+def system_sha(system: str) -> str:
+    return hashlib.sha256(system.encode("utf-8")).hexdigest()[:12]
 
 
 class ReplyTruncated(ValueError):
@@ -84,10 +91,13 @@ class MubitGateway(LLMGateway):
     Mubit records each call and returns its id in the `x-middleware-request-id` header.
     Mubit groups calls into tasks by system prompt + model, so each agent (and the
     reflection and synthesizer prompts) is its own task as long as its system prompt is stable.
+    `complete(..., record=False)` sends `x-middleware-record: off`: the call is answered but Mubit keeps
+    nothing, so it can't become a training example or use the task's daily review budget. Use it for
+    held-out eval, probes and tests; never on calls Mubit should train on.
     """
 
     def __init__(self, base_url: str | None = None, api_key: str | None = None, model: str | None = None,
-                 max_tokens: int = DEFAULT_MAX_TOKENS, client=None):
+                 max_tokens: int = DEFAULT_MAX_TOKENS, client=None, ledger=None):
         host = (base_url or os.environ.get("MUBIT_BASE_URL") or DEFAULT_BASE_URL).rstrip("/")
         self.model = model or os.environ.get("MUBIT_MODEL") or DEFAULT_MODEL
         self.max_tokens = max_tokens
@@ -96,16 +106,22 @@ class MubitGateway(LLMGateway):
             if not key:
                 raise RuntimeError("MUBIT_API_KEY is not set; put it in .env (gitignored)")
             from anthropic import Anthropic
-            client = Anthropic(base_url=f"{host}/anthropic", api_key=key, max_retries=2, timeout=120)
+            # max_retries 4: the SDK honours retry-after on 429/503/529. Tests inject `client` and never write a ledger.
+            client = Anthropic(base_url=f"{host}/anthropic", api_key=key, max_retries=4, timeout=120)
+            if ledger is None:
+                from .ledger import CallLedger
+                ledger = CallLedger()
         self.client = client
+        self.ledger = ledger
         self.requests: list[MubitRequest] = []
 
     @property
     def last_request_id(self) -> str | None:
         return self.requests[-1].request_id if self.requests else None
 
-    def complete(self, agent, messages, **kw):
+    def complete(self, agent, messages, record: bool = True, **kw):
         system = "\n\n".join(m["content"] for m in messages if m["role"] == "system")
+        sha = system_sha(system)
         convo = [{"role": m["role"], "content": m["content"]} for m in messages if m["role"] != "system"]
         cap = kw.get("max_tokens", self.max_tokens)
         while True:
@@ -113,13 +129,17 @@ class MubitGateway(LLMGateway):
             if kw.get("session_id"):
                 # On Anthropic, metadata.user_id is the one field Mubit reads as the session.
                 params["metadata"] = {"user_id": str(kw["session_id"])[:200]}
+            if not record:
+                params["extra_headers"] = {"x-middleware-record": "off"}
             raw = self.client.messages.with_raw_response.create(**params)
             msg = raw.parse()
             usage = getattr(msg, "usage", None)
-            self.requests.append(MubitRequest(agent, kw.get("purpose", "call"),
-                                              raw.headers.get("x-middleware-request-id"), self.model,
-                                              getattr(usage, "input_tokens", None),
-                                              getattr(usage, "output_tokens", None)))
+            req = MubitRequest(agent, kw.get("purpose", "call"), raw.headers.get("x-middleware-request-id"),
+                               self.model, getattr(usage, "input_tokens", None), getattr(usage, "output_tokens", None),
+                               system_sha=sha, recorded=record)
+            self.requests.append(req)
+            if self.ledger is not None:
+                self.ledger.add(req)
             if getattr(msg, "stop_reason", None) != "max_tokens":
                 break
             if cap >= MAX_OUTPUT_TOKENS:

@@ -135,3 +135,59 @@ def test_prompt_gets_the_most_recent_lessons_but_the_version_counts_every_one(tm
     assert got[0].startswith("lesson number 15 ") and got[-1].startswith(f"lesson number {n - 1} ")   # newest kept, in order
     assert len(up.all_lessons("risk")) == n
     assert up.get_model_version("risk").endswith(f"-v{n}")                                             # not stuck at v40
+
+
+# ---- record flag, system_sha, retries, ledger ------------------------------------------------------------
+
+def _msgs(system="SYS"):
+    return [{"role": "system", "content": system}, {"role": "user", "content": "u"}]
+
+
+def test_recorded_calls_send_no_middleware_header_and_unrecorded_calls_send_record_off():
+    fake = FakeAnthropic(lambda a, m: "ok")
+    gw = MubitGateway(client=fake)
+    gw.complete("risk", _msgs())
+    gw.complete("risk", _msgs(), record=False)
+    assert "extra_headers" not in fake.sent[0]
+    assert fake.sent[1]["extra_headers"] == {"x-middleware-record": "off"}
+    assert [r.recorded for r in gw.requests] == [True, False]
+    assert all("x-middleware-store" not in str(p) for p in fake.sent)     # never set on any call
+
+
+def test_request_carries_the_system_sha_that_keys_the_mubit_task():
+    import hashlib
+    gw = MubitGateway(client=FakeAnthropic(lambda a, m: "ok"))
+    gw.complete("risk", _msgs("SYS"))
+    assert gw.requests[0].system_sha == hashlib.sha256(b"SYS").hexdigest()[:12]
+
+
+def test_unrecorded_flag_does_not_change_the_cache_key(tmp_path):
+    cg = CachingGateway(MubitGateway(client=FakeAnthropic(lambda a, m: "ok")), tmp_path)
+    assert cg.key_for("risk", _msgs()) == cg.key_for("risk", _msgs(), record=False)
+    cg.complete("risk", _msgs(), record=False)
+    cg.complete("risk", _msgs())
+    assert (cg.misses, cg.hits) == (1, 1)
+
+
+def test_real_client_is_built_with_four_retries(monkeypatch):
+    import anthropic
+    seen = {}
+    monkeypatch.setattr(anthropic, "Anthropic", lambda **kw: seen.update(kw) or object())
+    monkeypatch.setenv("MUBIT_LEDGER", "/dev/null")
+    MubitGateway(api_key="k")
+    assert seen["max_retries"] == 4 and seen["base_url"].endswith("/anthropic")
+
+
+def test_ledger_counts_only_recorded_calls_per_task_per_day(tmp_path):
+    from agents.ledger import CallLedger, report
+    led = CallLedger(tmp_path / "ledger.jsonl")
+    gw = MubitGateway(client=FakeAnthropic(lambda a, m: "ok"), ledger=led)
+    for _ in range(3):
+        gw.complete("risk", _msgs("A"))
+    gw.complete("risk", _msgs("A"), record=False)
+    gw.complete("fundamentals", _msgs("B"))
+    per_task = led.recorded_per_task()
+    assert sorted(per_task.values()) == [1, 3] and sum(per_task.values()) == 4
+    lines = report(led)
+    assert any("22 more until first training" in l for l in lines) and lines[-1].endswith(": 1")
+    assert "request_id" in led.rows()[0] and "system_prompt" not in str(led.rows())   # ids and hashes only

@@ -120,8 +120,11 @@ def _tool_request(raw: str) -> tuple[str, dict] | None:
 
 def run_agent(agent: str, company_id: str, as_of: date, metrics: dict, gateway: LLMGateway,
               updater: ModelUpdater, run_id: str | None = None, lessons: list[str] | None = None,
-              toolbox: Toolbox | None = None, max_tool_calls: int = MAX_TOOL_CALLS) -> AgentCall | None:
+              toolbox: Toolbox | None = None, max_tool_calls: int = MAX_TOOL_CALLS,
+              record: bool = True) -> AgentCall | None:
+    """`record=False`: Mubit answers but keeps nothing (held-out eval, controls), so it can't train on the call."""
     run_id = run_id or str(uuid.uuid4())
+    kw = {} if record else {"record": False}   # only sent when False, so gateways without the option are untouched
     model = updater.get_model_version(agent)
     lessons = lessons if lessons is not None else getattr(updater, "lessons", lambda a: [])(agent)
     messages = build_messages(agent, company_id, as_of, metrics, lessons)
@@ -134,12 +137,12 @@ def run_agent(agent: str, company_id: str, as_of: date, metrics: dict, gateway: 
     convo = list(messages)
     extra: dict[str, float] = {}
     n_tools = 0
-    raw = gateway.complete(agent, list(convo), session_id=session)
+    raw = gateway.complete(agent, list(convo), session_id=session, **kw)
     while toolbox is not None and (req := _tool_request(raw)) is not None:
         convo.append({"role": "assistant", "content": raw})
         if n_tools >= max_tool_calls:
             convo.append({"role": "user", "content": "Tool limit reached. Reply now with the final JSON answer."})
-            raw = gateway.complete(agent, list(convo), session_id=session)
+            raw = gateway.complete(agent, list(convo), session_id=session, **kw)
             break
         name, args = req
         n_tools += 1
@@ -150,7 +153,7 @@ def run_agent(agent: str, company_id: str, as_of: date, metrics: dict, gateway: 
         except (ToolError, ValueError, TypeError, KeyError) as err:
             result = f"TOOL ERROR {name}: {err}"
         convo.append({"role": "user", "content": result})
-        raw = gateway.complete(agent, list(convo), session_id=session)
+        raw = gateway.complete(agent, list(convo), session_id=session, **kw)
     try:
         return _parse(raw, agent, company_id, as_of, run_id, metrics, model, n_tools, extra)
     except (ValueError, ValidationError, json.JSONDecodeError) as err:
@@ -159,7 +162,7 @@ def run_agent(agent: str, company_id: str, as_of: date, metrics: dict, gateway: 
     repair = convo + [{"role": "assistant", "content": raw},
                       {"role": "user", "content": f"That reply was invalid ({problem}). Return only the corrected JSON object."}]
     try:
-        return _parse(gateway.complete(agent, repair, session_id=session), agent, company_id, as_of, run_id,
+        return _parse(gateway.complete(agent, repair, session_id=session, **kw), agent, company_id, as_of, run_id,
                       metrics, model, n_tools, extra)
     except (ValueError, ValidationError, json.JSONDecodeError) as err2:
         log.error("DROPPED call %s %s %s: %s", agent, company_id, as_of, err2)

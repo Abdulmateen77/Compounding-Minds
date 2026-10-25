@@ -94,8 +94,9 @@ class _Runner:
         self.agent, self.metrics_fn, self.store = agent, metrics_fn, store
         self.grade_fn = (lambda c: grade(c, outcome_fn)) if outcome_fn else grade
 
-    def run(self, arm: Arm, company: str, q: date, m: dict, run_id: str) -> tuple[AgentCall | None, Grade | None]:
-        call = run_agent(self.agent, company, q, m, arm.gateway, arm.updater, run_id=run_id)
+    def run(self, arm: Arm, company: str, q: date, m: dict, run_id: str,
+            record: bool = True) -> tuple[AgentCall | None, Grade | None]:
+        call = run_agent(self.agent, company, q, m, arm.gateway, arm.updater, run_id=run_id, record=record)
         if call is None:
             return None, None
         g = self.grade_fn(call)
@@ -129,7 +130,7 @@ def _train(ev: AgentEval, split: Split, r: _Runner, learned: Arm, frozen: Arm | 
             ev.train_calls += 1
             ev.train_cells.append(Cell("learned", company, q, True, call, g, phase="train"))
             if frozen is not None:  # only for the accuracy curves; never feeds learning
-                fc, fg = r.run(frozen, company, q, m, run_id)
+                fc, fg = r.run(frozen, company, q, m, run_id, record=False)  # lesson-free control: not training data
                 ev.train_cells.append(Cell("frozen", company, q, True, fc, fg, phase="train"))
             if call is None:
                 ev.train_dropped += 1
@@ -151,7 +152,7 @@ def _held_out(ev: AgentEval, split: Split, r: _Runner, arms: list[Arm], run_id: 
         for company in split.all_companies:
             m = r.metrics_fn(company, ev.agent, q)
             for arm in arms:
-                call, g = r.run(arm, company, q, m, run_id)
+                call, g = r.run(arm, company, q, m, run_id, record=False)  # held-out answers must not train Mubit
                 if call is None:
                     ev.held_out_dropped[arm.name] += 1
                 ev.cells.append(Cell(arm.name, company, q, company in seen, call, g))

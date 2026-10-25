@@ -8,7 +8,7 @@ Wrap any gateway:   gw = CachingGateway(MubitGateway())
 * refresh=True     -> ignore saved replies and call live again (overwrites them)
 
 The key covers the model, the model version (if a version_fn is given), the agent, the messages and any option that changes the reply
-(max_tokens, ...). It ignores `session_id` and `purpose`, which are only labels for Mubit.
+(max_tokens, ...). It ignores `session_id`, `purpose` and `record`, which are only labels for Mubit.
 A cached reply keeps the Mubit request id of the call that produced it, so lessons stay
 traceable in Mubit's console. Failed calls are never cached.
 """
@@ -25,7 +25,7 @@ from typing import Callable
 from .gateway import LLMGateway
 
 DEFAULT_CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "llm_cache"
-_LABEL_ONLY = {"session_id", "purpose"}
+_LABEL_ONLY = {"session_id", "purpose", "record"}   # record only tells Mubit whether to keep the call
 
 
 class CacheMiss(RuntimeError):

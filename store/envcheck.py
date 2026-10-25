@@ -111,7 +111,8 @@ def ping_fred(key: str) -> dict:
 def ping_mubit() -> dict:
     try:
         from agents.gateway import MubitGateway
-        out = MubitGateway(max_tokens=5).complete("envcheck", [{"role": "user", "content": "Reply with the word ok."}])
+        out = MubitGateway(max_tokens=5).complete("envcheck", [{"role": "user", "content": "Reply with the word ok."}],
+                                                   record=False)  # a probe: not a training example, no junk task
         return {"ok": bool(out), "detail": "Mubit answered a 5-token call"}
     except Exception as e:  # noqa: BLE001
         return {"ok": False, "detail": f"Mubit call failed: {e.__class__.__name__}"}
