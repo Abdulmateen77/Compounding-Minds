@@ -91,3 +91,19 @@ export function Spark2({ learned, frozen, w = 220, h = 56 }: { learned: number[]
     </svg>
   );
 }
+
+/** Three pulsing bars for a wait (uiverse.io/aryamitra06/silent-lion-21, MIT). The surrounding text says what is happening. */
+export function BarsLoader() {
+  return <span className="uv-bars" aria-hidden><i /><i /><i /></span>;
+}
+
+/** An on/off switch (uiverse.io/lenin55/fast-chicken-43, MIT). A real checkbox underneath, so the keyboard and screen readers work. */
+export function Switch({ checked, onChange, disabled, children }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean; children: React.ReactNode }) {
+  return (
+    <label className="uv-switch">
+      <input type="checkbox" role="switch" checked={checked} disabled={disabled} onChange={(e) => onChange(e.target.checked)} />
+      <i aria-hidden />
+      <span>{children}</span>
+    </label>
+  );
+}

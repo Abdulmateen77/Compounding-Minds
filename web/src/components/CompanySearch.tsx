@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { BarsLoader } from "./bits";
 import { SPEEDS, setPrefs, usePrefs } from "../prefs";
 import { recallRecent, rememberPicked, type Picked } from "../recent";
 import type { SearchResult } from "../research";
@@ -115,7 +116,7 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
           <PickOptions />
           {!typing && <div className="px-3 pt-2 pb-1 mute text-xs">Recent</div>}
           <div id={list} role="listbox" aria-label={typing ? "Matching companies" : "Recent companies"}>
-            {typing && s.isFetching && rows.length === 0 && <div className="p-4 mute text-sm" role="status">Searching the SEC company list…</div>}
+            {typing && s.isFetching && rows.length === 0 && <div className="p-4 mute text-sm flex items-center gap-3" role="status"><BarsLoader />Searching the SEC company list…</div>}
             {typing && s.isError && <div className="p-4 text-sm" role="alert" style={{ color: "var(--error)" }}>Could not reach the search. Is the API running?</div>}
             {rows.map((c, i) => (
               <div key={c.cik} className="flex items-stretch" style={{ borderBottom: "1px solid var(--divider)", background: i === active ? "var(--card-alt)" : "transparent" }} onMouseEnter={() => setActive(i)}>

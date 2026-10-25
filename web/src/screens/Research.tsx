@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ErrorBox, Skeleton } from "../components/bits";
+import { BarsLoader, ErrorBox, Skeleton } from "../components/bits";
 import { demoMode, researchHref, type ResearchView } from "../route";
 import { CompanySearch } from "../components/CompanySearch";
 import { PanelRoster } from "../components/PanelRoster";
@@ -75,7 +75,7 @@ function Loading({ name }: { name?: string }) {
   useEffect(() => { const t = setInterval(() => setI((x) => Math.min(x + 1, RESEARCH_STEPS.length - 1)), STEP_SECONDS * 1000); return () => clearInterval(t); }, []);
   return (
     <div className="card p-8 grid gap-4" role="status">
-      <h1 className="text-2xl font-bold m-0">Researching {name ?? "the company"}…</h1>
+      <div className="flex items-center gap-4"><BarsLoader /><h1 className="text-2xl font-bold m-0">Researching {name ?? "the company"}…</h1></div>
       <ol className="m-0 p-0 list-none grid gap-2 text-sm">
         {RESEARCH_STEPS.map((s, k) => (
           <li key={s} className="flex items-center gap-3" style={{ opacity: k <= i ? 1 : 0.35 }}>

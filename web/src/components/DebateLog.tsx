@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CALL_COLOR, TONE, type Analysis, type Lens } from "../research";
 import { pickFaceOffs, surname } from "../scene/lenses";
 import { Avatar } from "./Avatar";
+import { Switch } from "./bits";
 import { fact, opening } from "./firstPerson";
 import { speak, stopSpeaking, useVoiceStatus } from "../voice";
 import { Say } from "./Say";
@@ -108,9 +109,9 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
             </div>
           : <p className="mute text-sm m-0 max-w-2xl">Opening statements, the face-offs between investors who disagree, then the final verdict.</p>}
         <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-xs mute flex items-center gap-2" title={voice.data?.enabled ? "AI-generated voices, one per investor: not the real people" : "Voices are off: add ELEVENLABS_API_KEY to the server's .env"}>
-            <input type="checkbox" checked={useVoice} disabled={!voice.data?.enabled || running} onChange={(e) => setUseVoice(e.target.checked)} /> AI voices
-          </label>
+          <span className="text-xs mute" title={voice.data?.enabled ? "AI-generated voices, one per investor: not the real people" : "Voices are off: add ELEVENLABS_API_KEY to the server's .env"}>
+            <Switch checked={useVoice} disabled={!voice.data?.enabled || running} onChange={setUseVoice}>AI voices</Switch>
+          </span>
           <label className="text-xs mute flex items-center gap-2">Speed
             <select value={speed} onChange={(e) => setSpeed(Number(e.target.value))} aria-label="Debate speed">
               <option value={1}>1x</option><option value={1.25}>1.25x</option><option value={1.5}>1.5x</option><option value={2}>2x</option>

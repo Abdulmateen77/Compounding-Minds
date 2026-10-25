@@ -159,6 +159,30 @@ a.card:hover, button.card:hover { border-color: color-mix(in srgb, var(--primary
 @media (min-width: 640px) { .page { padding-inline: var(--space-lg); } }
 @media (min-width: 1280px) { .page { max-width: var(--container-xl); } }
 
+/* ───────────────────────── Uiverse components ─────────────────────────
+   Two elements from uiverse.io (MIT licence), recoloured with our tokens. Credit: the bars loader is by aryamitra06
+   (uiverse.io/aryamitra06/silent-lion-21) and the switch is by lenin55 (uiverse.io/lenin55/fast-chicken-43). */
+
+/* loader: three bars that pulse in turn */
+.uv-bars { display: inline-flex; align-items: center; height: 36px; }
+.uv-bars > i { display: inline-block; width: 3px; height: 20px; border-radius: 10px; background: color-mix(in srgb, var(--muted) 55%, transparent); animation: uv-scale 1s linear infinite; }
+.uv-bars > i:nth-child(2) { height: 35px; margin: 0 5px; animation-delay: .25s; }
+.uv-bars > i:nth-child(3) { animation-delay: .5s; }
+@keyframes uv-scale { 20% { background: var(--primary); transform: scaleY(1.5); } 40% { transform: scaleY(1); } }
+
+/* switch: a track and a thumb that slides, with a soft halo on hover and focus. The input is the real control (role="switch"). */
+.uv-switch { position: relative; display: inline-flex; align-items: center; gap: var(--space-sm); cursor: pointer; font-size: var(--text-sm); }
+.uv-switch > input { appearance: none; position: absolute; left: -8px; top: 50%; width: 36px; height: 36px; margin: -18px 0 0; border-radius: 50%; background: var(--muted); opacity: 0; outline: none; pointer-events: none; transition: opacity var(--duration), transform var(--duration-fast); }
+.uv-switch > i { position: relative; flex: none; width: 36px; height: 14px; border-radius: 7px; background: color-mix(in srgb, var(--muted) 45%, transparent); transition: background-color var(--duration-fast) var(--ease-out); }
+.uv-switch > i::after { content: ""; position: absolute; top: -3px; left: -2px; width: 20px; height: 20px; border-radius: 50%; background: var(--foreground); box-shadow: 0 1px 4px rgb(0 0 0 / .35); transition: background-color var(--duration-fast), transform var(--duration-fast) var(--ease-out); }
+.uv-switch > input:checked + i { background: color-mix(in srgb, var(--primary-solid) 45%, transparent); }
+.uv-switch > input:checked + i::after { background: var(--primary-solid); transform: translateX(18px); }
+.uv-switch:hover > input { opacity: .08; }
+.uv-switch > input:focus-visible { opacity: .16; }
+.uv-switch > input:checked { background: var(--primary-solid); left: 10px; }
+.uv-switch > input:disabled + i { opacity: .4; }
+.uv-switch:has(> input:disabled) { cursor: not-allowed; opacity: .6; }
+
 /* keyboard users always see where they are; mouse users do not get a ring on click */
 :focus-visible { outline: var(--border-medium) solid var(--primary); outline-offset: 2px; border-radius: var(--radius-lg); }
 input:focus-visible, textarea:focus-visible { outline-offset: 0; }
