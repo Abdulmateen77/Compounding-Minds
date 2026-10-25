@@ -84,7 +84,7 @@ export function InvestorStage({ r, fromLoading = false }: { r: Report; fromLoadi
 
   if (presenting) {
     return (
-      <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: "#05070d" }} role="dialog" aria-label="Presenter mode">
+      <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center" style={{ background: "#05070d" }} role="dialog" aria-label="Presenter mode">
         {scene(true)}
         <button className="btn ghost absolute right-3 top-3" onClick={exit} aria-label="Exit presenter mode">Exit (X)</button>
       </div>

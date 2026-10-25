@@ -6,10 +6,10 @@ import { TONE, fmtValue, longDate, money, multiple, pctOf, type Check, type Figu
    a figure or a check from research/report.py and research/analysis.py, with the filings it came from. */
 
 const RESULT = {
-  pass: { tag: "PASS", color: "var(--green)" },
-  partial: { tag: "PART", color: "var(--amber)" },
-  fail: { tag: "FAIL", color: "var(--red)" },
-  unknown: { tag: "N/A", color: "var(--mute)" },
+  pass: { tag: "PASS", color: "var(--success)" },
+  partial: { tag: "PART", color: "var(--warning)" },
+  fail: { tag: "FAIL", color: "var(--error)" },
+  unknown: { tag: "N/A", color: "var(--muted)" },
 } as const;
 type Result = keyof typeof RESULT;
 const RESULTS = Object.keys(RESULT) as Result[];
@@ -20,23 +20,23 @@ const edgar = (cik: number, acc: string) => `https://www.sec.gov/Archives/edgar/
 const csvCell = (s: string) => `"${s.replace(/"/g, '""')}"`;
 
 function Th({ children, right }: { children?: React.ReactNode; right?: boolean }) {
-  return <th className="text-left font-semibold py-2 px-3 whitespace-nowrap mute text-[11px] uppercase tracking-wide" style={{ textAlign: right ? "right" : "left", borderBottom: "1px solid var(--line)" }}>{children}</th>;
+  return <th className="text-left font-semibold py-2 px-3 whitespace-nowrap mute text-xs uppercase tracking-wide" style={{ textAlign: right ? "right" : "left", borderBottom: "1px solid var(--divider)" }}>{children}</th>;
 }
-const td = "py-1.5 px-3 align-top";
-const rowLine = { borderBottom: "1px solid color-mix(in srgb, var(--line) 55%, transparent)" } as const;
+const td = "py-2 px-3 align-top";
+const rowLine = { borderBottom: "1px solid color-mix(in srgb, var(--divider) 55%, transparent)" } as const;
 
 function Block({ title, note, right, open = false, children }: { title: string; note?: string; right?: React.ReactNode; open?: boolean; children: React.ReactNode }) {
   return (
     <Disclosure level={3} title={title} summary={note} defaultOpen={open}>
       {note && <p className="mute text-xs m-0 max-w-3xl">{note}</p>}
       {right && <div className="flex justify-end">{right}</div>}
-      <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid var(--line)" }}>{children}</div>
+      <div className="overflow-x-auto rounded-xl" style={{ border: "1px solid var(--divider)" }}>{children}</div>
     </Disclosure>
   );
 }
 
 function Stat({ k, v }: { k: string; v: string }) {
-  return <div className="card px-3 py-2 grid gap-0.5"><span className="mute text-[11px] uppercase tracking-wide">{k}</span><span className="num text-base font-semibold">{v}</span></div>;
+  return <div className="card px-3 py-2 grid gap-1"><span className="mute text-xs uppercase tracking-wide">{k}</span><span className="num text-base font-semibold">{v}</span></div>;
 }
 
 export default function ProView({ r }: { r: Report }) {
@@ -105,7 +105,7 @@ export default function ProView({ r }: { r: Report }) {
             </tbody>
           </table>
           {v.sensitivity && v.sensitivity.length > 0 && (
-            <table className="w-full text-xs border-collapse" style={{ borderTop: "1px solid var(--line)" }}>
+            <table className="w-full text-xs border-collapse" style={{ borderTop: "1px solid var(--divider)" }}>
               <thead><tr><Th>Discount rate</Th>{v.scenarios.map((s) => <Th key={s.name} right>{s.name} value / share</Th>)}</tr></thead>
               <tbody>
                 {v.sensitivity.map((row) => (
@@ -145,15 +145,15 @@ export default function ProView({ r }: { r: Report }) {
         <Block title={`All investor checks (${shown.length} of ${rows.length})`}
           right={
             <div className="flex items-center gap-2 flex-wrap text-xs">
-              <select aria-label="Investor" value={who} onChange={(e) => setWho(e.target.value)} className="card px-2 py-1" style={{ color: "var(--text)" }}>
+              <select aria-label="Investor" value={who} onChange={(e) => setWho(e.target.value)} className="card px-2 py-1" style={{ color: "var(--foreground)" }}>
                 <option value="all">All investors</option>
                 {a.lenses.map((l) => <option key={l.key} value={l.key}>{l.name}</option>)}
               </select>
               {(["all", ...RESULTS] as const).map((x) => (
                 <button key={x} className="chip cursor-pointer" aria-pressed={only === x} onClick={() => setOnly(x)}
-                  style={only === x ? { color: "var(--text)", borderColor: "var(--blue)" } : undefined}>{x === "all" ? "All" : RESULT[x].tag}</button>
+                  style={only === x ? { color: "var(--foreground)", borderColor: "var(--primary)" } : undefined}>{x === "all" ? "All" : RESULT[x].tag}</button>
               ))}
-              <button className="btn ghost" style={{ padding: ".25rem .7rem", fontSize: ".75rem" }} onClick={exportCsv}>Export CSV</button>
+              <button className="btn ghost sm" onClick={exportCsv}>Export CSV</button>
             </div>
           }>
           <table className="w-full text-xs border-collapse">
@@ -184,7 +184,7 @@ export default function ProView({ r }: { r: Report }) {
                 <td className={`${td} mute whitespace-nowrap`}>{s.title}</td>
                 <td className={td} style={{ minWidth: 180 }}>{f.label}</td>
                 <td className={`${td} num text-right font-semibold whitespace-nowrap`}>{f.approx ? "≈ " : ""}{fmtValue(f.unit, f.value)}</td>
-                <td className={td} style={{ color: f.tone ? TONE[f.tone].color : "var(--mute)" }}>{f.tone ? TONE[f.tone].word : "–"}</td>
+                <td className={td} style={{ color: f.tone ? TONE[f.tone].color : "var(--muted)" }}>{f.tone ? TONE[f.tone].word : "–"}</td>
                 <td className={`${td} num mute`} style={{ minWidth: 260 }}>{hist(f)}</td>
                 <td className={`${td} num text-right mute`}>{f.sources.length}</td>
               </tr>
@@ -201,7 +201,7 @@ export default function ProView({ r }: { r: Report }) {
               {r.risk_flags!.map((fl) => (
                 <tr key={fl.key} style={rowLine}>
                   <td className={td}>{fl.label}</td>
-                  <td className={`${td} font-semibold`} style={{ color: fl.tone ? TONE[fl.tone].color : "var(--mute)" }}>{fl.tone ? TONE[fl.tone].word : "–"}</td>
+                  <td className={`${td} font-semibold`} style={{ color: fl.tone ? TONE[fl.tone].color : "var(--muted)" }}>{fl.tone ? TONE[fl.tone].word : "–"}</td>
                   <td className={td}>{fl.detail}</td>
                   <td className={`${td} num text-right`}>{Number.isFinite(fl.value) ? +fl.value.toFixed(3) : "–"}</td>
                 </tr>
@@ -212,12 +212,12 @@ export default function ProView({ r }: { r: Report }) {
       )}
 
       <Block title={`Source filings (${accessions.length})`} note="SEC accession numbers behind the figures and risk screens, newest first. Each links to the filing's folder on EDGAR.">
-        <div className="p-3 flex flex-wrap gap-1.5">
+        <div className="p-3 flex flex-wrap gap-2">
           {accessions.map((x) => <a key={x} href={edgar(cik, x)} target="_blank" rel="noreferrer" className="chip num no-underline">{x}</a>)}
         </div>
       </Block>
 
-      <p className="mute text-[11px] m-0">Numbers are computed in Python from filed SEC data and are not written by a model. The investor lenses are rule checks distilled from each investor's published writing; they describe the evidence and the price and are not personal advice or a price target.</p>
+      <p className="mute text-xs m-0">Numbers are computed in Python from filed SEC data and are not written by a model. The investor lenses are rule checks distilled from each investor's published writing; they describe the evidence and the price and are not personal advice or a price target.</p>
     </div>
   );
 }

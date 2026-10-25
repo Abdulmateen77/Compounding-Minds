@@ -80,7 +80,7 @@ function SpeechCard({ lens, speech, big, color }: { lens: Lens; speech: Speech; 
     return () => window.clearInterval(id);
   }, [speech.text]);
   return (
-    <div className={`rounded-xl p-3 shadow-xl grid gap-1.5 ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--panel)", border: `2px solid ${speech.tag === "My ruling" ? "#e6c350" : color}`, color: "var(--text)" }}>
+    <div className={`rounded-xl p-3 shadow-xl grid gap-2 ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--card)", border: `2px solid ${speech.tag === "My ruling" ? "#e6c350" : color}`, color: "var(--foreground)" }}>
       <div className="flex items-center gap-2">
         <Avatar l={lens} size={26} />
         <b className="leading-tight">{lens.name}</b>
@@ -101,26 +101,26 @@ function Notebook({ lens, i, dir, big, color }: { lens: Lens; i: number; dir: Di
   const rows = lens.checks.slice(from, last + 1).map((k, o) => ({ k, idx: from + o }));
   const text = big ? "text-sm" : "text-xs";
   return (
-    <div className={`rounded-xl p-3 shadow-xl ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--panel)", border: `2px solid ${color}`, color: "var(--text)" }}>
+    <div className={`rounded-xl p-3 shadow-xl ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--card)", border: `2px solid ${color}`, color: "var(--foreground)" }}>
       <div className="flex items-center justify-between gap-2">
         <b>{lens.name}</b>
         <span className="chip num">{Math.min(m, st.done + (st.current != null && st.current >= st.done ? 1 : 0))} of {m} checks</span>
       </div>
-      <div className="h-1 rounded-full overflow-hidden my-1.5" style={{ background: "var(--line)" }}>
+      <div className="h-1 rounded-full overflow-hidden my-2" style={{ background: "var(--divider)" }}>
         <div style={{ width: `${(Math.min(1, (st.done + (st.current != null ? st.phase : 0)) / m)) * 100}%`, height: "100%", background: color }} />
       </div>
-      <ol className={`m-0 p-0 list-none grid gap-1.5 ${text}`} style={{ lineHeight: 1.35 }}>
+      <ol className={`m-0 p-0 list-none grid gap-2 ${text}`} style={{ lineHeight: 1.35 }}>
         {rows.map(({ k, idx }) => {
           const working = idx === st.current && idx >= st.done;
           if (!working) {
             const M = MARK[k.result];
-            return <li key={k.id} className="flex gap-1.5 items-start"><span style={{ color: M.color }} aria-hidden>{M.mark}</span><span><b className="font-medium">{checkLabel(k)}</b> <span className="num mute">{cut(k.shown, 70)}</span></span></li>;
+            return <li key={k.id} className="flex gap-2 items-start"><span style={{ color: M.color }} aria-hidden>{M.mark}</span><span><b className="font-medium">{checkLabel(k)}</b> <span className="num mute">{cut(k.shown, 70)}</span></span></li>;
           }
           const f = st.phase / 0.8;                                     // 0..1 through this check's working time
           const ask = k.check.slice(0, Math.floor(clamp01(f / 0.5) * k.check.length));
           const askDone = f >= 0.5;
           return (
-            <li key={k.id} className="grid gap-0.5">
+            <li key={k.id} className="grid gap-1">
               <span><span className="mute">Asking:</span> {askDone ? k.check : ask}{!askDone && <Caret />}</span>
               {askDone && <span className="num"><span className="mute">Found:</span> {k.shown}{f < 0.85 && <Caret />}</span>}
               {f >= 0.85 && <span className="mute" style={{ fontSize: "0.92em" }}>Idea: {cut(k.principle, 120)}</span>}
@@ -334,7 +334,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
     const head = live ? part(q.head, b.head[0], b.head[1]) : q.head, shown = live ? part(q.shown, b.shown[0], b.shown[1]) : q.shown;
     const border = ruling ? "#e6c350" : q.color;
     return (
-      <div className="rounded-lg px-2 py-1 leading-snug text-left" style={{ background: "var(--panel)", border: `2px solid ${border}`, color: "var(--text)", maxWidth: big ? 300 : 225, fontSize: small, filter: live ? undefined : "brightness(0.72)" }}>
+      <div className="rounded-lg px-2 py-1 leading-snug text-left" style={{ background: "var(--card)", border: `2px solid ${border}`, color: "var(--foreground)", maxWidth: big ? 300 : 225, fontSize: small, filter: live ? undefined : "brightness(0.72)" }}>
         <span className="mute" style={{ fontSize: "0.9em" }}>{ruling ? "The ruling" : turn.role === "case" ? "My case" : "My objection"}</span>
         {ruling && <div><b style={{ color: "#e6c350", fontSize: "1.1em" }}>{headline}</b>{live && f < 0.25 && <Caret />}</div>}
         {ruling && (!live || f >= 0.25) && <div className="mute" style={{ fontSize: "0.92em" }}>My own check:</div>}
@@ -353,7 +353,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
           background: "#121831", aspectRatio: "16 / 9", touchAction: "pan-y",
           ...(demo
             ? { width: "min(100vw, calc(100vh * 16 / 9))", margin: "0 auto" }
-            : { borderRadius: 16, border: "1px solid var(--line)", minHeight: 380, width: "100%" }),
+            : { borderRadius: 16, border: "1px solid var(--divider)", minHeight: 380, width: "100%" }),
         }}
         tabIndex={0} role="group" aria-label="The investors read the company. Drag or use arrow keys to tilt the camera, space to pause."
         onKeyDown={demo ? undefined : onKey}
@@ -394,10 +394,10 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
           const judging = !!ad && faceoffs[ad.k].judge?.by === i;
           return (
             <div key={l.key} ref={(el) => { els.current.chips[i] = el; }} className="absolute left-0 top-0 pointer-events-none flex flex-col items-center gap-1" style={{ willChange: "transform" }} aria-hidden="true">
-              {judging && <span className="chip font-semibold" style={{ background: "var(--panel)", color: "#e6c350", borderColor: "#e6c350", ...bigStyle }}>⚖ JUDGE</span>}
+              {judging && <span className="chip font-semibold" style={{ background: "var(--card)", color: "#e6c350", borderColor: "#e6c350", ...bigStyle }}>⚖ JUDGE</span>}
               {turnCard && <TurnCard {...turnCard} />}
               {(st === "speaking" || st === "done") && (
-                <span className="chip font-semibold flex-col !gap-0 text-center leading-tight" style={{ background: "var(--panel)", color: c, borderColor: c, borderRadius: 12, ...bigStyle }}>
+                <span className="chip font-semibold flex-col !gap-0 text-center leading-tight" style={{ background: "var(--card)", color: c, borderColor: c, borderRadius: 12, ...bigStyle }}>
                   {l.word.toUpperCase()}
                   {showSynth && l.fit != null && <span className="num font-normal" style={{ fontSize: small }}>fit {Math.round(l.fit * 100)}%</span>}
                 </span>
@@ -412,13 +412,13 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
           {lens && said != null && <SpeechCard lens={lens} speech={speech!} big={big} color={lensColor} />}
           {lens && said == null && focus >= 0 && mode === "notebook" && <Notebook lens={lens} i={focus} dir={dir} big={big} color={lensColor} />}
           {lens && said == null && focus >= 0 && mode !== "notebook" && (
-            <div className={`rounded-xl p-3 shadow-xl ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--panel)", border: `2px solid ${lensColor}`, color: "var(--text)" }}>
+            <div className={`rounded-xl p-3 shadow-xl ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--card)", border: `2px solid ${lensColor}`, color: "var(--foreground)" }}>
               <div className="flex items-center justify-between gap-2">
                 <b>{lens.name}</b>
                 <span className="chip num">{counts(lens).pass} of {counts(lens).known} checks</span>
               </div>
               <div className="mute text-xs mt-1">{lens.question}</div>
-              <div className="mt-1.5"><b style={{ color: lensColor, fontSize: "1.05rem" }}>{lens.word.toUpperCase()}</b></div>
+              <div className="mt-2"><b style={{ color: lensColor, fontSize: "1.05rem" }}>{lens.word.toUpperCase()}</b></div>
               <div className={`mt-1 ${big ? "text-sm" : "text-xs"}`} style={{ lineHeight: 1.4 }}>{readingNow}{readingTyping && <Caret />}</div>
             </div>
           )}
@@ -427,11 +427,11 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
 
         {/* caption and overall reading */}
         <div className="absolute left-3 bottom-3 right-3 flex items-end justify-between gap-3 pointer-events-none">
-          <div className={`rounded-lg px-3 py-2 ${big ? "text-base" : "text-sm"}`} style={{ background: "color-mix(in srgb, var(--panel) 88%, transparent)", border: "1px solid var(--line)", maxWidth: "62%" }}>
+          <div className={`rounded-lg px-3 py-2 ${big ? "text-base" : "text-sm"}`} style={{ background: "color-mix(in srgb, var(--card) 88%, transparent)", border: "1px solid var(--divider)", maxWidth: "62%" }}>
             <b>{capHead}</b>{capDetail && <span className="mute"> · {capDetail}</span>}
           </div>
           {t >= tl.stamp && (
-            <div className={`rounded-lg px-3 py-2 text-right pointer-events-auto max-w-[38%] ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--panel)", border: `2px solid var(--${overall.tone === "good" ? "green" : overall.tone === "watch" ? "amber" : "red"})` }}>
+            <div className={`rounded-lg px-3 py-2 text-right pointer-events-auto max-w-[38%] ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--card)", border: `2px solid var(--${overall.tone === "good" ? "green" : overall.tone === "watch" ? "amber" : "red"})` }}>
               <div className="font-bold">{overall.headline}</div>
             </div>
           )}
@@ -439,15 +439,15 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
 
         {/* once it has played (or after Skip to the end): where they disagreed, each face-off replayable, or that nobody did */}
         {t >= tl.stamp && sel == null && !speech && (
-          <div className="absolute left-3 top-3 max-w-[46%] max-h-[62%] overflow-auto rounded-xl p-3 grid gap-2 pointer-events-auto content-start" style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
+          <div className="absolute left-3 top-3 max-w-[46%] max-h-[62%] overflow-auto rounded-xl p-3 grid gap-2 pointer-events-auto content-start" style={{ background: "var(--card)", border: "1px solid var(--divider)" }}
             onPointerDown={(e) => e.stopPropagation()}>
-            <div className="mute text-[11px] font-semibold uppercase tracking-wide">{faceoffs.length ? (faceoffs.length > 1 ? `${faceoffs.length} face-offs` : "Where they disagreed") : "No face-off"}</div>
+            <div className="mute text-xs font-semibold uppercase tracking-wide">{faceoffs.length ? (faceoffs.length > 1 ? `${faceoffs.length} face-offs` : "Where they disagreed") : "No face-off"}</div>
             {faceoffs.length === 0 && <div className={big ? "text-sm" : "text-xs"} style={{ lineHeight: 1.4 }}>They all read it much the same way, so there was nothing to argue over.</div>}
             {faceoffs.map((f, k) => (
-              <div key={k} className={`grid gap-0.5 ${big ? "text-sm" : "text-xs"}`} style={{ lineHeight: 1.35 }}>
+              <div key={k} className={`grid gap-1 ${big ? "text-sm" : "text-xs"}`} style={{ lineHeight: 1.35 }}>
                 <div className="flex items-center justify-between gap-2">
                   <b>{faceName(k)}</b>
-                  {unlocked && <button className="btn ghost" style={{ padding: ".2rem .6rem", fontSize: ".72rem" }} onClick={() => jump(tl.debates[k].start)}>Watch</button>}
+                  {unlocked && <button className="btn ghost sm" onClick={() => jump(tl.debates[k].start)}>Watch</button>}
                 </div>
                 {f.turns.filter((turn) => turn.role !== "ruling").slice(0, 2).map((turn, j) => (
                   <div key={j}><b style={{ color: turn.quote.color }}>{turn.quote.mark}</b> {surname(lenses[turn.by])}: {turn.quote.head}<span className="num mute"> · {turn.quote.shown}</span></div>
@@ -468,12 +468,12 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
 
         {demo && (
           <>
-            <div className="absolute left-0 right-0 bottom-0 h-1 pointer-events-none" style={{ background: "color-mix(in srgb, var(--line) 60%, transparent)" }}>
-              <div style={{ width: `${(t / tl.end) * 100}%`, height: "100%", background: "var(--blue)" }} />
+            <div className="absolute left-0 right-0 bottom-0 h-1 pointer-events-none" style={{ background: "color-mix(in srgb, var(--divider) 60%, transparent)" }}>
+              <div style={{ width: `${(t / tl.end) * 100}%`, height: "100%", background: "var(--primary)" }} />
             </div>
-            <span className="absolute left-1/2 bottom-2 -translate-x-1/2 text-xs pointer-events-none" style={{ color: "var(--mute)" }}>{chapters[now].label}{chapters[now].sub ? ` · ${chapters[now].sub}` : ""} · {dir.speed}x</span>
+            <span className="absolute left-1/2 bottom-2 -translate-x-1/2 text-xs pointer-events-none" style={{ color: "var(--muted)" }}>{chapters[now].label}{chapters[now].sub ? ` · ${chapters[now].sub}` : ""} · {dir.speed}x</span>
             {hint && (
-              <div className="absolute left-1/2 top-3 -translate-x-1/2 pointer-events-none rounded-full px-4 py-1.5 text-xs" style={{ background: "color-mix(in srgb, var(--panel) 92%, transparent)", border: "1px solid var(--line)", color: "var(--mute)" }}>
+              <div className="absolute left-1/2 top-3 -translate-x-1/2 pointer-events-none rounded-full px-4 py-2 text-xs" style={{ background: "color-mix(in srgb, var(--card) 92%, transparent)", border: "1px solid var(--divider)", color: "var(--muted)" }}>
                 → next · ← back · space pause · R replay · S end · F fullscreen · 1 2 3 speed · X exit
               </div>
             )}
@@ -492,20 +492,20 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
           <ol className="m-0 mt-2 p-0 list-none flex flex-wrap gap-2 text-xs" aria-label="Prologue chapters">
             {chapters.map((c, k) => {
               const past = unlocked && dir.finished ? true : k < now, cur = !dir.finished && k === now;
-              const style = cur ? { color: "var(--text)", borderColor: "var(--blue)", background: "color-mix(in srgb, var(--blue) 14%, transparent)" } : past ? { color: "var(--green)" } : { opacity: 0.6 };
+              const style = cur ? { color: "var(--foreground)", borderColor: "var(--primary)", background: "color-mix(in srgb, var(--primary) 14%, transparent)" } : past ? { color: "var(--success)" } : { opacity: 0.6 };
               const label = <>{past && !cur ? "✓ " : ""}{c.label}{cur && c.sub ? <span className="mute"> · {c.sub}</span> : null}</>;
               return (
                 <li key={c.id}>
                   {unlocked
-                    ? <button className="chip cursor-pointer" style={{ minHeight: 34, ...style }} aria-current={cur ? "step" : undefined} onClick={() => jump(c.at)}>{label}</button>
-                    : <span className="chip" style={{ minHeight: 34, ...style }} aria-current={cur ? "step" : undefined}>{label}</span>}
+                    ? <button className="chip cursor-pointer" style={{ minHeight: 40, ...style }} aria-current={cur ? "step" : undefined} onClick={() => jump(c.at)}>{label}</button>
+                    : <span className="chip" style={{ minHeight: 40, ...style }} aria-current={cur ? "step" : undefined}>{label}</span>}
                 </li>
               );
             })}
           </ol>
           {resumed && (
             <p className="mt-2 mb-0 text-xs mute" role="status">
-              Resuming where you left off. <button className="underline bg-transparent border-0 cursor-pointer p-0" style={{ color: "var(--blue)" }} onClick={() => { dir.replay(); setResumed(false); }}>Start from the beginning</button>
+              Resuming where you left off. <button className="underline bg-transparent border-0 cursor-pointer p-0" style={{ color: "var(--primary)" }} onClick={() => { dir.replay(); setResumed(false); }}>Start from the beginning</button>
             </p>
           )}
           <div className="flex flex-wrap items-center gap-2 mt-3" role="toolbar" aria-label="Prologue controls">
@@ -516,7 +516,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
               <span className="mute text-xs mr-1">Pace</span>
               {SPEEDS.map((s) => (
                 <button key={s} className="btn ghost num" aria-pressed={dir.speed === s} onClick={() => { dir.setSpeed(s); setPrefs({ speed: s }); }}
-                  style={dir.speed === s ? { color: "var(--text)", borderColor: "var(--blue)" } : undefined}>{s}x</button>
+                  style={dir.speed === s ? { color: "var(--foreground)", borderColor: "var(--primary)" } : undefined}>{s}x</button>
               ))}
             </div>
             <button className="btn ghost" aria-pressed={large} onClick={() => setLarge((l) => !l)}>Larger text</button>

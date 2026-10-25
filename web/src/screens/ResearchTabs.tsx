@@ -86,7 +86,7 @@ export function SourcesTab({ r }: { r: Report }) {
         <Disclosure title="What is the economy doing?" count={`${econ.length} indicators`} summary="Context for how this company's sales might move, as reported to date.">
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {econ.map((e) => (
-              <div key={e.key} className="rounded-xl p-4 grid gap-1" style={{ background: "var(--panel2)" }}>
+              <div key={e.key} className="rounded-xl p-4 grid gap-1" style={{ background: "var(--card-alt)" }}>
                 <div className="flex items-baseline justify-between gap-2"><span className="text-sm font-medium">{e.label}</span><span className="num text-lg font-semibold">{fmtValue(e.unit, e.value)}</span></div>
                 <span className="mute text-xs">{e.meaning}</span>
               </div>

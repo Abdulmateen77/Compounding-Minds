@@ -131,7 +131,7 @@ export default function LiveScene(props: Props) {
       <div>
         <div
           className="relative rounded-2xl overflow-hidden border select-none outline-none focus-visible:ring-2"
-          style={{ borderColor: "var(--line)", background: "#121831", aspectRatio: "16 / 9", minHeight: 380, touchAction: "pan-y" }}
+          style={{ borderColor: "var(--divider)", background: "#121831", aspectRatio: "16 / 9", minHeight: 380, touchAction: "pan-y" }}
           tabIndex={0} role="group" aria-label="Committee scene. Drag or use arrow keys to tilt the camera, space to pause."
           onKeyDown={onKey}
           onPointerDown={(e) => { drag.current = { x: e.clientX, y: e.clientY, az: orbit.current.az, pol: orbit.current.pol }; }}
@@ -156,7 +156,7 @@ export default function LiveScene(props: Props) {
 
           {/* title */}
           <div className="absolute left-3 top-3 flex items-center gap-2 pointer-events-none">
-            <span className="chip" style={{ background: "color-mix(in srgb, var(--panel) 85%, transparent)", color: "var(--text)" }}>
+            <span className="chip" style={{ background: "color-mix(in srgb, var(--card) 85%, transparent)", color: "var(--foreground)" }}>
               {a.company.name}{a.company.sector ? ` · ${a.company.sector}` : ""} · as of <span className="num">{a.as_of}</span>
             </span>
             {a.stub && <StubChip />}
@@ -169,10 +169,10 @@ export default function LiveScene(props: Props) {
             const showW = phase === "synthesis" || phase === "done";
             return (
               <div key={c.agent} ref={(el) => { els.current.chips[i] = el; }} className="absolute left-0 top-0 pointer-events-none flex flex-col items-center gap-1" style={{ willChange: "transform" }}>
-                {showRev && v && <span className="chip num" style={{ background: "var(--panel)", color: "var(--amber)", borderColor: "var(--amber)" }}>{pct(v.revised_from!)} {v.probability > v.revised_from! ? "↗" : "↘"} {pct(v.probability)}</span>}
-                {st === "thinking" && <span className="chip" style={{ background: "var(--panel)" }}>thinking…</span>}
+                {showRev && v && <span className="chip num" style={{ background: "var(--card)", color: "var(--warning)", borderColor: "var(--warning)" }}>{pct(v.revised_from!)} {v.probability > v.revised_from! ? "↗" : "↘"} {pct(v.probability)}</span>}
+                {st === "thinking" && <span className="chip" style={{ background: "var(--card)" }}>thinking…</span>}
                 {(st === "speaking" || st === "done") && v && (
-                  <span className="chip num font-semibold" style={{ background: "var(--panel)", color: STANCE_COLOR[v.stance], borderColor: STANCE_COLOR[v.stance] }}>
+                  <span className="chip num font-semibold" style={{ background: "var(--card)", color: STANCE_COLOR[v.stance], borderColor: STANCE_COLOR[v.stance] }}>
                     {v.answer.toUpperCase()} · {pct(v.confidence)}
                   </span>
                 )}
@@ -183,7 +183,7 @@ export default function LiveScene(props: Props) {
           {/* committee weights, shown on the floor in front of each desk during synthesis */}
           {a.committee.map((c, i) => (
             <div key={c.agent} ref={(el) => { els.current.wchips[i] = el; }} className="absolute left-0 top-0 pointer-events-none" style={{ willChange: "transform", opacity: phase === "synthesis" || phase === "done" ? 1 : 0, transition: "opacity .4s" }}>
-              <span className="chip num" style={{ background: "var(--panel)", color: "#c9b8ff", borderColor: "#7b5cff" }}>weight {c.weight.toFixed(2)}</span>
+              <span className="chip num" style={{ background: "var(--card)", color: "#c9b8ff", borderColor: "#7b5cff" }}>weight {c.weight.toFixed(2)}</span>
             </div>
           ))}
 
@@ -191,23 +191,23 @@ export default function LiveScene(props: Props) {
           <div ref={(el) => { els.current.bubble = el; }} className="absolute left-0 top-0 pointer-events-none"
             style={{ width: 300, opacity: view && focus >= 0 ? 1 : 0, transition: "opacity .2s", willChange: "transform" }}>
             {view && focus >= 0 && (
-              <div className="rounded-xl p-3 text-sm shadow-xl" style={{ background: "var(--panel)", border: `2px solid ${STANCE_COLOR[view.stance]}`, color: "var(--text)" }}>
+              <div className="rounded-xl p-3 text-sm shadow-xl" style={{ background: "var(--card)", border: `2px solid ${STANCE_COLOR[view.stance]}`, color: "var(--foreground)" }}>
                 <div className="flex items-center justify-between gap-2">
                   <b>{view.investor}</b>
                   <span className="chip num" title="Model version making this call">{view.model}</span>
                 </div>
                 <div className="mute text-xs mt-1">{view.question}</div>
-                <div className="mt-1.5"><b style={{ color: STANCE_COLOR[view.stance], fontSize: "1.05rem" }}>{view.answer.toUpperCase()}</b> <span className="num mute">confidence {pct(view.confidence)}</span></div>
+                <div className="mt-2"><b style={{ color: STANCE_COLOR[view.stance], fontSize: "1.05rem" }}>{view.answer.toUpperCase()}</b> <span className="num mute">confidence {pct(view.confidence)}</span></div>
                 {view.reasoning[0] && <div className="mt-1 text-xs" style={{ lineHeight: 1.35 }}>{view.reasoning[0]}</div>}
                 {showLesson && (
-                  <div className="mt-2 rounded-lg p-2 text-xs" style={{ background: "color-mix(in srgb, var(--purple) 16%, transparent)", border: "1px solid var(--purple)" }}>
-                    <div className="font-semibold" style={{ color: "var(--purple)" }}>
+                  <div className="mt-2 rounded-lg p-2 text-xs" style={{ background: "color-mix(in srgb, var(--secondary) 16%, transparent)", border: "1px solid var(--secondary)" }}>
+                    <div className="font-semibold" style={{ color: "var(--secondary)" }}>
                       LESSON APPLIED{focusMubit?.fallback_updater ? " · offline fallback updater, not live Mubit" : " · Mubit"}
                     </div>
                     {focusMubit?.last_correction ? (<>
-                      <div className="mt-0.5" style={{ lineHeight: 1.35 }}>{focusMubit.last_correction.lesson ?? focusMubit.last_correction.summary}</div>
-                      <div className="num mute mt-0.5">{focusMubit.last_correction.version_before ?? "n/a"} → {focusMubit.last_correction.version_after ?? "pending"}</div>
-                    </>) : <div className="mute mt-0.5">No correction on record yet for this agent.</div>}
+                      <div className="mt-1" style={{ lineHeight: 1.35 }}>{focusMubit.last_correction.lesson ?? focusMubit.last_correction.summary}</div>
+                      <div className="num mute mt-1">{focusMubit.last_correction.version_before ?? "n/a"} → {focusMubit.last_correction.version_after ?? "pending"}</div>
+                    </>) : <div className="mute mt-1">No correction on record yet for this agent.</div>}
                   </div>
                 )}
               </div>
@@ -217,13 +217,13 @@ export default function LiveScene(props: Props) {
 
           {/* caption */}
           <div className="absolute left-3 bottom-3 right-3 flex items-end justify-between gap-3 pointer-events-none">
-            <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "color-mix(in srgb, var(--panel) 88%, transparent)", border: "1px solid var(--line)", maxWidth: "62%" }}>
+            <div className="rounded-lg px-3 py-2 text-sm" style={{ background: "color-mix(in srgb, var(--card) 88%, transparent)", border: "1px solid var(--divider)", maxWidth: "62%" }}>
               {dir.waiting ? <span className="mute">Waiting for the next event from the stream…</span>
                 : phase === "done" ? <b>Assessment ready</b>
                 : <><b>{activeStage?.label}</b><span className="mute"> · {stageDetail[phase] ?? DEFAULT_DETAIL[phase] ?? ""}</span></>}
             </div>
             {sceneVerdict && t >= dir.tl.stamp && (
-              <div className="rounded-lg px-3 py-2 text-sm text-right pointer-events-auto" style={{ background: "var(--panel)", border: `2px solid ${LABELS[sceneVerdict.label].color}` }}>
+              <div className="rounded-lg px-3 py-2 text-sm text-right pointer-events-auto" style={{ background: "var(--card)", border: `2px solid ${LABELS[sceneVerdict.label].color}` }}>
                 <div className="font-bold" style={{ color: LABELS[sceneVerdict.label].color }}>{sceneVerdict.text}</div>
                 <div className="num mute text-xs">confidence {pct(sceneVerdict.confidence ?? 0)} · evidence assessment</div>
               </div>
@@ -232,10 +232,10 @@ export default function LiveScene(props: Props) {
 
           {/* selected analyst card */}
           {sel != null && (
-            <aside className="absolute right-3 top-3 bottom-16 w-72 max-w-[75%] overflow-auto rounded-xl p-3 text-sm" style={{ background: "var(--panel)", border: "1px solid var(--line)" }} aria-label={`${a.committee[sel].investor} reasoning`}>
+            <aside className="absolute right-3 top-3 bottom-16 w-72 max-w-[75%] overflow-auto rounded-xl p-3 text-sm" style={{ background: "var(--card)", border: "1px solid var(--divider)" }} aria-label={`${a.committee[sel].investor} reasoning`}>
               <div className="flex justify-between items-start gap-2">
                 <div><b>{a.committee[sel].investor}</b> <span className="mute text-xs">· {a.committee[sel].agent}</span></div>
-                <button className="btn ghost" style={{ padding: ".15rem .55rem" }} onClick={() => setSel(null)} aria-label="Close analyst card">×</button>
+                <button className="btn ghost sm" onClick={() => setSel(null)} aria-label="Close analyst card">×</button>
               </div>
               <AnalystDetail v={getView(sel)} mubit={mubitFor(a.committee[sel].agent)} />
             </aside>
@@ -250,11 +250,11 @@ export default function LiveScene(props: Props) {
           </button>
           {[1, 2].map((s) => (
             <button key={s} className="btn ghost" aria-pressed={dir.speed === s} onClick={() => dir.setSpeed(s)}
-              style={dir.speed === s ? { color: "var(--text)", borderColor: "var(--blue)" } : undefined}>{s}x</button>
+              style={dir.speed === s ? { color: "var(--foreground)", borderColor: "var(--primary)" } : undefined}>{s}x</button>
           ))}
           <button className="btn ghost" onClick={() => { orbit.current = { az: 0, pol: 0 }; }}>Reset view</button>
-          <div className="flex-1 min-w-[80px] h-1.5 rounded-full overflow-hidden" style={{ background: "var(--line)" }} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((t / dir.tl.end) * 100)} aria-label="Scene progress">
-            <div style={{ width: `${(t / dir.tl.end) * 100}%`, height: "100%", background: "var(--blue)" }} />
+          <div className="flex-1 min-w-[80px] h-1.5 rounded-full overflow-hidden" style={{ background: "var(--divider)" }} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round((t / dir.tl.end) * 100)} aria-label="Scene progress">
+            <div style={{ width: `${(t / dir.tl.end) * 100}%`, height: "100%", background: "var(--primary)" }} />
           </div>
           <button className="btn ghost" onClick={onFlat}>2D view</button>
           <button className="btn" onClick={onFinish}>Skip to verdict</button>
@@ -269,20 +269,20 @@ export default function LiveScene(props: Props) {
             const st = stageStatus(s.id); if (!st) return null;
             return (
               <li key={s.id} className="flex gap-3 items-start">
-                <span className="mt-1.5 w-2.5 h-2.5 rounded-full shrink-0" style={{ background: st === "done" ? "var(--green)" : st === "start" ? "var(--blue)" : "var(--line)" }} />
+                <span className="mt-2 w-2.5 h-2.5 rounded-full shrink-0" style={{ background: st === "done" ? "var(--success)" : st === "start" ? "var(--primary)" : "var(--divider)" }} />
                 <div><div className="text-sm font-medium" style={{ opacity: st === "idle" ? 0.45 : 1 }}>{s.label}</div>
                   {st !== "idle" && (stageDetail[s.id] ?? DEFAULT_DETAIL[s.id]) && <div className="mute text-xs">{stageDetail[s.id] ?? DEFAULT_DETAIL[s.id]}</div>}</div>
               </li>
             );
           })}
         </ol>
-        <div className="card p-3 grid gap-1.5" aria-label="Investors">
+        <div className="card p-3 grid gap-2" aria-label="Investors">
           {a.committee.map((c, i) => {
             const v = agentState(dir.tl, i, t) === "speaking" || agentState(dir.tl, i, t) === "done" ? getView(i) : undefined;
             return (
               <button key={c.agent} onClick={() => setSel((s) => (s === i ? null : i))} onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)}
-                className="flex items-center justify-between gap-2 text-left text-sm rounded-lg px-2 py-1.5 cursor-pointer"
-                style={{ background: sel === i ? "var(--panel2)" : "transparent", border: "1px solid var(--line)", color: "var(--text)" }} aria-pressed={sel === i}>
+                className="flex items-center justify-between gap-2 text-left text-sm rounded-lg px-2 py-2 cursor-pointer"
+                style={{ background: sel === i ? "var(--card-alt)" : "transparent", border: "1px solid var(--divider)", color: "var(--foreground)" }} aria-pressed={sel === i}>
                 <span>{c.investor} <span className="mute text-xs">· {c.agent}</span></span>
                 {v ? <span className="chip" style={{ color: STANCE_COLOR[v.stance], borderColor: STANCE_COLOR[v.stance] }}>{v.answer} · {pct(v.confidence)}</span>
                   : <span className="mute text-xs">{agentState(dir.tl, i, t) === "thinking" ? "thinking…" : "waiting"}</span>}
@@ -308,9 +308,9 @@ function AnalystDetail({ v, mubit }: { v?: AgentView; mubit?: Assessment["mubit"
           <div className="flex flex-wrap gap-1">{v.evidence.map((e, i) => <span key={i} className="chip num">{human(e.metric)}: {e.value}</span>)}</div></div>
       )}
       <div className="mute text-xs">Model <span className="num">{v.model}</span></div>
-      {lc && <div className="text-xs rounded-lg p-2" style={{ border: "1px solid var(--purple)" }}>
-        <b style={{ color: "var(--purple)" }}>Lesson applied{mubit?.fallback_updater ? " (offline fallback updater)" : ""}</b>
-        <div className="mt-0.5">{lc.lesson ?? lc.summary}</div>
+      {lc && <div className="text-xs rounded-lg p-2" style={{ border: "1px solid var(--secondary)" }}>
+        <b style={{ color: "var(--secondary)" }}>Lesson applied{mubit?.fallback_updater ? " (offline fallback updater)" : ""}</b>
+        <div className="mt-1">{lc.lesson ?? lc.summary}</div>
         <div className="num mute">{lc.version_before ?? "n/a"} → {lc.version_after ?? "pending"}</div></div>}
     </div>
   );

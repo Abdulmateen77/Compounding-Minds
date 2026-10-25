@@ -19,10 +19,10 @@ export function ShowcaseHero() {
 
   return (
     <section aria-label="Product intro video" className="card overflow-hidden grid md:grid-cols-[1fr_1.15fr] items-stretch mb-8"
-      style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--warm) 9%, var(--panel)), var(--panel))" }}>
+      style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--card)), var(--card))" }}>
       <div className="p-6 md:p-8 flex flex-col justify-center order-2 md:order-1">
-        <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">AI stock analysts, tested on the past</h1>
-        <p className="mt-3 mb-5 text-[15px] leading-relaxed max-w-md">
+        <h1 className="text-3xl md:text-4xl font-bold m-0">AI stock analysts, tested on the past</h1>
+        <p className="mt-3 mb-5 text-base leading-relaxed max-w-md">
           Go back to any quarter from 2018 to 2024. Three AI analysts, modelled on Buffett, Munger and Dalio, judge a real company using only what was public that day. Then you see what actually happened, and whether they were right.
         </p>
         <ol className="m-0 mb-6 p-0 list-none grid gap-2 text-sm">
@@ -32,14 +32,14 @@ export function ShowcaseHero() {
             ["See what really happened", "checked against the company's later filings"],
           ].map(([head, eg], i) => (
             <li key={head} className="flex items-baseline gap-3">
-              <span className="num inline-grid place-items-center w-6 h-6 rounded-full text-xs shrink-0" style={{ background: "var(--warm)", color: "#1a1006" }}>{i + 1}</span>
+              <span className="num inline-grid place-items-center w-6 h-6 rounded-full text-xs shrink-0" style={{ background: "var(--accent)", color: "#1a1006" }}>{i + 1}</span>
               <span><span className="font-semibold">{head}</span> <span className="mute">{eg}</span></span>
             </li>
           ))}
         </ol>
         <p className="mute text-sm m-0 mb-5 max-w-md">Every wrong prediction becomes a lesson the analyst reads next time, so they should get better. You can check whether they do.</p>
         <div className="flex items-center gap-3 flex-wrap">
-          <button ref={btn} className="btn inline-flex items-center gap-2" style={{ background: "var(--warm)", color: "#1a1006" }} onClick={() => setOpen(true)}>
+          <button ref={btn} className="btn inline-flex items-center gap-2" style={{ background: "var(--accent)", color: "#1a1006" }} onClick={() => setOpen(true)}>
             <PlayIcon /> Watch how it works <span className="num text-xs opacity-70">0:23</span>
           </button>
           <a href="#/mubit" className="text-sm mute underline underline-offset-4">Are they getting better?</a>
@@ -54,11 +54,11 @@ export function ShowcaseHero() {
             aria-label="Preview of the explainer clip, muted" onError={() => setFailed(true)} />
         )}
         <button aria-label="Open the explainer video with sound" onClick={() => setOpen(true)} className="absolute inset-0 w-full h-full cursor-pointer bg-transparent border-0" />
-        <span className="chip absolute left-3 bottom-3" style={{ background: "color-mix(in srgb, var(--bg) 82%, transparent)", color: "var(--amber)", borderColor: "var(--amber)" }}>
+        <span className="chip absolute left-3 bottom-3" style={{ background: "color-mix(in srgb, var(--background) 82%, transparent)", color: "var(--warning)", borderColor: "var(--warning)" }}>
           Illustrative data
         </span>
       </div>
-      <p className="mute text-xs m-0 px-6 py-2 order-3 md:col-span-2" style={{ borderTop: "1px solid var(--line)" }}>{CAPTION}</p>
+      <p className="mute text-xs m-0 px-6 py-2 order-3 md:col-span-2" style={{ borderTop: "1px solid var(--divider)" }}>{CAPTION}</p>
 
       <AnimatePresence>{open && <ShowcaseModal onClose={() => { setOpen(false); btn.current?.focus(); }} />}</AnimatePresence>
     </section>
@@ -88,13 +88,13 @@ function ShowcaseModal({ onClose }: { onClose: () => void }) {
   }, [onClose]);
 
   return (
-    <motion.div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: "rgba(3,6,12,.82)" }}
+    <motion.div className="fixed inset-0 z-[var(--z-modal)] flex items-center justify-center p-4" style={{ background: "rgba(3,6,12,.82)" }}
       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose}>
       <motion.div data-modal role="dialog" aria-modal="true" aria-label="How Compounding Minds works" className="card w-full max-w-4xl overflow-hidden"
         initial={{ scale: 0.96, y: 10 }} animate={{ scale: 1, y: 0 }} exit={{ scale: 0.97, opacity: 0 }} onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--line)" }}>
+        <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid var(--divider)" }}>
           <span className="font-semibold">How it works</span>
-          <button ref={closeBtn} className="btn ghost" style={{ padding: ".35rem .8rem" }} onClick={onClose} aria-label="Close video">Close</button>
+          <button ref={closeBtn} className="btn ghost sm" onClick={onClose} aria-label="Close video">Close</button>
         </div>
         {err ? (
           <div className="p-8 text-center">
@@ -106,7 +106,7 @@ function ShowcaseModal({ onClose }: { onClose: () => void }) {
             <track kind="captions" />
           </video>
         )}
-        <p className="mute text-xs m-0 px-4 py-3" style={{ borderTop: "1px solid var(--line)" }}>{CAPTION}</p>
+        <p className="mute text-xs m-0 px-4 py-3" style={{ borderTop: "1px solid var(--divider)" }}>{CAPTION}</p>
       </motion.div>
     </motion.div>
   );

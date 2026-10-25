@@ -37,9 +37,9 @@ export function Summary({ r }: { r: Report }) {
       )}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3">
         {r.scorecard!.slice(0, 6).map((f) => {
-          const color = f.tone ? TONE[f.tone].color : "var(--line)";
+          const color = f.tone ? TONE[f.tone].color : "var(--divider)";
           return (
-            <div key={f.key} className="rounded-xl p-3 md:p-4 grid gap-1" style={{ background: `color-mix(in srgb, ${color} 8%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 35%, var(--line))` }}>
+            <div key={f.key} className="rounded-xl p-3 md:p-4 grid gap-1" style={{ background: `color-mix(in srgb, ${color} 8%, transparent)`, border: `1px solid color-mix(in srgb, ${color} 35%, var(--divider))` }}>
               <span className="text-xs mute">{f.label}</span>
               <span className="num text-xl md:text-2xl font-semibold">{fmtValue(f.unit, f.value)}{f.approx ? " ≈" : ""}</span>
               <span className="text-xs" style={{ color }}>{f.tone ? TONE[f.tone].word : "context"}</span>
@@ -49,7 +49,7 @@ export function Summary({ r }: { r: Report }) {
       </div>
       <p className="m-0 text-sm">
         Across {t.good + t.watch + t.warn} checks:{" "}
-        <b style={{ color: "var(--green)" }}>{t.good} strengths</b>, <b style={{ color: "var(--amber)" }}>{t.watch} worth watching</b>, <b style={{ color: "var(--red)" }}>{t.warn} concerns</b>.
+        <b style={{ color: "var(--success)" }}>{t.good} strengths</b>, <b style={{ color: "var(--warning)" }}>{t.watch} worth watching</b>, <b style={{ color: "var(--error)" }}>{t.warn} concerns</b>.
       </p>
     </motion.section>
   );
@@ -62,7 +62,7 @@ function Pick({ items, tone, empty }: { items: { label: string; value: string; m
       <span className="font-semibold text-sm" style={{ color }}>{tone === "good" ? "What stands out well" : "What to look at closely"}</span>
       {items.length === 0 && <span className="mute text-sm">{empty}</span>}
       {items.map((i) => (
-        <div key={i.label} className="grid gap-0.5">
+        <div key={i.label} className="grid gap-1">
           <span className="text-sm"><b>{i.label}</b> <span className="num">{i.value}</span></span>
           <span className="mute text-xs leading-snug">{i.meaning}</span>
         </div>
@@ -88,7 +88,7 @@ export function Highlights({ r }: { r: Report }) {
         <Pick items={strengths} tone="good" empty="No figure stands out as a clear strength." />
         <Pick items={concerns} tone="warn" empty="No figure raises a concern." />
       </div>
-      <p className="m-0 text-sm"><a href={researchHref(r.company.cik, "financials")} className="underline underline-offset-4" style={{ color: "var(--blue)" }}>See every figure and risk check →</a></p>
+      <p className="m-0 text-sm"><a href={researchHref(r.company.cik, "financials")} className="underline underline-offset-4" style={{ color: "var(--primary)" }}>See every figure and risk check →</a></p>
     </section>
   );
 }
@@ -104,13 +104,13 @@ export function NewsBlock({ n }: { n: News }) {
       <div className="card p-5 grid gap-3">
         {lines.length > 0
           ? lines.slice(0, all ? undefined : NEWS_SHOWN).map((l) => (
-              <div key={l.url} className="grid gap-0.5">
+              <div key={l.url} className="grid gap-1">
                 <p className="m-0 text-sm leading-relaxed">{l.text}</p>
-                <a href={l.url} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "var(--blue)" }}>{l.source}{l.age ? `, ${l.age}` : ""}: {l.title}</a>
+                <a href={l.url} target="_blank" rel="noreferrer" className="text-xs underline" style={{ color: "var(--primary)" }}>{l.source}{l.age ? `, ${l.age}` : ""}: {l.title}</a>
               </div>
             ))
           : heads.slice(0, all ? undefined : NEWS_SHOWN).map((a) => (
-              <a key={a.url} href={a.url} target="_blank" rel="noreferrer" className="text-sm underline" style={{ color: "var(--blue)" }}>{a.source}{a.age ? `, ${a.age}` : ""}: {a.title}</a>
+              <a key={a.url} href={a.url} target="_blank" rel="noreferrer" className="text-sm underline" style={{ color: "var(--primary)" }}>{a.source}{a.age ? `, ${a.age}` : ""}: {a.title}</a>
             ))}
         {total > NEWS_SHOWN && <button className="btn ghost justify-self-start" onClick={() => setAll((x) => !x)}>{all ? "Show fewer" : `Show all ${total}`}</button>}
       </div>
@@ -128,19 +128,19 @@ export function DataSource({ r, full = false }: { r: Report; full?: boolean }) {
     return (
       <p className="m-0 mute text-xs">
         Figures: 12 months to {longDate(through)}{lf && !behind && <>, from its {lf.form} filed {longDate(lf.filed)}</>} · SEC EDGAR, checked {r.checked_at ? longDate(r.checked_at) : "today"}
-        {behind && <span style={{ color: "var(--amber)" }}> · its newest filing is not in the SEC's data feed yet</span>}
+        {behind && <span style={{ color: "var(--warning)" }}> · its newest filing is not in the SEC's data feed yet</span>}
         {" · "}<a href={researchHref(r.company.cik, "sources")} className="underline underline-offset-4">sources</a>
       </p>
     );
   }
   return (
-    <div className="rounded-xl px-4 py-3 text-sm grid gap-1" style={{ background: "var(--panel2)", border: "1px solid var(--line)" }}>
+    <div className="rounded-xl px-4 py-3 text-sm grid gap-1" style={{ background: "var(--card-alt)", border: "1px solid var(--divider)" }}>
       <span>
         <b>Latest figures: the 12 months to {longDate(through)}</b>
         {lf && !behind && <>, from {r.company.name}'s {lf.form} filed with the SEC on {longDate(lf.filed)}</>}.
         {" "}Source: SEC EDGAR, checked {r.checked_at ? longDate(r.checked_at) : "today"}.
       </span>
-      {behind && <span style={{ color: "var(--amber)" }}>Its newest filing ({lf!.form}, filed {longDate(lf!.filed)}) is not in the SEC's data feed yet, so these figures stop at the filing before it.</span>}
+      {behind && <span style={{ color: "var(--warning)" }}>Its newest filing ({lf!.form}, filed {longDate(lf!.filed)}) is not in the SEC's data feed yet, so these figures stop at the filing before it.</span>}
     </div>
   );
 }
@@ -154,17 +154,17 @@ export function TrendChart({ sections }: { sections: Section[] }) {
   const rows = rev.history.map((h, i) => ({
     year: year(h.end), Revenue: h.value, [ebitda?.label ?? "Profit"]: ebitda?.history[i]?.value ?? null, "Free cash flow": fcf?.history[i]?.value ?? null,
   }));
-  const series = [["Revenue", "var(--blue)"], [ebitda?.label ?? "Profit", "var(--purple)"], ["Free cash flow", "var(--green)"]] as const;
+  const series = [["Revenue", "var(--primary)"], [ebitda?.label ?? "Profit", "var(--secondary)"], ["Free cash flow", "var(--success)"]] as const;
   return (
     <section className="card p-5 grid gap-2">
       <Head title="The last six years at a glance" blurb="Twelve-month totals at each year's latest report." />
       <div style={{ height: 260 }}>
         <ResponsiveContainer>
           <BarChart data={rows} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid stroke="var(--line)" vertical={false} />
-            <XAxis dataKey="year" stroke="var(--mute)" fontSize={12} />
-            <YAxis stroke="var(--mute)" fontSize={12} tickFormatter={(v) => money(v, 0)} width={64} />
-            <Tooltip formatter={(v) => money(Number(v))} contentStyle={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 12 }} />
+            <CartesianGrid stroke="var(--divider)" vertical={false} />
+            <XAxis dataKey="year" stroke="var(--muted)" fontSize={12} />
+            <YAxis stroke="var(--muted)" fontSize={12} tickFormatter={(v) => money(v, 0)} width={64} />
+            <Tooltip formatter={(v) => money(Number(v))} contentStyle={{ background: "var(--card)", border: "1px solid var(--divider)", borderRadius: 12 }} />
             <Legend />
             {series.map(([k, c]) => <Bar key={k} dataKey={k} fill={c} radius={[4, 4, 0, 0]} />)}
           </BarChart>
@@ -200,18 +200,18 @@ function FigureCard({ f, through }: { f: Figure; through: string }) {
   const h = f.history.filter((x) => x.value != null);
   const when = POINT_IN_TIME.has(f.key) ? `on ${longDate(through)}` : `12 months to ${longDate(through)}`;
   return (
-    <div className="rounded-xl p-4 grid gap-1 content-start" style={{ background: "var(--panel2)" }} title={f.sources.length ? `From SEC filings: ${f.sources.join(", ")}` : undefined}>
+    <div className="rounded-xl p-4 grid gap-1 content-start" style={{ background: "var(--card-alt)" }} title={f.sources.length ? `From SEC filings: ${f.sources.join(", ")}` : undefined}>
       <div className="flex items-start justify-between gap-2">
         <span className="text-sm font-medium">{f.label}</span>
         <ToneChip tone={f.tone} />
       </div>
       <span className="num text-2xl font-semibold">{fmtValue(f.unit, f.value)}{f.approx && <span className="mute text-sm" title="Approximate: see the notes on the Sources page"> ≈</span>}</span>
-      <span className="text-[11px] mute">{when}</span>
+      <span className="text-xs mute">{when}</span>
       <span className="mute text-xs leading-snug">{f.meaning}</span>
       {h.length > 2 && (
         <div className="mt-1">
           <Spark data={h.map((x) => x.value as number)} w={220} h={34} />
-          <div className="flex justify-between mute text-[10px] num">
+          <div className="flex justify-between mute text-xs num">
             <span>{monthYear(h[0].end)}: {fmtValue(f.unit, h[0].value)}</span>
             <span>{monthYear(h[h.length - 1].end)}: {fmtValue(f.unit, h[h.length - 1].value)}</span>
           </div>
@@ -231,9 +231,9 @@ export function RiskChecks({ flags }: { flags: Flag[] }) {
         {flags.map((f) => {
           const T = f.tone ? TONE[f.tone] : null;
           return (
-            <div key={f.key} className="rounded-xl p-4 flex items-start gap-3" style={{ background: "var(--panel2)" }} title={f.sources.length ? `From SEC filings: ${f.sources.join(", ")}` : undefined}>
-              <span aria-hidden className="inline-grid place-items-center w-7 h-7 rounded-full shrink-0 text-sm" style={{ background: `color-mix(in srgb, ${T?.color ?? "var(--mute)"} 20%, transparent)`, color: T?.color }}>{f.tone === "good" ? "✓" : f.tone === "warn" ? "!" : "•"}</span>
-              <div className="grid gap-0.5">
+            <div key={f.key} className="rounded-xl p-4 flex items-start gap-3" style={{ background: "var(--card-alt)" }} title={f.sources.length ? `From SEC filings: ${f.sources.join(", ")}` : undefined}>
+              <span aria-hidden className="inline-grid place-items-center w-7 h-7 rounded-full shrink-0 text-sm" style={{ background: `color-mix(in srgb, ${T?.color ?? "var(--muted)"} 20%, transparent)`, color: T?.color }}>{f.tone === "good" ? "✓" : f.tone === "warn" ? "!" : "•"}</span>
+              <div className="grid gap-1">
                 <span className="font-medium text-sm">{f.label}: <span style={{ color: T?.color }}>{f.detail}</span></span>
                 <span className="mute text-xs">{f.meaning}</span>
               </div>
@@ -268,7 +268,7 @@ export function MarketBlock({ m }: { m: NonNullable<Report["market"]> }) {
         </div>
         {pos != null && (
           <div className="max-w-md">
-            <div className="relative h-2 rounded-full" style={{ background: "var(--line)" }}><span className="absolute top-1/2 w-3 h-3 rounded-full" style={{ left: `calc(${pos * 100}% - 6px)`, transform: "translateY(-50%)", background: "var(--blue)" }} /></div>
+            <div className="relative h-2 rounded-full" style={{ background: "var(--divider)" }}><span className="absolute top-1/2 w-3 h-3 rounded-full" style={{ left: `calc(${pos * 100}% - 6px)`, transform: "translateY(-50%)", background: "var(--primary)" }} /></div>
             <div className="flex justify-between text-xs mute num mt-1"><span>52-week low {lo!.toFixed(2)}</span><span>high {hi!.toFixed(2)}</span></div>
           </div>
         )}
@@ -276,7 +276,7 @@ export function MarketBlock({ m }: { m: NonNullable<Report["market"]> }) {
         {rows.length > 0 && (
           <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
             {rows.map(([l, v, t]) => (
-              <div key={l} className="grid gap-0.5"><span className="text-xs mute">{l}</span><span className="num text-lg font-semibold">{v}</span><span className="mute text-[11px] leading-snug">{t}</span></div>
+              <div key={l} className="grid gap-1"><span className="text-xs mute">{l}</span><span className="num text-lg font-semibold">{v}</span><span className="mute text-xs leading-snug">{t}</span></div>
             ))}
           </div>
         )}
@@ -297,9 +297,9 @@ export function Plans({ p }: { p: NonNullable<Report["plans"]> }) {
       <p className="mute text-sm m-0">From its annual report filed {longDate(p.source.filed)}. <a href={p.source.url} target="_blank" rel="noreferrer" className="underline">Read the filing</a></p>
       <div className="grid gap-3 md:grid-cols-3">
         {live.map(([title, items]) => (
-          <div key={title} className="rounded-xl p-4 grid gap-3 content-start" style={{ background: "var(--panel2)" }}>
+          <div key={title} className="rounded-xl p-4 grid gap-3 content-start" style={{ background: "var(--card-alt)" }}>
             <span className="font-semibold text-sm">{title}</span>
-            {items.map((t) => <blockquote key={t} className="m-0 pl-3 text-sm leading-relaxed" style={{ borderLeft: "3px solid var(--blue)" }}>{t}</blockquote>)}
+            {items.map((t) => <blockquote key={t} className="m-0 pl-3 text-sm leading-relaxed" style={{ borderLeft: "4px solid var(--primary)" }}>{t}</blockquote>)}
           </div>
         ))}
       </div>

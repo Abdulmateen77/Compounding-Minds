@@ -98,7 +98,7 @@ export function DebateLog({ a, company, onSpeak }: { a: Analysis; company: strin
           <p className="mute text-sm m-0 mt-1 max-w-2xl">Opening statements, the face-offs between investors who disagree, and the final verdict. Every line is taken from the investors' own checks.</p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-xs mute flex items-center gap-1.5" title={voice.data?.enabled ? "Each investor speaks in their own voice" : "Voices are off: add ELEVENLABS_API_KEY to the server's .env"}>
+          <label className="text-xs mute flex items-center gap-2" title={voice.data?.enabled ? "Each investor speaks in their own voice" : "Voices are off: add ELEVENLABS_API_KEY to the server's .env"}>
             <input type="checkbox" checked={useVoice} disabled={!voice.data?.enabled || running} onChange={(e) => setUseVoice(e.target.checked)} /> Voices
           </label>
           {!running && shown === 0 && <button className="btn" onClick={start}>Start the debate</button>}
@@ -109,7 +109,7 @@ export function DebateLog({ a, company, onSpeak }: { a: Analysis; company: strin
         </div>
       </div>
 
-      <div ref={log} role="log" aria-live="polite" className="grid gap-2.5 max-h-[560px] overflow-y-auto pr-1" style={{ minHeight: shown ? 120 : 0 }}>
+      <div ref={log} role="log" aria-live="polite" className="grid gap-3 max-h-[560px] overflow-y-auto pr-1" style={{ minHeight: shown ? 120 : 0 }}>
         {msgs.slice(0, shown).map((m, i) => <Line key={i} m={m} lenses={a.lenses} a={a} />)}
         {typing && <div className="mute text-xs pl-11">…</div>}
       </div>
@@ -119,27 +119,27 @@ export function DebateLog({ a, company, onSpeak }: { a: Analysis; company: strin
 }
 
 function Line({ m, lenses, a }: { m: Msg; lenses: Lens[]; a: Analysis }) {
-  if (m.kind === "heading") return <div className="text-xs font-semibold mute pt-2" style={{ borderTop: "1px solid var(--line)" }}>{m.text}</div>;
+  if (m.kind === "heading") return <div className="text-xs font-semibold mute pt-2" style={{ borderTop: "1px solid var(--divider)" }}>{m.text}</div>;
   if (m.kind === "moderator") return <p className="m-0 text-sm mute italic">{m.text}</p>;
   if (m.kind === "verdict") {
     const c = TONE[a.panel?.tone ?? a.overall.tone].color;
     return (
-      <div className="rounded-xl p-4 grid gap-1.5" style={{ background: `color-mix(in srgb, ${c} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${c} 40%, var(--line))` }}>
+      <div className="rounded-xl p-4 grid gap-2" style={{ background: `color-mix(in srgb, ${c} 10%, transparent)`, border: `1px solid color-mix(in srgb, ${c} 40%, var(--divider))` }}>
         <b style={{ color: c }} className="text-base">{m.text}</b>
         <span className="text-sm">{m.detail}</span>
         <span className="flex flex-wrap gap-x-3 gap-y-1 text-xs">
           {lenses.map((l) => <span key={l.key}>{surname(l)}: <b style={{ color: l.decision ? CALL_COLOR[l.decision.call] : undefined }}>{l.decision?.label ?? l.word}</b></span>)}
         </span>
-        <span className="mute text-[11px]">Each call is that investor's rules applied to the filings: a reading of the evidence, not personal advice.</span>
+        <span className="mute text-xs">Each call is that investor's rules applied to the filings: a reading of the evidence, not personal advice.</span>
       </div>
     );
   }
-  const l = lenses[m.who!], c = l.decision ? CALL_COLOR[l.decision.call] : "var(--mute)";
+  const l = lenses[m.who!], c = l.decision ? CALL_COLOR[l.decision.call] : "var(--muted)";
   const tag = TAG[m.role!];
   return (
     <div className="flex gap-3 items-start">
       <Avatar l={l} size={34} ring={c} />
-      <div className="grid gap-0.5 min-w-0 rounded-xl px-3 py-2" style={{ background: m.role === "ruling" ? "color-mix(in srgb, #e6c350 12%, var(--panel2))" : "var(--panel2)" }}>
+      <div className="grid gap-1 min-w-0 rounded-xl px-3 py-2" style={{ background: m.role === "ruling" ? "color-mix(in srgb, #e6c350 12%, var(--card-alt))" : "var(--card-alt)" }}>
         <span className="text-xs"><b>{l.name}</b> <span className="mute">· {tag}</span></span>
         <span className="text-sm leading-relaxed">{m.text}</span>
         {m.detail && <span className="mute text-xs leading-snug">Why it matters: {m.detail}</span>}

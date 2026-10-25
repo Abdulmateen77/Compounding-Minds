@@ -1,56 +1,155 @@
 @import "tailwindcss";
 
+/* ───────────────────────── design tokens ─────────────────────────
+   One source for every value the UI uses (see web/DESIGN_SYSTEM.md). Built on the ui-design-system rules:
+   an 8pt grid (4px half-steps), a modular type scale at 1.25, WCAG AA contrast, a fixed z-index scale, and named
+   durations and radii. Components use these names, not raw numbers. */
+
+@theme {
+  --font-sans: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  /* type scale: 16px base, 1.25 ratio, rounded to the nearest whole pixel (caption floor 12px).
+     The three display sizes are fluid so a phone gets the lower end and a desktop the full size. */
+  --text-xs: 0.75rem;     --text-xs--line-height: 1.5;     /* caption  12 */
+  --text-sm: 0.875rem;    --text-sm--line-height: 1.5;     /* small    14 */
+  --text-base: 1rem;      --text-base--line-height: 1.5;   /* body     16 */
+  --text-lg: 1.25rem;     --text-lg--line-height: 1.5;     /* h5       20 */
+  --text-xl: 1.5rem;      --text-xl--line-height: 1.4;     /* h4       24 */
+  --text-2xl: 1.75rem;    --text-2xl--line-height: 1.4;    /* h3       28 */
+  --text-3xl: clamp(1.75rem, 1.5rem + 1.1vw, 2.25rem);  --text-3xl--line-height: 1.3;   /* h2  28 to 36 */
+  --text-4xl: clamp(2rem, 1.6rem + 1.8vw, 3rem);        --text-4xl--line-height: 1.2;   /* h1  32 to 48 */
+  --text-5xl: clamp(2.25rem, 1.7rem + 2.6vw, 3.75rem);  --text-5xl--line-height: 1.15;  /* display 36 to 60 */
+
+  /* breakpoints (sm, md, lg, xl, 2xl are Tailwind's own and match the system) */
+  --breakpoint-xs: 30rem;                                            /* 480 */
+
+  /* radius: sm 4, DEFAULT 8, md 12, lg 16, xl 24, full */
+  --radius-sm: 0.25rem;  --radius-lg: 0.5rem;  --radius-xl: 0.75rem;  --radius-2xl: 1rem;  --radius-3xl: 1.5rem;
+
+  /* shadows (dark surfaces barely show them, so cards use a border and only floating layers use a shadow) */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+}
+
 :root {
-  --bg: #070b14; --panel: #0e1524; --panel2: #121c30; --line: #1f2b45;
-  --text: #e8edf8; --mute: #8a98b8;
-  --blue: #4f8cff; --green: #2fd37c; --amber: #f5b13d; --red: #ff5a67; --purple: #a98bff; --warm: #f0925a;
+  color-scheme: dark;
+
+  /* surfaces */
+  --background: #070b14; --card: #0e1524; --card-alt: #121c30; --divider: #1f2b45;
+  --foreground: #e8edf8; --muted: #8a98b8; --overlay: rgb(0 0 0 / 0.5);
+
+  /* brand and semantic colour. Every text colour below is at least 4.5:1 on --background, --card and --card-alt. */
+  --primary: #4f8cff;   --primary-solid: #2f6fe0;   --on-primary: #ffffff;    /* solid = a fill that carries white text (4.7:1) */
+  --secondary: #a98bff; --accent: #f0925a;
+  --success: #2fd37c;   --on-success: #06210f;
+  --warning: #f5b13d;
+  --error: #ff5a67;
+  --info: var(--primary);
+
+  /* spacing: 8pt grid with 4px half-steps. Tailwind's p-1 = 4, p-2 = 8, p-3 = 12, p-4 = 16, p-6 = 24, p-8 = 32 */
+  --space-xs: 4px; --space-sm: 8px; --space-md: 16px; --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px; --space-3xl: 64px;
+
+  /* component sizes */
+  --size-sm: 32px; --size-md: 40px; --size-lg: 48px; --size-touch: 44px;     /* control heights; touch is the floor on phones */
+  --icon-sm: 16px; --icon-md: 20px; --icon-lg: 24px; --icon-xl: 32px;
+  --border-thin: 1px; --border-medium: 2px; --border-thick: 4px;
+
+  /* container: the content width at each breakpoint */
+  --container-lg: 1024px; --container-xl: 1280px; --container-2xl: 1536px;
+
+  /* motion */
+  --duration-fast: 150ms; --duration: 250ms; --duration-slow: 350ms; --duration-slower: 500ms;
+  --ease-out: ease-out; --ease-in-out: ease-in-out;
+
+  /* z-index: dropdown 1000, sticky 1020, overlay 1030, modal 1040, popover 1050, tooltip 1060, notification 1070 */
+  --z-dropdown: 1000; --z-sticky: 1020; --z-overlay: 1030; --z-modal: 1040; --z-popover: 1050; --z-tooltip: 1060; --z-notification: 1070;
 }
 @media (prefers-color-scheme: light) {
-  :root { --bg: #f4f6fb; --panel: #ffffff; --panel2: #eef2fa; --line: #d8dfee; --text: #131a2b; --mute: #55627f; }
+  :root {
+    color-scheme: light;
+    --background: #f4f6fb; --card: #ffffff; --card-alt: #eef2fa; --divider: #d8dfee;
+    --foreground: #131a2b; --muted: #55627f; --overlay: rgb(0 0 0 / 0.4);
+    /* the bright dark-mode colours fail contrast on white (1.7 to 3.2:1), so light mode uses deeper ones (4.8 to 6.4:1) */
+    --primary: #1e56c8; --secondary: #5f3fc9; --accent: #a84a14;
+    --success: #0a7040; --on-success: #ffffff;
+    --warning: #8f5f00;
+    --error: #b91c28;
+  }
 }
+
+/* ───────────────────────── base ───────────────────────── */
+
 html, body, #root { min-height: 100%; }
+html { -webkit-text-size-adjust: 100%; }
 body {
-  margin: 0; background: var(--bg); color: var(--text);
-  font-family: Inter, -apple-system, "Segoe UI", sans-serif; -webkit-font-smoothing: antialiased;
-  background-image: radial-gradient(900px 400px at 85% -10%, color-mix(in srgb, var(--blue) 18%, transparent), transparent),
-                    radial-gradient(700px 400px at -10% 10%, color-mix(in srgb, var(--purple) 12%, transparent), transparent);
+  margin: 0; background: var(--background); color: var(--foreground);
+  font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased;
+  background-image: radial-gradient(900px 400px at 85% -10%, color-mix(in srgb, var(--primary) 18%, transparent), transparent),
+                    radial-gradient(700px 400px at -10% 10%, color-mix(in srgb, var(--secondary) 12%, transparent), transparent);
   background-attachment: fixed;
 }
-.card { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; }
-.mute { color: var(--mute); }
-.num { font-variant-numeric: tabular-nums; font-family: "JetBrains Mono", ui-monospace, monospace; }
-.btn { border-radius: 12px; padding: .7rem 1.2rem; font-weight: 600; background: var(--blue); color: #fff; cursor: pointer; border: 0; transition: transform .15s, opacity .15s; }
+img, svg, video, canvas { max-width: 100%; }
+
+/* headings: the line height and tracking for each level from the type system (size and weight are set where each heading is used) */
+@layer base {
+  h1 { line-height: 1.2; letter-spacing: -0.02em; }
+  h2 { line-height: 1.3; letter-spacing: -0.01em; }
+  h3, h4 { line-height: 1.4; }
+}
+
+/* ───────────────────────── components ───────────────────────── */
+
+.card { background: var(--card); border: var(--border-thin) solid var(--divider); border-radius: var(--radius-2xl); }
+.mute { color: var(--muted); }
+.num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+
+/* button: md is 40px tall with 16px side padding; .sm is 32/12 and .lg is 48/20 */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
+  min-height: var(--size-md); padding: 0 var(--space-md); border: 0; border-radius: var(--radius-xl);
+  font-weight: 600; background: var(--primary-solid); color: var(--on-primary); cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
+}
+.btn.sm { min-height: var(--size-sm); padding: 0 12px; font-size: var(--text-sm); }
+.btn.lg { min-height: var(--size-lg); padding: 0 20px; }
 .btn:hover { transform: translateY(-1px); } .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
-.btn.ghost { background: transparent; color: var(--mute); border: 1px solid var(--line); }
-.chip { display: inline-flex; align-items: center; gap: .35rem; font-size: .75rem; padding: .15rem .55rem; border-radius: 999px; border: 1px solid var(--line); color: var(--mute); }
-@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+.btn.ghost { background: transparent; color: var(--muted); border: var(--border-thin) solid var(--divider); }
+.chip { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--text-xs); padding: var(--space-xs) var(--space-sm); border-radius: 9999px; border: var(--border-thin) solid var(--divider); color: var(--muted); }
+
+/* content width: grows with the screen, at the container sizes of the system */
+.page { width: 100%; margin-inline: auto; max-width: var(--container-lg); padding-inline: max(var(--space-md), env(safe-area-inset-left)) max(var(--space-md), env(safe-area-inset-right)); }
+@media (min-width: 640px) { .page { padding-inline: var(--space-lg); } }
+@media (min-width: 1280px) { .page { max-width: var(--container-xl); } }
+@media (min-width: 1536px) { .page { max-width: var(--container-2xl); } }
+
+/* keyboard users always see where they are; mouse users do not get a ring on click */
+:focus-visible { outline: var(--border-medium) solid var(--primary); outline-offset: 2px; border-radius: var(--radius-lg); }
+input:focus-visible, textarea:focus-visible { outline-offset: 0; }
+.skip { position: absolute; left: var(--space-md); top: -100px; z-index: var(--z-notification); background: var(--card); color: var(--foreground); padding: var(--space-sm) var(--space-md); border-radius: var(--radius-xl); border: var(--border-thin) solid var(--divider); }
+.skip:focus { top: var(--space-md); }
 
 @keyframes dots { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
 @keyframes popin { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
-/* Keyboard users always see where they are; mouse users do not get a ring on click. */
-:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 6px; }
-input:focus-visible, textarea:focus-visible { outline-offset: 0; }
 
-/* ───── phones and touch ─────
-   Fingers need about 44px; text under 12px is hard to read outside a desk. These rules apply on narrow or touch screens only, so
-   the desktop layout is unchanged. Inline links get a larger hit area without changing how the line sits. */
-html { -webkit-text-size-adjust: 100%; }
-img, svg, video, canvas { max-width: 100%; }
-@media (max-width: 640px), (pointer: coarse) {
-  .btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; }
-  button.chip, a.chip { min-height: 40px; }
-  select, input { font-size: 16px; }                 /* below 16px, iOS Safari zooms the page when a field is focused */
-  main a.underline, main button.underline, header a.underline { display: inline-block; padding: .6rem .4rem; margin: -.6rem -.4rem; }
-  header nav a { padding-block: .6rem; }
-  input[type="checkbox"] { width: 20px; height: 20px; }
-}
-@media (max-width: 640px) {
-  .text-xs { font-size: .8125rem; line-height: 1.25rem; }
-  .text-\[11px\] { font-size: .75rem; }
-  .text-\[10px\] { font-size: .6875rem; }
-}
 /* scrolling tab rows: snap to a tab, hide the bar, keep momentum */
 .tabrow { overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
 .tabrow::-webkit-scrollbar { display: none; }
 .tabrow > * { scroll-snap-align: center; flex-shrink: 0; }
+
+/* ───────────────────────── phones and touch ─────────────────────────
+   Fingers need about 44px. These rules apply on narrow or touch screens only, so the desktop layout is unchanged.
+   Inline links get a larger hit area without changing how the line sits. */
+@media (max-width: 640px), (pointer: coarse) {
+  .btn, .btn.sm, .btn.lg { min-height: var(--size-touch); }
+  button.chip, a.chip, [role="tab"] { min-height: var(--size-md); }
+  select, input { font-size: 16px; }                 /* below 16px, iOS Safari zooms the page when a field is focused */
+  main a.underline, main button.underline, header a.underline { display: inline-block; padding: .6rem .4rem; margin: -.6rem -.4rem; }
+  header nav a { padding-block: 12px; }
+  input[type="checkbox"] { width: var(--icon-md); height: var(--icon-md); }
+}
+
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }

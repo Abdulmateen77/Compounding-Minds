@@ -2,7 +2,7 @@
 export function EvidenceLink() {
   return (
     <p className="m-0 text-sm mute">
-      Do these checks actually work? We tested them on 50 companies against what happened next: <a href="#/mubit" className="underline underline-offset-4" style={{ color: "var(--blue)" }}>see the track record</a>.
+      Do these checks actually work? We tested them on 50 companies against what happened next: <a href="#/mubit" className="underline underline-offset-4" style={{ color: "var(--primary)" }}>see the track record</a>.
     </p>
   );
 }

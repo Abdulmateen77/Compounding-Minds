@@ -31,21 +31,21 @@ export function ThinkingCards({ lenses, tl, t, unlocked, open, setOpen, onAsk }:
             <li key={l.key} className="contents">
               <button onClick={() => setOpen(i)} aria-haspopup="dialog"
                 className="card text-left p-3 grid gap-2 cursor-pointer"
-                style={{ color: "var(--text)", gridTemplateRows: "auto 7.25rem auto", borderColor: live ? c : undefined,
+                style={{ color: "var(--foreground)", gridTemplateRows: "auto 7.25rem auto", borderColor: live ? c : undefined,
                   boxShadow: live ? `0 0 0 1px ${c}` : undefined, transition: "border-color .4s, box-shadow .4s" }}>
                 <span className="flex items-center gap-2 min-w-0">
                   <Avatar l={l} size={38} ring={live || voted ? c : undefined} />
                   <span className="grid leading-tight min-w-0">
                     <span className="font-semibold text-sm truncate">{l.name}</span>
-                    <span className="mute text-[11px] truncate">{st === "idle" ? "Waiting their turn" : st === "thinking" ? "Working through their checks" : st === "speaking" ? "Giving their reading" : `${pass} of ${known} checks passed`}</span>
+                    <span className="mute text-xs truncate">{st === "idle" ? "Waiting their turn" : st === "thinking" ? "Working through their checks" : st === "speaking" ? "Giving their reading" : `${pass} of ${known} checks passed`}</span>
                   </span>
                 </span>
                 <span className="overflow-hidden">
                   <Thinking key={st} l={l} i={i} st={st} tl={tl} t={t} />
                 </span>
-                <span className="grid gap-0.5 text-xs pt-1.5" style={{ borderTop: "1px solid var(--line)" }}>
-                  <span>Vote: <b style={{ color: voted ? c : "var(--mute)", transition: "color .4s" }}>{voted ? (l.decision?.label ?? l.word) : "not yet"}</b></span>
-                  <span style={{ color: "var(--blue)" }}>See their analysis</span>
+                <span className="grid gap-1 text-xs pt-2" style={{ borderTop: "1px solid var(--divider)" }}>
+                  <span>Vote: <b style={{ color: voted ? c : "var(--muted)", transition: "color .4s" }}>{voted ? (l.decision?.label ?? l.word) : "not yet"}</b></span>
+                  <span style={{ color: "var(--primary)" }}>See their analysis</span>
                 </span>
               </button>
             </li>
@@ -76,8 +76,8 @@ function Thinking({ l, i, st, tl, t }: { l: Lens; i: number; st: string; tl: Tim
   const M = MARK[k.result];
   return (
     <span className="grid gap-1 text-xs leading-snug" style={fade}>
-      <span className="h-1 rounded-full overflow-hidden" style={{ background: "var(--line)" }} aria-hidden>
-        <span className="block h-full" style={{ width: `${Math.min(1, (s.done + (s.current != null ? s.phase : 0)) / m) * 100}%`, background: "var(--blue)", transition: "width .25s linear" }} />
+      <span className="h-1 rounded-full overflow-hidden" style={{ background: "var(--divider)" }} aria-hidden>
+        <span className="block h-full" style={{ width: `${Math.min(1, (s.done + (s.current != null ? s.phase : 0)) / m) * 100}%`, background: "var(--primary)", transition: "width .25s linear" }} />
       </span>
       <span style={clamp(2)}><span className="mute">Check {at + 1} of {m}:</span> {checkLabel(k)}</span>
       <span key={`${at}-${asking}`} style={{ ...fade, ...clamp(3) }}>

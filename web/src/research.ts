@@ -42,9 +42,9 @@ export type Candidate = { cik: number; name: string; ticker: string; exchange: s
 export type SearchResult = { query: string; results: Candidate[]; message: string | null };
 
 export const TONE = {
-  good: { word: "Strength", color: "var(--green)" },
-  watch: { word: "Worth watching", color: "var(--amber)" },
-  warn: { word: "Concern", color: "var(--red)" },
+  good: { word: "Strength", color: "var(--success)" },
+  watch: { word: "Worth watching", color: "var(--warning)" },
+  warn: { word: "Concern", color: "var(--error)" },
 } as const;
 
 export function money(v: number, digits = 1): string {
@@ -107,4 +107,4 @@ export type Outlook = {
   price: number | null; base_value_in_5y: number | null; return_if_price_meets_base: number | null;
   verdict: { tone: "good" | "watch" | "warn"; headline: string; why: string };
 };
-export const CALL_COLOR = { invest: "var(--green)", wait: "var(--amber)", avoid: "var(--red)" } as const;
+export const CALL_COLOR = { invest: "var(--success)", wait: "var(--warning)", avoid: "var(--error)" } as const;

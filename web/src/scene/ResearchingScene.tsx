@@ -51,7 +51,7 @@ export default function ResearchingScene({ name, step, seconds, onFail, demo = f
       className="relative overflow-hidden select-none"
       style={{
         background: "#121831", aspectRatio: "16 / 9",
-        ...(demo ? { width: "min(100vw, calc(100vh * 16 / 9))", margin: "0 auto" } : { borderRadius: 16, border: "1px solid var(--line)", minHeight: 380 }),
+        ...(demo ? { width: "min(100vw, calc(100vh * 16 / 9))", margin: "0 auto" } : { borderRadius: 16, border: "1px solid var(--divider)", minHeight: 380 }),
       }}
       role="group" aria-label="The investors are researching the company">
       <Canvas shadows dpr={[1, 2]} camera={{ fov: 35, position: [0, 3.6, 11], near: 0.1, far: 60 }} gl={{ antialias: true, powerPreference: "high-performance" }}
@@ -61,13 +61,13 @@ export default function ResearchingScene({ name, step, seconds, onFail, demo = f
       </Canvas>
 
       <div className="absolute left-3 top-3 rounded-xl p-3 grid gap-2 max-w-[min(22rem,60%)]" role="status" aria-live="polite"
-        style={{ background: "color-mix(in srgb, var(--panel) 92%, transparent)", border: "1px solid var(--line)" }}>
+        style={{ background: "color-mix(in srgb, var(--card) 92%, transparent)", border: "1px solid var(--divider)" }}>
         <div className={`font-semibold ${demo ? "text-base" : "text-sm"}`}>Researching {name ?? "the company"}…</div>
-        <ol className={`m-0 p-0 list-none grid gap-1.5 ${demo ? "text-sm" : "text-xs"}`}>
+        <ol className={`m-0 p-0 list-none grid gap-2 ${demo ? "text-sm" : "text-xs"}`}>
           {RESEARCH_STEPS.map((s, k) => (
             <li key={s} className="flex items-center gap-2" style={{ opacity: k <= stepNow ? 1 : 0.4 }} aria-current={k === stepNow ? "step" : undefined}>
-              <span aria-hidden className="inline-grid place-items-center w-4 h-4 rounded-full text-[10px] shrink-0"
-                style={{ background: k < stepNow ? "var(--green)" : "var(--panel2)", color: k < stepNow ? "#06210f" : "var(--mute)" }}>{k < stepNow ? "✓" : k === stepNow ? "…" : ""}</span>
+              <span aria-hidden className="inline-grid place-items-center w-4 h-4 rounded-full text-xs shrink-0"
+                style={{ background: k < stepNow ? "var(--success)" : "var(--card-alt)", color: k < stepNow ? "var(--on-success)" : "var(--muted)" }}>{k < stepNow ? "✓" : k === stepNow ? "…" : ""}</span>
               <span>{s}</span>
               <span className="sr-only">{k < stepNow ? "done" : k === stepNow ? "in progress" : "waiting"}</span>
             </li>
@@ -76,14 +76,14 @@ export default function ResearchingScene({ name, step, seconds, onFail, demo = f
       </div>
 
       <div className="absolute left-3 bottom-4 right-3 flex items-end justify-between gap-3 pointer-events-none">
-        <div className={`rounded-lg px-3 py-2 ${demo ? "text-base" : "text-sm"}`} style={{ background: "color-mix(in srgb, var(--panel) 88%, transparent)", border: "1px solid var(--line)", maxWidth: "70%" }}>
+        <div className={`rounded-lg px-3 py-2 ${demo ? "text-base" : "text-sm"}`} style={{ background: "color-mix(in srgb, var(--card) 88%, transparent)", border: "1px solid var(--divider)", maxWidth: "70%" }}>
           <b>{RESEARCH_STEPS[stepNow]}</b>
           <span className="mute"> · the first lookup takes 20 to 30 seconds. Later ones are instant.</span>
         </div>
-        <span className="num text-xs rounded-lg px-2 py-1" style={{ background: "color-mix(in srgb, var(--panel) 88%, transparent)", color: "var(--mute)" }}>{mmss(seconds)} elapsed</span>
+        <span className="num text-xs rounded-lg px-2 py-1" style={{ background: "color-mix(in srgb, var(--card) 88%, transparent)", color: "var(--muted)" }}>{mmss(seconds)} elapsed</span>
       </div>
-      <div className="absolute left-0 right-0 bottom-0 h-1 pointer-events-none" style={{ background: "color-mix(in srgb, var(--line) 60%, transparent)" }} role="progressbar" aria-label="Estimated progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-        <div style={{ width: `${pct}%`, height: "100%", background: "var(--blue)", transition: "width 1s linear" }} />
+      <div className="absolute left-0 right-0 bottom-0 h-1 pointer-events-none" style={{ background: "color-mix(in srgb, var(--divider) 60%, transparent)" }} role="progressbar" aria-label="Estimated progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+        <div style={{ width: `${pct}%`, height: "100%", background: "var(--primary)", transition: "width 1s linear" }} />
       </div>
     </div>
   );

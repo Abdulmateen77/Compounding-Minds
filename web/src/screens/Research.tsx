@@ -34,9 +34,9 @@ function Landing() {
 
   return (
     <div className="grid gap-8">
-      <section className="card p-6 md:p-10 grid gap-6" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--blue) 10%, var(--panel)), var(--panel))" }}>
+      <section className="card p-6 md:p-10 grid gap-6" style={{ background: "linear-gradient(135deg, color-mix(in srgb, var(--primary) 10%, var(--card)), var(--card))" }}>
         <div className="max-w-2xl grid gap-3">
-          <h1 className="text-3xl md:text-5xl font-bold tracking-tight m-0 leading-tight">Is this company worth your money? Check the filings.</h1>
+          <h1 className="text-3xl md:text-5xl font-bold m-0">Is this company worth your money? Check the filings.</h1>
           <p className="m-0 text-base md:text-lg leading-relaxed mute">Type a company name or ticker. We read its SEC filings and show what a careful investor would look at.</p>
         </div>
 
@@ -75,7 +75,7 @@ function Loading({ name }: { name?: string }) {
       <ol className="m-0 p-0 list-none grid gap-2 text-sm">
         {RESEARCH_STEPS.map((s, k) => (
           <li key={s} className="flex items-center gap-3" style={{ opacity: k <= i ? 1 : 0.35 }}>
-            <span aria-hidden className="inline-grid place-items-center w-5 h-5 rounded-full text-xs" style={{ background: k < i ? "var(--green)" : "var(--panel2)", color: k < i ? "#06210f" : "var(--mute)" }}>{k < i ? "✓" : k === i ? "…" : ""}</span>
+            <span aria-hidden className="inline-grid place-items-center w-5 h-5 rounded-full text-xs" style={{ background: k < i ? "var(--success)" : "var(--card-alt)", color: k < i ? "var(--on-success)" : "var(--muted)" }}>{k < i ? "✓" : k === i ? "…" : ""}</span>
             {s}
           </li>
         ))}
@@ -85,8 +85,6 @@ function Loading({ name }: { name?: string }) {
     </div>
   );
 }
-
-const small = { padding: ".4rem .85rem", fontSize: ".8rem" } as const;   // the header actions are secondary to the company name
 
 const TABS: { id: ResearchView; label: string; hint: string }[] = [
   { id: "overview", label: "Overview", hint: "The short answer: is it any good, and what stands out" },
@@ -106,11 +104,11 @@ function TabBar({ cik, view }: { cik: string; view: ResearchView }) {
     box.scrollTo({ left: Math.max(0, left), behavior: "smooth" });   // scrolls the row itself, never the page
   }, [view]);
   return (
-    <nav ref={row} aria-label="Pages of this report" className="tabrow sticky top-0 z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 flex gap-1" style={{ background: "color-mix(in srgb, var(--bg) 88%, transparent)", backdropFilter: "blur(8px)", borderBottom: "1px solid var(--line)" }}>
+    <nav ref={row} aria-label="Pages of this report" className="tabrow sticky top-0 z-[var(--z-sticky)] -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 flex gap-1" style={{ background: "color-mix(in srgb, var(--background) 88%, transparent)", backdropFilter: "blur(8px)", borderBottom: "1px solid var(--divider)" }}>
       {TABS.map((t) => (
         <a key={t.id} href={researchHref(cik, t.id)} title={t.hint} aria-current={view === t.id ? "page" : undefined}
           className="px-4 py-2 rounded-lg text-sm font-medium no-underline whitespace-nowrap"
-          style={view === t.id ? { background: "var(--panel)", color: "var(--text)", boxShadow: "0 0 0 1px var(--line)" } : { color: "var(--mute)" }}>{t.label}</a>
+          style={view === t.id ? { background: "var(--card)", color: "var(--foreground)", boxShadow: "0 0 0 1px var(--divider)" } : { color: "var(--muted)" }}>{t.label}</a>
       ))}
     </nav>
   );
@@ -147,13 +145,13 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
       <header className="grid gap-2">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">{c.name}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold m-0">{c.name}</h1>
             <p className="mute m-0 mt-1 text-sm"><span className="num">{c.ticker}</span> · {c.exchange} · United States</p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <a className="btn ghost no-underline" style={small} href="#/">← Search again</a>
-            <button className="btn ghost" style={small} onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }); }}>{copied ? "Link copied" : "Copy link"}</button>
-            <button className="btn ghost" style={small} onClick={() => { fetch(`/api/research/company/${cik}?refresh=true`).then(() => q.refetch()); }}>Refresh data</button>
+            <a className="btn ghost sm no-underline" href="#/">← Search again</a>
+            <button className="btn ghost sm" onClick={() => { navigator.clipboard?.writeText(window.location.href).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }); }}>{copied ? "Link copied" : "Copy link"}</button>
+            <button className="btn ghost sm" onClick={() => { fetch(`/api/research/company/${cik}?refresh=true`).then(() => q.refetch()); }}>Refresh data</button>
           </div>
         </div>
         <DataSource r={r} />

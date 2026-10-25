@@ -91,7 +91,7 @@ export default function Run({ id }: { id: string }) {
   return (
     <div>
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <h1 className="text-2xl md:text-3xl font-bold tracking-tight m-0">The committee is working</h1>
+        <h1 className="text-2xl md:text-3xl font-bold m-0">The committee is working</h1>
         {!scene && (
           <span className="flex gap-2">
             <button className="btn ghost" onClick={() => { setFlipped(false); setMode("3d"); }} disabled={!hasWebGL()}>3D scene</button>
@@ -121,7 +121,7 @@ export default function Run({ id }: { id: string }) {
                 <li key={s.id} className="flex gap-3 items-start">
                   <motion.span animate={{ scale: st === "start" ? [1, 1.25, 1] : 1 }} transition={{ repeat: st === "start" ? Infinity : 0, duration: 1.1 }}
                     className="mt-1 w-3 h-3 rounded-full shrink-0"
-                    style={{ background: st === "done" ? "var(--green)" : st === "start" ? "var(--blue)" : "var(--line)" }} />
+                    style={{ background: st === "done" ? "var(--success)" : st === "start" ? "var(--primary)" : "var(--divider)" }} />
                   <div><div className="font-medium" style={{ opacity: st === "idle" ? 0.45 : 1 }}>{s.label}</div>
                     {detail[s.id] && <div className="mute text-sm">{detail[s.id]}</div>}</div>
                 </li>
@@ -144,8 +144,8 @@ export default function Run({ id }: { id: string }) {
           </div>
         </div>
       )}
-      {failed && !scene && <p style={{ color: "var(--red)" }} className="mt-4">The stream dropped. <button className="btn ghost" onClick={onDone}>Show result</button> <button className="btn ghost" onClick={onBack}>Back</button></p>}
-      {failed && scene && <p style={{ color: "var(--red)" }} className="mt-4">The stream dropped; showing what arrived. <button className="btn ghost" onClick={onBack}>Back</button></p>}
+      {failed && !scene && <p style={{ color: "var(--error)" }} className="mt-4">The stream dropped. <button className="btn ghost" onClick={onDone}>Show result</button> <button className="btn ghost" onClick={onBack}>Back</button></p>}
+      {failed && scene && <p style={{ color: "var(--error)" }} className="mt-4">The stream dropped; showing what arrived. <button className="btn ghost" onClick={onBack}>Back</button></p>}
     </div>
   );
 }

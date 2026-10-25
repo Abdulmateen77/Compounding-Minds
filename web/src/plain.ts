@@ -75,9 +75,9 @@ export const AGENTS: Record<string, AgentPlain> = {
 };
 
 export const SIGNAL = {
-  good: { word: "Good sign", color: "var(--green)" },
-  warn: { word: "Warning sign", color: "var(--red)" },
-  neutral: { word: "Neutral", color: "var(--amber)" },
+  good: { word: "Good sign", color: "var(--success)" },
+  warn: { word: "Warning sign", color: "var(--error)" },
+  neutral: { word: "Neutral", color: "var(--warning)" },
 } as const;
 
 export function plainAnswer(agent: string, answer: string) {

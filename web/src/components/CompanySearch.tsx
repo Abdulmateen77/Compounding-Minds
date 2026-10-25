@@ -44,16 +44,16 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
         role="combobox" aria-expanded={showing} aria-controls={list} aria-autocomplete="list" aria-label="Search a company by name or ticker"
         aria-activedescendant={showing && results[active] ? `${list}-${active}` : undefined} autoComplete="off" spellCheck={false}
         placeholder={compact ? "Search a company or ticker" : "Company name or ticker, for example Tesla or TSLA"}
-        className={`card w-full outline-none ${compact ? "px-3 py-2 text-sm" : "px-5 py-4 text-lg"}`} style={{ color: "var(--text)", borderColor: compact ? undefined : "var(--blue)" }} />
+        className={`card w-full outline-none ${compact ? "px-4 min-h-10 text-sm" : "px-5 min-h-12 text-lg"}`} style={{ color: "var(--foreground)", borderColor: compact ? undefined : "var(--primary)" }} />
       {showing && (
-        <div id={list} role="listbox" aria-label="Matching companies" className={`card absolute mt-2 z-30 overflow-hidden ${compact ? "right-0 w-[min(92vw,22rem)]" : "left-0 right-0"}`} style={{ boxShadow: "0 12px 40px rgba(0,0,0,.25)" }}>
+        <div id={list} role="listbox" aria-label="Matching companies" className={`card absolute mt-2 z-[var(--z-popover)] overflow-hidden ${compact ? "right-0 w-[min(92vw,22rem)]" : "left-0 right-0"}`} style={{ boxShadow: "0 12px 40px rgba(0,0,0,.25)" }}>
           {s.isLoading && <div className="p-4 mute text-sm" role="status">Searching the SEC company list…</div>}
-          {s.isError && <div className="p-4 text-sm" role="alert" style={{ color: "var(--red)" }}>Could not reach the search. Is the API running?</div>}
+          {s.isError && <div className="p-4 text-sm" role="alert" style={{ color: "var(--error)" }}>Could not reach the search. Is the API running?</div>}
           {results.map((c, i) => (
             <div key={c.cik} id={`${list}-${i}`} role="option" aria-selected={i === active} tabIndex={-1}
               onMouseDown={(e) => e.preventDefault()} onClick={() => pick(c)} onMouseEnter={() => setActive(i)}
               className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 cursor-pointer"
-              style={{ color: "var(--text)", borderBottom: "1px solid var(--line)", background: i === active ? "var(--panel2)" : "transparent" }}>
+              style={{ color: "var(--foreground)", borderBottom: "1px solid var(--divider)", background: i === active ? "var(--card-alt)" : "transparent" }}>
               <span><span className="font-semibold">{c.name}</span> <span className="num mute text-sm">{c.ticker}</span></span>
               {!compact && <span className="chip">{c.exchange ?? "US"} · United States</span>}
             </div>
@@ -70,7 +70,7 @@ const OPEN: { id: ResearchView; label: string; hint: string }[] = [
   { id: "investors", label: "Investor panel", hint: "The investors debate it face to face, and you can question each one" },
 ];
 
-const chipStyle = (on: boolean) => (on ? { color: "var(--text)", borderColor: "var(--blue)", background: "color-mix(in srgb, var(--blue) 14%, transparent)" } : undefined);
+const chipStyle = (on: boolean) => (on ? { color: "var(--foreground)", borderColor: "var(--primary)", background: "color-mix(in srgb, var(--primary) 14%, transparent)" } : undefined);
 
 /** What to open and how fast the investor panel plays, chosen at search time and remembered in this browser. */
 export function SearchOptions() {
@@ -80,14 +80,14 @@ export function SearchOptions() {
       <div role="group" aria-label="Open the company as" className="flex items-center gap-2 flex-wrap">
         <span className="mute text-xs">Open as</span>
         {OPEN.map((o) => (
-          <button key={o.id} type="button" className="chip cursor-pointer" style={{ minHeight: 34, ...chipStyle(p.open === o.id) }} title={o.hint}
+          <button key={o.id} type="button" className="chip cursor-pointer" style={{ minHeight: 40, ...chipStyle(p.open === o.id) }} title={o.hint}
             aria-pressed={p.open === o.id} onClick={() => setPrefs({ open: o.id })}>{p.open === o.id ? "✓ " : ""}{o.label}</button>
         ))}
       </div>
       <div role="group" aria-label="Investor panel speed" className="flex items-center gap-2">
         <span className="mute text-xs">Panel speed</span>
         {SPEEDS.map((s) => (
-          <button key={s} type="button" className="chip cursor-pointer num" style={{ minHeight: 34, ...chipStyle(p.speed === s) }}
+          <button key={s} type="button" className="chip cursor-pointer num" style={{ minHeight: 40, ...chipStyle(p.speed === s) }}
             aria-pressed={p.speed === s} onClick={() => setPrefs({ speed: s })}>{s}x</button>
         ))}
       </div>

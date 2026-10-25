@@ -5,6 +5,7 @@ import { api, pct, type Correction, type HeldOutReport, type Score, type TrackRe
 import { ErrorBox, Skeleton, StubChip } from "../components/bits";
 import { go, mubitHref } from "../route";
 import { EvidencePanel } from "./ResearchAnalysis";
+import { DUR } from "../motion";
 
 const AGENTS = ["fundamentals", "risk", "scenarios"] as const; // the MVP committee; Valuation is a stretch agent
 const ROLE: Record<string, string> = { fundamentals: "Fundamentals", valuation: "Valuation", moat: "Moat", risk: "Risk", scenarios: "Scenarios" };
@@ -32,16 +33,16 @@ export default function Mubit({ agent }: { agent?: string }) {
     <div className="grid gap-6">
       <div>
         <div className="flex items-center gap-3 flex-wrap">
-          <h1 className="text-3xl md:text-4xl font-bold tracking-tight m-0">Track record</h1>
+          <h1 className="text-3xl md:text-4xl font-bold m-0">Track record</h1>
           {health.data?.stub !== false && tab === "learning" && <StubChip />}
         </div>
         <p className="mute mt-2 mb-0 max-w-2xl">Two tests of whether this can be trusted: do the checks tell good businesses from weak ones, and do the AI analysts improve when they are wrong?</p>
       </div>
 
-      <div role="tablist" aria-label="Track record" className="flex gap-1 p-1 rounded-xl justify-self-start max-w-full tabrow" style={{ background: "var(--panel2)", border: "1px solid var(--line)" }}>
+      <div role="tablist" aria-label="Track record" className="flex gap-1 p-1 rounded-xl justify-self-start max-w-full tabrow" style={{ background: "var(--card-alt)", border: "1px solid var(--divider)" }}>
         {([["checks", "Do the checks work?"], ["learning", "Do the analysts learn?"]] as const).map(([id, label]) => (
           <button key={id} role="tab" aria-selected={tab === id} onClick={() => setTab(id)} className="px-4 py-2 rounded-lg text-sm font-medium cursor-pointer border-0 whitespace-nowrap"
-            style={tab === id ? { background: "var(--panel)", color: "var(--text)", boxShadow: "0 0 0 1px var(--line)" } : { background: "transparent", color: "var(--mute)" }}>{label}</button>
+            style={tab === id ? { background: "var(--card)", color: "var(--foreground)", boxShadow: "0 0 0 1px var(--divider)" } : { background: "transparent", color: "var(--muted)" }}>{label}</button>
         ))}
       </div>
 
@@ -57,7 +58,7 @@ export default function Mubit({ agent }: { agent?: string }) {
           <section aria-label="Summary" className="grid gap-3 grid-cols-2 md:grid-cols-4">
             <Kpi label="Corrections applied" value={String(corrections)} note="across all analysts" />
             <Kpi label="Calls graded" value={String(graded)} note="against later filings" />
-            <Kpi label="Accuracy, learning" value={learnedNow == null ? "n/a" : pct(learnedNow)} note={lift == null ? undefined : `${lift >= 0 ? "+" : ""}${lift} pts vs frozen twin`} accent="var(--green)" />
+            <Kpi label="Accuracy, learning" value={learnedNow == null ? "n/a" : pct(learnedNow)} note={lift == null ? undefined : `${lift >= 0 ? "+" : ""}${lift} pts vs frozen twin`} accent="var(--success)" />
             <Kpi label="Average Brier score" value={brier == null ? "n/a" : brier.toFixed(2)} note="lower is better" />
           </section>
 
@@ -72,11 +73,11 @@ export default function Mubit({ agent }: { agent?: string }) {
                     const j = e.key === "ArrowRight" ? (i + 1) % n : e.key === "ArrowLeft" ? (i + n - 1) % n : -1;
                     if (j >= 0) { e.preventDefault(); go(mubitHref(data[j].agent)); setTimeout(() => document.getElementById(`tab-${data[j].agent}`)?.focus(), 0); }
                   }}
-                  className="card text-left p-4 cursor-pointer" style={{ color: "var(--text)", borderColor: on ? "var(--blue)" : undefined, background: on ? "var(--panel2)" : undefined }}>
+                  className="card text-left p-4 cursor-pointer" style={{ color: "var(--foreground)", borderColor: on ? "var(--primary)" : undefined, background: on ? "var(--card-alt)" : undefined }}>
                   <div className="font-semibold">{d.investor}</div>
                   <div className="mute text-xs">{ROLE[d.agent] ?? d.agent} analyst</div>
                   <div className="num text-xl font-semibold mt-3">{d.accuracy == null ? "n/a" : pct(d.accuracy)}</div>
-                  <div className="num text-[11px] mute truncate" title={d.model_version ?? undefined}>{d.model_version ?? "version n/a"}</div>
+                  <div className="num text-xs mute truncate" title={d.model_version ?? undefined}>{d.model_version ?? "version n/a"}</div>
                 </button>
               );
             })}
@@ -85,7 +86,7 @@ export default function Mubit({ agent }: { agent?: string }) {
           {sel && (
             <AnimatePresence mode="wait">
               <motion.div key={sel.agent} id="agent-panel" role="tabpanel" aria-labelledby={`tab-${sel.agent}`} tabIndex={0}
-                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="grid gap-4 lg:grid-cols-[1.25fr_1fr] items-start">
+                initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: DUR.base }} className="grid gap-4 lg:grid-cols-[1.25fr_1fr] items-start">
                 <AgentDetail d={sel} />
                 <Story c={sel.last_correction ?? null} d={sel} />
               </motion.div>
@@ -125,7 +126,7 @@ function HeldOut() {
       <div role="tablist" aria-label="Companies" className="flex gap-2 mb-3 flex-wrap">
         {SEGMENTS.map(([k, label]) => (
           <button key={k} role="tab" aria-selected={seg === k} onClick={() => setSeg(k)} className="chip cursor-pointer"
-            style={{ borderColor: seg === k ? "var(--blue)" : undefined, color: seg === k ? "var(--text)" : undefined }}>{label}</button>
+            style={{ borderColor: seg === k ? "var(--primary)" : undefined, color: seg === k ? "var(--foreground)" : undefined }}>{label}</button>
         ))}
       </div>
       <div className="overflow-x-auto">
@@ -141,12 +142,12 @@ function HeldOut() {
               const d = s.learned_minus_frozen.accuracy;
               const naive = Object.entries(s.baselines).find(([k]) => k !== "base_rate")?.[1];
               return (
-                <tr key={agent} className="border-t" style={{ borderColor: "var(--line)" }}>
+                <tr key={agent} className="border-t" style={{ borderColor: "var(--divider)" }}>
                   <td className="py-2 pr-4" style={{ fontFamily: "inherit" }}>{ROLE[agent] ?? agent}</td>
                   <td className="pr-4">{s.n}</td>
-                  <td className="pr-4" style={{ color: "var(--green)" }}>{acc(s.learned)}</td>
+                  <td className="pr-4" style={{ color: "var(--success)" }}>{acc(s.learned)}</td>
                   <td className="pr-4">{acc(s.frozen)}</td>
-                  <td className="pr-4" style={{ color: d == null ? undefined : d >= 0 ? "var(--green)" : "var(--red)" }}>
+                  <td className="pr-4" style={{ color: d == null ? undefined : d >= 0 ? "var(--success)" : "var(--error)" }}>
                     {d == null ? "n/a" : `${d >= 0 ? "+" : ""}${Math.round(d * 1000) / 10} pts`}</td>
                   <td className="pr-4">{acc(naive)}</td>
                   <td>{acc(s.baselines.base_rate)}</td>
@@ -186,7 +187,7 @@ function AgentDetail({ d }: { d: TrackRecord }) {
       </div>
       <Curve d={d} />
       <div className="mute text-xs mt-2 flex gap-5 flex-wrap">
-        <span style={{ color: "var(--green)" }}>Learns with Mubit{l != null && <span className="num"> {pct(l)}</span>}</span>
+        <span style={{ color: "var(--success)" }}>Learns with Mubit{l != null && <span className="num"> {pct(l)}</span>}</span>
         <span>Frozen twin{f != null && <span className="num"> {pct(f)}</span>}</span>
         <span>Rolling accuracy by quarter</span>
       </div>
@@ -213,15 +214,15 @@ function Curve({ d }: { d: TrackRecord }) {
   return (
     <svg viewBox={`0 0 ${W} ${H}`} className="w-full mt-4" role="img" aria-label={desc}>
       {[0, 0.5, 1].map((g) => (
-        <g key={g}><line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="var(--line)" strokeDasharray={g === 0.5 ? "3 4" : undefined} />
-          <text x={L - 6} y={y(g)} textAnchor="end" dominantBaseline="central" fontSize="11" fill="var(--mute)" className="num">{Math.round(g * 100)}%</text></g>
+        <g key={g}><line x1={L} x2={W - R} y1={y(g)} y2={y(g)} stroke="var(--divider)" strokeDasharray={g === 0.5 ? "3 4" : undefined} />
+          <text x={L - 6} y={y(g)} textAnchor="end" dominantBaseline="central" fontSize="11" fill="var(--muted)" className="num">{Math.round(g * 100)}%</text></g>
       ))}
-      {yrs.map((o) => <text key={o.i} x={x(o.i)} y={H - 6} fontSize="11" fill="var(--mute)" textAnchor="middle" className="num">{o.q}</text>)}
-      {area && <polygon points={area} fill="var(--green)" opacity="0.12" />}
-      {fz && <polyline points={pts(fz)} fill="none" stroke="var(--mute)" strokeWidth="1.8" strokeDasharray="5 4" />}
-      <motion.polyline points={pts(d.learned)} fill="none" stroke="var(--green)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"
-        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1 }} />
-      <circle cx={x(n - 1)} cy={y(d.learned[n - 1])} r="4" fill="var(--green)" />
+      {yrs.map((o) => <text key={o.i} x={x(o.i)} y={H - 6} fontSize="11" fill="var(--muted)" textAnchor="middle" className="num">{o.q}</text>)}
+      {area && <polygon points={area} fill="var(--success)" opacity="0.12" />}
+      {fz && <polyline points={pts(fz)} fill="none" stroke="var(--muted)" strokeWidth="1.8" strokeDasharray="5 4" />}
+      <motion.polyline points={pts(d.learned)} fill="none" stroke="var(--success)" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round"
+        initial={{ pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: DUR.slower }} />
+      <circle cx={x(n - 1)} cy={y(d.learned[n - 1])} r="4" fill="var(--success)" />
     </svg>
   );
 }
@@ -233,7 +234,7 @@ function Story({ c, d }: { c: Correction | null; d: TrackRecord }) {
     <section className="card p-5" aria-label="What it learned">
       <h2 className="text-lg font-semibold m-0">What {d.investor} learned</h2>
       <p className="mute text-xs mt-1 mb-4">Latest correction, <span className="num">{c.as_of}</span></p>
-      <ol className="list-none m-0 p-0 grid gap-4" style={{ borderLeft: "2px solid var(--line)" }}>
+      <ol className="list-none m-0 p-0 grid gap-4" style={{ borderLeft: "2px solid var(--divider)" }}>
         <Step k="The call">Predicted <b>{c.predicted ?? "n/a"}</b></Step>
         <Step k="What happened"><b>{c.actual ?? "n/a"}</b>{c.error_type ? <span className="mute"> ({c.error_type.replaceAll("_", " ")})</span> : null}</Step>
         <Step k="The lesson">{c.lesson ?? c.summary}</Step>
@@ -249,7 +250,7 @@ function Story({ c, d }: { c: Correction | null; d: TrackRecord }) {
 }
 const Step = ({ k, children }: { k: string; children: React.ReactNode }) => (
   <li className="pl-4 relative">
-    <span className="absolute w-2.5 h-2.5 rounded-full" style={{ left: -6, top: 6, background: "var(--blue)" }} aria-hidden />
+    <span className="absolute w-2.5 h-2.5 rounded-full" style={{ left: -6, top: 6, background: "var(--primary)" }} aria-hidden />
     <div className="mute text-xs">{k}</div><div className="text-sm">{children}</div>
   </li>
 );

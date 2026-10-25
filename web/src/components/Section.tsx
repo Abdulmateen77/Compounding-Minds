@@ -23,7 +23,7 @@ export function Explain({ children, label = "How this works" }: { children: Reac
   const id = useId();
   return (
     <div className="text-xs">
-      <button type="button" className="bg-transparent border-0 p-0 cursor-pointer underline underline-offset-4" style={{ color: "var(--blue)" }}
+      <button type="button" className="bg-transparent border-0 p-0 cursor-pointer underline underline-offset-4" style={{ color: "var(--primary)" }}
         aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}>{open ? "Hide" : label}</button>
       {open && <div id={id} className="mute leading-relaxed mt-1 max-w-3xl grid gap-1">{children}</div>}
     </div>
@@ -41,8 +41,8 @@ export function Disclosure({ title, summary, count, defaultOpen = false, level =
     <section className="card">
       <H className="m-0">
         <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((o) => !o)}
-          className="w-full text-left bg-transparent border-0 cursor-pointer p-4 md:px-5 flex items-start gap-3" style={{ color: "var(--text)" }}>
-          <span aria-hidden className="mute mt-1 inline-block w-3 shrink-0 text-xs" style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform .15s" }}>▶</span>
+          className="w-full text-left bg-transparent border-0 cursor-pointer p-4 md:px-5 flex items-start gap-3" style={{ color: "var(--foreground)" }}>
+          <span aria-hidden className="mute mt-1 inline-block w-3 shrink-0 text-xs" style={{ transform: open ? "rotate(90deg)" : "none", transition: "transform var(--duration-fast)" }}>▶</span>
           <span className="grid gap-1 min-w-0 flex-1">
             <span className="flex items-baseline gap-2 flex-wrap">
               <span className={level === 2 ? "text-lg font-semibold" : "text-base font-semibold"}>{title}</span>

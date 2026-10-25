@@ -41,10 +41,10 @@ export const api = {
 };
 
 export const LABELS = {
-  investable: { text: "Investable on evidence", color: "var(--green)" },
-  watch: { text: "Watch", color: "var(--amber)" },
-  not_investable: { text: "Not investable on evidence", color: "var(--red)" },
+  investable: { text: "Investable on evidence", color: "var(--success)" },
+  watch: { text: "Watch", color: "var(--warning)" },
+  not_investable: { text: "Not investable on evidence", color: "var(--error)" },
 } as const;
 
-export const STANCE_COLOR = { for: "var(--green)", neutral: "var(--amber)", against: "var(--red)" } as const;
+export const STANCE_COLOR = { for: "var(--success)", neutral: "var(--warning)", against: "var(--error)" } as const;
 export const pct = (x: number) => `${Math.round(x * 100)}%`;

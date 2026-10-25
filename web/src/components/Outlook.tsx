@@ -24,7 +24,7 @@ export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Mar
     <section className="grid gap-3">
       <Head title="The next five years" blurb="Where the business could be, and what each share would then be worth. A view of value, not a forecast of the share price."
         more={<p className="m-0">Worked out from every figure on the Financials page. The share price can stay far from the business's value for years.</p>} />
-      <div className="card p-5 grid gap-5" style={{ borderColor: `color-mix(in srgb, ${color} 40%, var(--line))` }}>
+      <div className="card p-5 grid gap-5" style={{ borderColor: `color-mix(in srgb, ${color} 40%, var(--divider))` }}>
         <div className="grid gap-1">
           <p className="m-0 text-lg font-semibold" style={{ color }}>{v.headline}</p>
           <p className="m-0 text-sm leading-relaxed max-w-3xl">{v.why}</p>
@@ -44,15 +44,15 @@ export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Mar
             <div style={{ height: 300 }}>
               <ResponsiveContainer>
                 <LineChart data={rows} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-                  <CartesianGrid stroke="var(--line)" vertical={false} />
-                  <XAxis dataKey="t" type="number" domain={["dataMin", "dataMax"]} tickFormatter={(t) => String(Math.floor(t))} stroke="var(--mute)" fontSize={12} />
-                  <YAxis stroke="var(--mute)" fontSize={12} tickFormatter={(x) => `$${Math.round(x)}`} width={56} />
-                  <Tooltip formatter={(x) => usd(Number(x))} labelFormatter={(t) => String(Math.floor(Number(t)))} contentStyle={{ background: "var(--panel)", border: "1px solid var(--line)", borderRadius: 12 }} />
+                  <CartesianGrid stroke="var(--divider)" vertical={false} />
+                  <XAxis dataKey="t" type="number" domain={["dataMin", "dataMax"]} tickFormatter={(t) => String(Math.floor(t))} stroke="var(--muted)" fontSize={12} />
+                  <YAxis stroke="var(--muted)" fontSize={12} tickFormatter={(x) => `$${Math.round(x)}`} width={56} />
+                  <Tooltip formatter={(x) => usd(Number(x))} labelFormatter={(t) => String(Math.floor(Number(t)))} contentStyle={{ background: "var(--card)", border: "1px solid var(--divider)", borderRadius: 12 }} />
                   <Legend />
-                  <Line dataKey="Price" stroke="var(--text)" dot={false} strokeWidth={2} connectNulls />
-                  <Line dataKey="Bull" stroke="var(--green)" dot={false} strokeDasharray="5 4" connectNulls />
-                  <Line dataKey="Base" stroke="var(--blue)" dot={false} strokeWidth={2.5} connectNulls />
-                  <Line dataKey="Bear" stroke="var(--red)" dot={false} strokeDasharray="5 4" connectNulls />
+                  <Line dataKey="Price" stroke="var(--foreground)" dot={false} strokeWidth={2} connectNulls />
+                  <Line dataKey="Bull" stroke="var(--success)" dot={false} strokeDasharray="5 4" connectNulls />
+                  <Line dataKey="Base" stroke="var(--primary)" dot={false} strokeWidth={2.5} connectNulls />
+                  <Line dataKey="Bear" stroke="var(--error)" dot={false} strokeDasharray="5 4" connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -74,7 +74,7 @@ export function OutlookBlock({ o, market, children }: { o: Outlook; market?: Mar
 
 function Stat({ big, label }: { big: string; label: string }) {
   return (
-    <div className="rounded-xl p-4 grid gap-1" style={{ background: "var(--panel2)" }}>
+    <div className="rounded-xl p-4 grid gap-1" style={{ background: "var(--card-alt)" }}>
       <span className="num text-2xl font-semibold">{big}</span>
       <span className="mute text-xs leading-snug">{label}</span>
     </div>

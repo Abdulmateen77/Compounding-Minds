@@ -13,10 +13,10 @@ export const checkLabel = (k: Check) => k.check.split(":")[0].trim();
 export const surname = (l: Lens) => l.name.trim().split(/\s+/).slice(-1)[0];
 
 export const MARK: Record<Check["result"], { mark: string; color: string }> = {
-  pass: { mark: "✓", color: "var(--green)" },
-  partial: { mark: "~", color: "var(--amber)" },
-  fail: { mark: "✗", color: "var(--red)" },
-  unknown: { mark: "?", color: "var(--mute)" },
+  pass: { mark: "✓", color: "var(--success)" },
+  partial: { mark: "~", color: "var(--warning)" },
+  fail: { mark: "✗", color: "var(--error)" },
+  unknown: { mark: "?", color: "var(--muted)" },
 };
 export const RESULT_WORD: Record<Check["result"], string> = { pass: "passes", partial: "partly passes", fail: "fails", unknown: "could not be tested" };
 

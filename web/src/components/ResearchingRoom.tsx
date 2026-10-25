@@ -36,7 +36,7 @@ export function ResearchingRoom({ cik, plain }: { cik: string; plain: (name?: st
       </Suspense>
     </Boundary>
   );
-  if (presenting) return <div className="fixed inset-0 z-50 grid place-items-center" style={{ background: "#05070d" }}>{room}</div>;
+  if (presenting) return <div className="fixed inset-0 z-[var(--z-modal)] grid place-items-center" style={{ background: "#05070d" }}>{room}</div>;
   return (
     <section className="grid gap-3" aria-label="Investor panel">
       <h2 className="text-xl font-semibold m-0">Investor panel: researching {name ?? "the company"}</h2>

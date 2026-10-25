@@ -10,21 +10,21 @@ export function PanelVerdict({ a, name, title }: { a: Analysis; name: string; ti
   const p = a.panel, o = a.overall;
   const color = p ? TONE[p.tone].color : TONE[o.tone].color;
   return (
-    <section className="card p-6 md:p-7 grid gap-4" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 12%, var(--panel)), var(--panel))`, borderColor: `color-mix(in srgb, ${color} 45%, var(--line))` }}>
+    <section className="card p-6 md:p-7 grid gap-4" style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 12%, var(--card)), var(--card))`, borderColor: `color-mix(in srgb, ${color} 45%, var(--divider))` }}>
       <div>
         <p className="mute text-sm m-0">{title} {name}</p>
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight my-1" style={{ color }}>{p?.headline ?? o.headline}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold my-1" style={{ color }}>{p?.headline ?? o.headline}</h2>
         <p className="m-0 max-w-3xl leading-relaxed">{p && <b>{o.headline}. </b>}{o.why}</p>
       </div>
       <div className="flex flex-wrap gap-2" aria-label="Each investor's call">
         {a.lenses.map((l) => (
-          <span key={l.key} className="flex items-center gap-1.5 text-sm">
+          <span key={l.key} className="flex items-center gap-2 text-sm">
             <span className="font-medium">{surname(l)}</span><CallChip l={l} />
           </span>
         ))}
       </div>
       {p && (
-        <div className="flex h-2 rounded-full overflow-hidden" aria-hidden style={{ background: "var(--line)" }}>
+        <div className="flex h-2 rounded-full overflow-hidden" aria-hidden style={{ background: "var(--divider)" }}>
           {(["invest", "wait", "avoid"] as const).map((k) => p.counts[k] > 0 && <div key={k} style={{ flex: p.counts[k], background: CALL_COLOR[k] }} />)}
         </div>
       )}
@@ -66,9 +66,9 @@ export function DebateVoices({ lenses }: { lenses: Lens[] }) {
           ? <button className="btn" disabled={!on} onClick={start} title={on ? "Play the debate" : "Voices are off: add ELEVENLABS_API_KEY to .env"}>Play</button>
           : <button className="btn ghost" onClick={stop}>Stop</button>}
       </div>
-      {!on && <p className="m-0 text-xs" style={{ color: "var(--amber)" }}>Voices are off. Add an ElevenLabs key to the server's .env (ELEVENLABS_API_KEY) to hear the debate.</p>}
+      {!on && <p className="m-0 text-xs" style={{ color: "var(--warning)" }}>Voices are off. Add an ElevenLabs key to the server's .env (ELEVENLABS_API_KEY) to hear the debate.</p>}
       {playing != null && <p className="m-0 text-sm"><b>{lines[playing].name}:</b> {lines[playing].text}</p>}
-      {err && <p className="m-0 text-xs" style={{ color: "var(--red)" }}>{err}</p>}
+      {err && <p className="m-0 text-xs" style={{ color: "var(--error)" }}>{err}</p>}
     </section>
   );
 }

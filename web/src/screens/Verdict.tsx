@@ -16,7 +16,7 @@ export default function Verdict({ id }: { id: string }) {
   const a = q.data, H = HEADLINE[a.label], name = a.company.name, when = longDate(a.as_of);
   const settled = a.committee.filter((v) => v.correct != null);
   const right = settled.filter((v) => v.correct).length;
-  const tone = a.label === "investable" ? "var(--green)" : a.label === "not_investable" ? "var(--red)" : "var(--amber)";
+  const tone = a.label === "investable" ? "var(--success)" : a.label === "not_investable" ? "var(--error)" : "var(--warning)";
 
   return (
     <div className="grid gap-8">
@@ -29,7 +29,7 @@ export default function Verdict({ id }: { id: string }) {
 
       {/* 1. Where we are in time, and the bottom line */}
       <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card overflow-hidden">
-        <div className="px-6 md:px-8 py-3 text-sm flex items-center gap-2 flex-wrap" style={{ background: "var(--panel2)", borderBottom: "1px solid var(--line)" }}>
+        <div className="px-6 md:px-8 py-3 text-sm flex items-center gap-2 flex-wrap" style={{ background: "var(--card-alt)", borderBottom: "1px solid var(--divider)" }}>
           <span className="font-semibold">Back to {when}.</span>
           <span className="mute">Three AI analysts studied {name} using only the filings public on that day. Below is what they concluded, then what really happened.</span>
           {a.stub && <StubChip />}
@@ -37,7 +37,7 @@ export default function Verdict({ id }: { id: string }) {
         <div className="p-6 md:p-8 grid gap-5">
           <div>
             <p className="mute m-0 text-sm">Does the evidence in {name}'s filings support investing?</p>
-            <h1 className="text-3xl md:text-4xl font-bold tracking-tight mt-1 mb-2" style={{ color: tone }}>{H.text}</h1>
+            <h1 className="text-3xl md:text-4xl font-bold mt-1 mb-2" style={{ color: tone }}>{H.text}</h1>
             <p className="m-0 text-base md:text-lg max-w-3xl leading-relaxed">{bottomLine(a.committee)}</p>
           </div>
           <div className="grid gap-3 sm:grid-cols-3">
@@ -45,7 +45,7 @@ export default function Verdict({ id }: { id: string }) {
               const p = plainAnswer(v.agent, v.answer), S = SIGNAL[p.signal];
               return (
                 <a key={v.agent} href={`#card-${v.agent}`} onClick={jumpTo(`card-${v.agent}`)} className="rounded-xl p-3 no-underline grid gap-1"
-                  style={{ background: `color-mix(in srgb, ${S.color} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${S.color} 35%, var(--line))`, color: "var(--text)" }}>
+                  style={{ background: `color-mix(in srgb, ${S.color} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${S.color} 35%, var(--divider))`, color: "var(--foreground)" }}>
                   <span className="text-xs mute">{AGENTS[v.agent]?.topic ?? v.agent} · {v.investor}</span>
                   <span className="font-semibold">{p.text}</span>
                   <span className="text-xs" style={{ color: S.color }}>{S.word}</span>
@@ -93,12 +93,12 @@ export default function Verdict({ id }: { id: string }) {
         ))}
       </section>
 
-      <a href={mubitHref()} className="card p-5 flex items-center justify-between gap-4 flex-wrap no-underline" style={{ color: "var(--text)" }}>
+      <a href={mubitHref()} className="card p-5 flex items-center justify-between gap-4 flex-wrap no-underline" style={{ color: "var(--foreground)" }}>
         <span>
           <span className="font-semibold block">How these analysts learn from their mistakes</span>
           <span className="mute text-sm">Every wrong prediction becomes a lesson the analyst reads next time. An identical copy that never learns runs alongside, so you can see whether the lessons help.</span>
         </span>
-        <span className="chip" style={{ color: "var(--blue)", borderColor: "var(--blue)" }}>See the track records</span>
+        <span className="chip" style={{ color: "var(--primary)", borderColor: "var(--primary)" }}>See the track records</span>
       </a>
     </div>
   );
@@ -109,8 +109,8 @@ function Prediction({ v, m, when, delay }: { v: AgentView; m?: MubitState; when:
   const p = plainAnswer(v.agent, v.answer), S = SIGNAL[p.signal];
   const reasons = v.reasoning.map(humanize);
   const verdict = v.correct == null ? null : v.correct
-    ? { word: "Came true", color: "var(--green)", mark: "✓" }
-    : { word: "Did not come true", color: "var(--red)", mark: "✗" };
+    ? { word: "Came true", color: "var(--success)", mark: "✓" }
+    : { word: "Did not come true", color: "var(--error)", mark: "✗" };
 
   return (
     <motion.article id={`card-${v.agent}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay }}
@@ -136,7 +136,7 @@ function Prediction({ v, m, when, delay }: { v: AgentView; m?: MubitState; when:
           <span className="font-medium">Why</span>
           <ul className="m-0 pl-5 grid gap-1">{(open ? reasons : reasons.slice(0, 2)).map((r) => <li key={r}>{r}</li>)}</ul>
           {reasons.length > 2 && (
-            <button className="justify-self-start text-sm mt-1" style={{ color: "var(--blue)", background: "none", border: 0, padding: 0, cursor: "pointer" }}
+            <button className="justify-self-start text-sm mt-1" style={{ color: "var(--primary)", background: "none", border: 0, padding: 0, cursor: "pointer" }}
               onClick={() => setOpen(!open)} aria-expanded={open}>
               {open ? "Show less" : `Show all ${reasons.length} reasons`}
             </button>
@@ -146,14 +146,14 @@ function Prediction({ v, m, when, delay }: { v: AgentView; m?: MubitState; when:
           <div className="flex flex-wrap gap-2">
             {v.evidence.map((e) => (
               <span key={e.metric} className="chip" title={e.accession ? `SEC filing ${e.accession}` : "Computed in Python from stored filings"}>
-                {metricLabel(e.metric)} <span className="num" style={{ color: "var(--text)" }}>{metricValue(e.metric, e.value)}</span>
+                {metricLabel(e.metric)} <span className="num" style={{ color: "var(--foreground)" }}>{metricValue(e.metric, e.value)}</span>
               </span>
             ))}
           </div>
         )}
       </div>
 
-      <div className="p-5 md:p-6 grid gap-2 content-start" style={{ background: "var(--panel2)", borderLeft: "1px dashed var(--line)" }}>
+      <div className="p-5 md:p-6 grid gap-2 content-start" style={{ background: "var(--card-alt)", borderLeft: "1px dashed var(--divider)" }}>
         <span className="text-xs mute">What actually happened</span>
         {verdict ? (
           <>

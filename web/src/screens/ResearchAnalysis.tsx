@@ -7,23 +7,23 @@ import { TONE, money, pctOf, type Analysis, type Check, type Lens, type QuickChe
    computed in Python (research/analysis.py). Nothing on this page is written by a model. */
 
 const CHECK = {
-  pass: { mark: "✓", color: "var(--green)", word: "Passes" },
-  partial: { mark: "~", color: "var(--amber)", word: "Partly" },
-  fail: { mark: "✗", color: "var(--red)", word: "Fails" },
-  unknown: { mark: "?", color: "var(--mute)", word: "No data" },
+  pass: { mark: "✓", color: "var(--success)", word: "Passes" },
+  partial: { mark: "~", color: "var(--warning)", word: "Partly" },
+  fail: { mark: "✗", color: "var(--error)", word: "Fails" },
+  unknown: { mark: "?", color: "var(--muted)", word: "No data" },
 } as const;
 
-const fitColor = (fit: number | null) => (fit == null ? "var(--mute)" : fit >= 0.7 ? "var(--green)" : fit >= 0.4 ? "var(--amber)" : "var(--red)");
+const fitColor = (fit: number | null) => (fit == null ? "var(--muted)" : fit >= 0.7 ? "var(--success)" : fit >= 0.4 ? "var(--warning)" : "var(--error)");
 const usd = (v: number | null | undefined) => (v == null ? "n/a" : `$${v >= 100 ? v.toFixed(0) : v.toFixed(2)}`);
 
 export function Verdict({ a, name }: { a: Analysis; name: string }) {
   const o = a.overall, color = TONE[o.tone].color, v = a.valuation;
   return (
     <motion.section initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="card p-6 md:p-8 grid gap-5"
-      style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 12%, var(--panel)), var(--panel))`, borderColor: `color-mix(in srgb, ${color} 45%, var(--line))` }}>
+      style={{ background: `linear-gradient(135deg, color-mix(in srgb, ${color} 12%, var(--card)), var(--card))`, borderColor: `color-mix(in srgb, ${color} 45%, var(--divider))` }}>
       <div>
         <p className="mute text-sm m-0">What the evidence says about {name}</p>
-        <h2 className="text-2xl md:text-3xl font-bold tracking-tight my-1" style={{ color }}>{o.headline}</h2>
+        <h2 className="text-2xl md:text-3xl font-bold my-1" style={{ color }}>{o.headline}</h2>
         <p className="m-0 max-w-3xl leading-relaxed">{o.why}</p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -31,7 +31,7 @@ export function Verdict({ a, name }: { a: Analysis; name: string }) {
           const c = fitColor(l.fit);
           return (
             <a key={l.key} href={`#lens-${l.key}`} onClick={jumpTo(`lens-${l.key}`)} className="rounded-xl p-3 grid gap-1 no-underline"
-              style={{ background: `color-mix(in srgb, ${c} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${c} 35%, var(--line))`, color: "var(--text)" }}>
+              style={{ background: `color-mix(in srgb, ${c} 9%, transparent)`, border: `1px solid color-mix(in srgb, ${c} 35%, var(--divider))`, color: "var(--foreground)" }}>
               <span className="text-xs mute">{l.name}</span>
               <span className="font-semibold">{l.word}</span>
               <span className="text-xs mute">{l.question}</span>
@@ -66,7 +66,7 @@ function LensCard({ l }: { l: Lens }) {
         <span className="chip shrink-0" style={{ color: c, borderColor: c }}>{l.word}</span>
       </div>
       {l.note && (
-        <div className="rounded-xl p-3 text-sm" style={{ background: "var(--panel2)" }}>
+        <div className="rounded-xl p-3 text-sm" style={{ background: "var(--card-alt)" }}>
           <b>Looks like a {l.note.category.toLowerCase()}.</b> <span className="mute">{l.note.why}.</span>
         </div>
       )}
@@ -74,17 +74,17 @@ function LensCard({ l }: { l: Lens }) {
         <div className="grid gap-2">
           <p className="m-0 text-sm leading-relaxed">{l.narrative}</p>
           {l.ahead && (
-            <div className="grid gap-1 pl-3" style={{ borderLeft: "3px solid var(--blue)" }}>
+            <div className="grid gap-1 pl-3" style={{ borderLeft: "4px solid var(--primary)" }}>
               <span className="text-xs font-semibold">Looking ahead</span>
               <p className="m-0 text-sm leading-relaxed">{l.ahead}</p>
             </div>
           )}
-          <span className="mute text-[11px]">Summarised by an AI from this investor's books and the checks below. Every number in it is checked against them.</span>
+          <span className="mute text-xs">Summarised by an AI from this investor's books and the checks below. Every number in it is checked against them.</span>
         </div>
       )}
-      {l.fit != null && <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--line)" }}><div style={{ width: `${Math.round(l.fit * 100)}%`, height: "100%", background: c }} /></div>}
+      {l.fit != null && <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "var(--divider)" }}><div style={{ width: `${Math.round(l.fit * 100)}%`, height: "100%", background: c }} /></div>}
       <ul className="m-0 p-0 list-none grid gap-3">{l.checks.map((k) => <CheckRow key={k.id} k={k} />)}</ul>
-      <p className="m-0 mute text-[11px]">
+      <p className="m-0 mute text-xs">
         {l.backtested ? "Tested against what happened next at 50 companies: see below." : "Not back-tested: we hold no historical prices to test the price checks, so treat this view as a way of thinking, not a track record."}
         {l.caveat ? ` ${l.caveat}` : ""}
       </p>
@@ -97,7 +97,7 @@ function CheckRow({ k }: { k: Check }) {
   return (
     <li className="flex gap-3 items-start">
       <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 20%, transparent)`, color: C.color }}>{C.mark}</span>
-      <div className="grid gap-0.5 text-sm">
+      <div className="grid gap-1 text-sm">
         <span className="font-medium">{k.check}</span>
         <span className="num text-xs">{k.shown}</span>
         <span className="mute text-xs leading-snug">Idea: {k.principle}. <i>{k.source}</i></span>
@@ -116,7 +116,7 @@ export function Worth({ a }: { a: Analysis }) {
         <div className="card p-5 grid gap-5">
           <div className="grid gap-3 sm:grid-cols-3">
             {v.scenarios!.map((s) => (
-              <div key={s.name} className="rounded-xl p-4 grid gap-1" style={{ background: "var(--panel2)" }}>
+              <div key={s.name} className="rounded-xl p-4 grid gap-1" style={{ background: "var(--card-alt)" }}>
                 <span className="text-xs mute">{s.name} case</span>
                 <span className="num text-2xl font-semibold">{s.value_per_share != null ? usd(s.value_per_share) : money(s.equity_value)}</span>
                 {s.value_per_share == null && <span className="mute text-xs">total value of the shares (no reliable share count)</span>}
@@ -139,7 +139,7 @@ export function Worth({ a }: { a: Analysis }) {
                   <caption className="text-left mute text-xs pb-2">Value per share if you require a different yearly return</caption>
                   <thead><tr className="mute text-xs text-left"><th className="py-1 pr-4 font-normal">Required return</th>{v.scenarios!.map((s) => <th key={s.name} className="py-1 pr-4 font-normal">{s.name}</th>)}</tr></thead>
                   <tbody>{v.sensitivity.map((r) => (
-                    <tr key={r.rate} style={{ borderTop: "1px solid var(--line)", fontWeight: Math.abs(r.rate - (v.discount_rate ?? 0)) < 1e-9 ? 600 : 400 }}>
+                    <tr key={r.rate} style={{ borderTop: "1px solid var(--divider)", fontWeight: Math.abs(r.rate - (v.discount_rate ?? 0)) < 1e-9 ? 600 : 400 }}>
                       <td className="py-1 pr-4">{pctOf(r.rate)}</td>{r.values.map((x, i) => <td key={i} className="py-1 pr-4">{usd(x)}</td>)}
                     </tr>))}</tbody>
                 </table>
@@ -170,8 +170,8 @@ export function Future({ a, bare = false }: { a: Analysis; bare?: boolean }) {
           </thead>
           <tbody>
             {f.scenarios.map((s) => (
-              <tr key={s.name} style={{ borderTop: "1px solid var(--line)" }}>
-                <td className="py-2 pr-4 font-semibold">{s.name}<div className="mute text-[11px] font-normal">starts at {pctOf(s.start_growth)} a year</div></td>
+              <tr key={s.name} style={{ borderTop: "1px solid var(--divider)" }}>
+                <td className="py-2 pr-4 font-semibold">{s.name}<div className="mute text-xs font-normal">starts at {pctOf(s.start_growth)} a year</div></td>
                 {yrs.map((y) => (
                   <td key={y} className="py-2 pr-4">{s.revenue[y] == null ? "n/a" : money(s.revenue[y] as number)}<span className="mute"> / {s.fcf[y] == null ? "n/a" : money(s.fcf[y] as number)}</span></td>
                 ))}
@@ -199,7 +199,7 @@ function Bars({ t, value, color, fmt }: { t: EvidenceTest; value: (b: EvidenceTe
       {t.buckets.map((b, i) => (
         <div key={b.bucket} className="grid grid-cols-[9rem_1fr_3.5rem] items-center gap-3 text-sm">
           <span className="text-xs">{names[i]} <span className="mute">({b.n})</span></span>
-          <div className="h-3 rounded-full overflow-hidden" style={{ background: "var(--line)" }}>
+          <div className="h-3 rounded-full overflow-hidden" style={{ background: "var(--divider)" }}>
             <div style={{ width: `${Math.max(((vals[i] ?? 0) / top) * 100, 1.5)}%`, height: "100%", background: color }} />
           </div>
           <span className="num font-semibold text-right">{fmt(vals[i])}</span>
@@ -224,7 +224,7 @@ export function EvidencePanel() {
         <div className="card p-5 grid gap-3 content-start">
           <span className="font-semibold">Munger's “how could it fail?” checks</span>
           <span className="mute text-xs">Share of companies that cut the dividend or changed auditor within the next year</span>
-          <Bars t={m} value={(x) => x.mean} color="var(--red)" fmt={(x) => pc(x, 1)} />
+          <Bars t={m} value={(x) => x.mean} color="var(--error)" fmt={(x) => pc(x, 1)} />
           <p className="m-0 text-sm">
             In the right direction, but modest: companies passing few of the checks had one of these events in {pc(m.buckets[2].mean, 0)} of cases, against {pc(m.buckets[0].mean, 0)} for those passing most. These events are rare, so the group passing few is small ({m.buckets[2].n} cases).
             {" "}{hoM && hoM.p != null && hoM.p < 0.05 ? `It also holds on the 10 companies kept out of everything else (rank correlation ${hoM.spearman?.toFixed(2)}).` : `On the 10 held-out companies there are too few cases to tell either way.`}
@@ -233,7 +233,7 @@ export function EvidencePanel() {
         <div className="card p-5 grid gap-3 content-start">
           <span className="font-semibold">Buffett's “quality” checks</span>
           <span className="mute text-xs">Typical free-cash-flow margin a year later (median)</span>
-          <Bars t={b} value={(x) => x.median} color="var(--green)" fmt={(x) => pc(x, 1)} />
+          <Bars t={b} value={(x) => x.median} color="var(--success)" fmt={(x) => pc(x, 1)} />
           <p className="m-0 text-sm">Companies passing most of the checks kept earning more cash per dollar of sales. But the same checks said nothing about sales growth: typical growth was {pc(g.buckets[0].median, 1)}, {pc(g.buckets[1].median, 1)} and {pc(g.buckets[2].median, 1)}, with no pattern.</p>
         </div>
       </div>
@@ -250,7 +250,7 @@ export function EvidencePanel() {
 /* ───────────────────────── the 5-minute check ───────────────────────── */
 
 export function QuickCheckBlock({ q }: { q: QuickCheck }) {
-  const color = q.score == null ? "var(--mute)" : q.score >= 0.75 ? "var(--green)" : q.score >= 0.4 ? "var(--amber)" : "var(--red)";
+  const color = q.score == null ? "var(--muted)" : q.score >= 0.75 ? "var(--success)" : q.score >= 0.4 ? "var(--warning)" : "var(--error)";
   return (
     <section className="grid gap-3">
       <Head title="The 5-minute check: is it worth researching further?" blurb="Five quick tests that filter out companies to avoid. Meant for manufacturing and other non-financial companies." />
@@ -263,7 +263,7 @@ export function QuickCheckBlock({ q }: { q: QuickCheck }) {
               return (
                 <li key={i.key} className="flex gap-3 items-start">
                   <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 20%, transparent)`, color: C.color }}>{C.mark}</span>
-                  <div className="grid gap-0.5 text-sm">
+                  <div className="grid gap-1 text-sm">
                     <span className="font-medium">{i.label}: <span className="font-normal">{i.found}</span></span>
                     <span className="mute text-xs">Look for: {i.rule}</span>
                   </div>

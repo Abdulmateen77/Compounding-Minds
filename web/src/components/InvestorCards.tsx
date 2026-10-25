@@ -37,15 +37,15 @@ export function InvestorBoxes({ lenses }: { lenses: Lens[] }) {
           return (
             <li key={l.key} className="contents">
               <button onClick={() => setOpen(on ? null : l.key)} aria-expanded={on}
-                className="card text-left p-3 grid gap-1.5 cursor-pointer transition-transform hover:-translate-y-0.5"
-                style={{ color: "var(--text)", borderColor: on ? c : undefined, boxShadow: on ? `0 0 0 2px ${c}` : undefined }}>
+                className="card text-left p-3 grid gap-2 cursor-pointer transition-transform hover:-translate-y-0.5"
+                style={{ color: "var(--foreground)", borderColor: on ? c : undefined, boxShadow: on ? `0 0 0 2px ${c}` : undefined }}>
                 <span className="flex items-center gap-2">
                   <Avatar l={l} size={36} ring={c} />
                   <span className="font-semibold text-sm leading-tight">{l.name}</span>
                 </span>
                 <span className="text-sm font-semibold" style={{ color: c }}>{l.decision?.label ?? l.word}</span>
-                <span className="num mute text-[11px]">{pass} of {known} checks passed</span>
-                <span className="text-[11px]" style={{ color: "var(--blue)" }}>{on ? "Hide the analysis" : "See the full analysis"}</span>
+                <span className="num mute text-xs">{pass} of {known} checks passed</span>
+                <span className="text-xs" style={{ color: "var(--primary)" }}>{on ? "Hide the analysis" : "See the full analysis"}</span>
               </button>
             </li>
           );
@@ -78,7 +78,7 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
   const watch = firstSentence(l.ahead);
   const found = [...by("pass").slice(0, 3), ...by("fail").slice(0, 3), ...by("partial").slice(0, 2)];
   return (
-    <article id={`panellist-${l.key}`} className={`card p-5 grid gap-4 content-start ${wide ? "md:grid-cols-2 md:gap-x-8" : ""}`} style={{ borderTop: `3px solid ${color}` }}>
+    <article id={`panellist-${l.key}`} className={`card p-5 grid gap-4 content-start ${wide ? "md:grid-cols-2 md:gap-x-8" : ""}`} style={{ borderTop: `4px solid ${color}` }}>
       <header className={`grid gap-2 ${wide ? "md:col-span-2" : ""}`}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <span className="flex items-center gap-2 min-w-0">
@@ -90,7 +90,7 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
         <p className="m-0 text-sm mute">Asks: {l.question}</p>
         {l.fit != null && (
           <div className="flex items-center gap-2">
-            <div className="h-1.5 flex-1 rounded-full overflow-hidden" style={{ background: "var(--line)" }}>
+            <div className="h-1.5 flex-1 rounded-full overflow-hidden" style={{ background: "var(--divider)" }}>
               <div style={{ width: `${Math.round(l.fit * 100)}%`, height: "100%", background: color }} />
             </div>
             <span className="num text-xs mute shrink-0">{pass} of {known} checks passed</span>
@@ -117,12 +117,12 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
 
       <div className="grid gap-4 content-start">
         <Block title={wide ? "What they checked, and what they found" : "What they found"}>
-          <ul className="m-0 p-0 list-none grid gap-1.5 text-sm">
+          <ul className="m-0 p-0 list-none grid gap-2 text-sm">
             {(wide ? l.checks : found).map((k) => (
               <li key={k.id} className="flex gap-2 items-start">
                 <span aria-hidden className="font-bold shrink-0 w-3 text-center" style={{ color: MARK[k.result].color }}>{MARK[k.result].mark}</span>
                 <span><span className="font-medium">{checkLabel(k)}</span> <span className="num mute text-xs">{cut(k.shown, wide ? 160 : 90)}</span>
-                  {wide && <span className="block mute text-[11px]">Idea: {k.principle}. <i>{k.source}</i></span>}</span>
+                  {wide && <span className="block mute text-xs">Idea: {k.principle}. <i>{k.source}</i></span>}</span>
               </li>
             ))}
             {known === 0 && <li className="mute">Not enough data to test.</li>}
@@ -132,7 +132,7 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
         {watch && <Block title="Watches next"><p className="m-0 text-sm leading-relaxed">{wide && l.ahead ? l.ahead : watch}</p></Block>}
       </div>
 
-      <footer className={`mute text-[11px] flex flex-wrap gap-x-3 gap-y-1 ${wide ? "md:col-span-2" : ""}`}>
+      <footer className={`mute text-xs flex flex-wrap gap-x-3 gap-y-1 ${wide ? "md:col-span-2" : ""}`}>
         {l.book && <span>From {l.book}</span>}
         <span>{l.backtested ? "Back-tested against what happened next" : "Not back-tested"}</span>
         {l.caveat && <span>{l.caveat}</span>}
@@ -144,8 +144,8 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
 
 function Block({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="grid gap-1.5">
-      <span className="text-xs font-semibold" style={{ color: "var(--text)" }}>{title}</span>
+    <div className="grid gap-2">
+      <span className="text-xs font-semibold" style={{ color: "var(--foreground)" }}>{title}</span>
       {children}
     </div>
   );
