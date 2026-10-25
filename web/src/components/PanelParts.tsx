@@ -60,7 +60,7 @@ export function DebateVoices({ lenses }: { lenses: Lens[] }) {
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div>
           <span className="font-semibold text-sm">Listen to the face-offs</span>
-          <p className="m-0 mute text-xs">Each investor speaks in their own voice. {lines.length} lines, read from their own checks.</p>
+          <p className="m-0 mute text-xs">Each investor speaks in their own AI-generated voice (not the real people). {lines.length} lines, read from their own checks.</p>
         </div>
         {playing == null
           ? <button className="btn" disabled={!on} onClick={start} title={on ? "Play the debate" : "Voices are off: add ELEVENLABS_API_KEY to .env"}>Play</button>

@@ -100,8 +100,8 @@ export function DebateLog({ a, company, onSpeak, heading = true }: { a: Analysis
             </div>
           : <p className="mute text-sm m-0 max-w-2xl">Opening statements, the face-offs between investors who disagree, then the final verdict.</p>}
         <div className="flex items-center gap-2 flex-wrap">
-          <label className="text-xs mute flex items-center gap-2" title={voice.data?.enabled ? "Each investor speaks in their own voice" : "Voices are off: add ELEVENLABS_API_KEY to the server's .env"}>
-            <input type="checkbox" checked={useVoice} disabled={!voice.data?.enabled || running} onChange={(e) => setUseVoice(e.target.checked)} /> Voices
+          <label className="text-xs mute flex items-center gap-2" title={voice.data?.enabled ? "AI-generated voices, one per investor: not the real people" : "Voices are off: add ELEVENLABS_API_KEY to the server's .env"}>
+            <input type="checkbox" checked={useVoice} disabled={!voice.data?.enabled || running} onChange={(e) => setUseVoice(e.target.checked)} /> AI voices
           </label>
           {!running && shown === 0 && <button className="btn" onClick={start}>Start the debate</button>}
           {running && <button className="btn ghost" onClick={pauseRun}>Pause</button>}

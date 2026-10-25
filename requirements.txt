@@ -10,3 +10,4 @@ httpx>=0.27
 pandas>=2.2
 # optional: edgartools, fredapi, mcp (MCP tool servers), pglast (a test syntax-checks store/schema.sql with it)
 # Streamlit view (dashboard/): pip install -r requirements-dashboard.txt
+elevenlabs>=2.0           # investor voices for the debate (research/voice.py); the key is ELEVENLABS_API_KEY in .env

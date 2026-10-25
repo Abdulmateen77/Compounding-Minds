@@ -1,43 +1,44 @@
-"""Voices for the investor panel, through ElevenLabs text-to-speech. The foundation: off until a key is set.
+"""Voices for the investor panel, through ElevenLabs text-to-speech.
 
-Each investor has a voice and a "mix" (how steady, how expressive, how fast), so a face-off sounds like two people. The
-server holds the key; the page only asks for a line in an investor's voice. Audio is cached on disk by the exact voice,
-mix and text, so a line is paid for once and a demo can be replayed with no calls at all.
+Each investor has their own voice and a stability setting (lower = more expressive), so a face-off sounds like different
+people with different temperaments. The server holds the key (the SDK reads ELEVENLABS_API_KEY, loaded from .env by the
+API); the page only asks for a line in an investor's voice. Audio is cached on disk by the exact voice, settings, model
+and text, so a line is paid for once and a demo can be replayed with no calls at all.
 
     ELEVENLABS_API_KEY=...                       turns voices on
     ELEVENLABS_VOICE_BUFFETT=<voice id>          optional: replace a default voice with one from your ElevenLabs library
-    ELEVENLABS_MODEL=eleven_multilingual_v2      optional
+    ELEVENLABS_MODEL=eleven_v4                   optional
 
-The default voice ids are ElevenLabs' long-standing premade voices; if your account does not have one, set the variable for
-that investor. Spoken text is the investor's own checks and written view: nothing new is said aloud.
+The investors speak in synthetic voices made with ElevenLabs Voice Design from a written description of their manner
+(age, accent, pace, temperament); none is a clone of the real person, and the page says they are AI voices. Eleven v4
+takes only stability and similarity, so character comes from the voice and the stability. Spoken text is the investor's
+own checks and written view: nothing new is said aloud.
 """
 from __future__ import annotations
 
 import hashlib
 import json
 import os
-import urllib.error
-import urllib.request
 from pathlib import Path
 
-API = "https://api.elevenlabs.io/v1/text-to-speech/{voice}?output_format=mp3_44100_128"
 CACHE_DIR = Path(os.environ.get("RAW_CACHE_DIR", "data/raw")) / "voice"
 MAX_CHARS = 600
+DEFAULT_MODEL = "eleven_v4"
 
-# voice id, then the mix: stability (lower = more expressive), similarity, style, speed
+# voice id, then the mix: stability (lower = more expressive) and similarity
 VOICES: dict[str, dict] = {
-    "buffett": {"label": "Warren Buffett", "voice_id": "pNInz6obpgDQGcFmaJgB", "persona": "warm, patient, folksy",
-                "settings": {"stability": 0.6, "similarity_boost": 0.75, "style": 0.25, "use_speaker_boost": True, "speed": 0.95}},
-    "munger": {"label": "Charlie Munger", "voice_id": "VR6AewLTigWG4xSOukaG", "persona": "dry, blunt, unhurried",
-               "settings": {"stability": 0.7, "similarity_boost": 0.7, "style": 0.15, "use_speaker_boost": True, "speed": 0.9}},
-    "lynch": {"label": "Peter Lynch", "voice_id": "TxGEqnHWrfWFTfGW9XjX", "persona": "quick, upbeat, practical",
-              "settings": {"stability": 0.45, "similarity_boost": 0.75, "style": 0.45, "use_speaker_boost": True, "speed": 1.05}},
-    "dalio": {"label": "Ray Dalio", "voice_id": "ErXwobaYiN019PkySvjV", "persona": "measured, systematic",
-              "settings": {"stability": 0.65, "similarity_boost": 0.75, "style": 0.2, "use_speaker_boost": True, "speed": 1.0}},
-    "jhunjhunwala": {"label": "Rakesh Jhunjhunwala", "voice_id": "yoZ06aMxZJJ28mfd3POQ", "persona": "energetic, confident",
-                     "settings": {"stability": 0.4, "similarity_boost": 0.75, "style": 0.5, "use_speaker_boost": True, "speed": 1.05}},
-    "judge": {"label": "The judge", "voice_id": "onwK4e9ZLuTAKqWW03F9", "persona": "calm, even",
-              "settings": {"stability": 0.75, "similarity_boost": 0.7, "style": 0.1, "use_speaker_boost": True, "speed": 0.95}},
+    "buffett": {"label": "Warren Buffett", "voice_id": "il0C3pdeW9tNpQ8lVvXX", "persona": "warm, patient, folksy",   # designed voice
+                "settings": {"stability": 0.6, "similarity_boost": 0.75}},
+    "munger": {"label": "Charlie Munger", "voice_id": "9Y3zUl6zNh7RF1AI6sHN", "persona": "dry, blunt, unhurried",    # designed voice
+               "settings": {"stability": 0.7, "similarity_boost": 0.7}},
+    "lynch": {"label": "Peter Lynch", "voice_id": "nbiSRnZXEtOhBywhoHKg", "persona": "quick, upbeat, practical",     # designed voice
+              "settings": {"stability": 0.4, "similarity_boost": 0.75}},
+    "dalio": {"label": "Ray Dalio", "voice_id": "c4uJ30jSvR1M8bvdTDTj", "persona": "measured, systematic",           # designed voice
+              "settings": {"stability": 0.65, "similarity_boost": 0.75}},
+    "jhunjhunwala": {"label": "Rakesh Jhunjhunwala", "voice_id": "u89GRd8mKUtMWXby21tR", "persona": "energetic, confident",   # designed voice
+                     "settings": {"stability": 0.35, "similarity_boost": 0.75}},
+    "judge": {"label": "The judge", "voice_id": "onwK4e9ZLuTAKqWW03F9", "persona": "calm, even",                    # Daniel: steady broadcaster
+              "settings": {"stability": 0.75, "similarity_boost": 0.7}},
 }
 
 
@@ -65,7 +66,12 @@ class VoiceError(RuntimeError):
     pass
 
 
-def speak(key: str, text: str, *, cache_dir: Path | None = None, opener=urllib.request.urlopen) -> bytes:
+def _client():
+    from elevenlabs import ElevenLabs   # reads ELEVENLABS_API_KEY from the environment
+    return ElevenLabs()
+
+
+def speak(key: str, text: str, *, cache_dir: Path | None = None, client=None) -> bytes:
     """MP3 bytes of `text` in this investor's voice, from the cache or ElevenLabs."""
     voice = voice_for(key)
     if voice is None:
@@ -73,25 +79,22 @@ def speak(key: str, text: str, *, cache_dir: Path | None = None, opener=urllib.r
     text = " ".join((text or "").split())[:MAX_CHARS]
     if not text:
         raise VoiceError("nothing to say")
-    model = os.environ.get("ELEVENLABS_MODEL", "eleven_multilingual_v2")
+    model = os.environ.get("ELEVENLABS_MODEL", DEFAULT_MODEL)
     path = _cache_path(voice, model, text, cache_dir or CACHE_DIR)
     if path.exists():
         return path.read_bytes()
     if not enabled():
         raise VoiceError("voices are off: set ELEVENLABS_API_KEY in .env")
-    settings = dict(voice["settings"])
-    speed = settings.pop("speed", None)
-    body = {"text": text, "model_id": model, "voice_settings": {**settings, **({"speed": speed} if speed else {})}}
-    req = urllib.request.Request(API.format(voice=voice["voice_id"]), data=json.dumps(body).encode(), method="POST",
-                                 headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"], "Content-Type": "application/json",
-                                          "Accept": "audio/mpeg"})
     try:
-        with opener(req, timeout=60) as r:
-            audio = r.read()
-    except urllib.error.HTTPError as e:
-        raise VoiceError(f"ElevenLabs said {e.code}: {e.read()[:200].decode(errors='ignore')}") from e
-    except (urllib.error.URLError, TimeoutError) as e:
-        raise VoiceError(f"could not reach ElevenLabs: {e}") from e
+        from elevenlabs import VoiceSettings
+        chunks = (client or _client()).text_to_speech.convert(
+            voice_id=voice["voice_id"], text=text, model_id=model, output_format="mp3_44100_128",
+            voice_settings=VoiceSettings(**voice["settings"]))
+        audio = b"".join(chunks)
+    except Exception as e:   # the SDK raises ApiError (with status_code) and httpx errors; the page only needs the message
+        raise VoiceError(f"ElevenLabs: {getattr(e, 'status_code', '')} {str(e)[:200]}".replace("  ", " ")) from e
+    if not audio:
+        raise VoiceError("ElevenLabs returned no audio")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_bytes(audio)
     return audio
