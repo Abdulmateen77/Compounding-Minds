@@ -2,7 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "cd web && npm ci && npm run build && rm -rf ../public && cp -R dist ../public",
   "functions": {
-    "api/main.py": { "includeFiles": "{demo_data/runs_final/**,research/evidence.json,ingest/universe.json}" }
+    "api/main.py": { "includeFiles": "{demo_data/runs_final/**,research/evidence.json,ingest/universe.json,eval/reports/**}" }
   },
   "env": { "DASHBOARD_SOURCE": "demo_data/runs_final" }
 }
