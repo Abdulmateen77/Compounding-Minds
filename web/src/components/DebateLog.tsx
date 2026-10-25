@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CALL_COLOR, TONE, type Analysis, type Lens } from "../research";
-import { checkLabel, cut, pickFaceOffs, surname } from "../scene/lenses";
+import { pickFaceOffs, surname } from "../scene/lenses";
+import { Avatar } from "./Avatar";
+import { fact, opening } from "./firstPerson";
 import { speak, stopSpeaking, useVoiceStatus } from "../voice";
 
 /* The debate as a chat log. Every line comes from the report: each investor's reading and call, the face-offs picked from their
@@ -8,33 +10,25 @@ import { speak, stopSpeaking, useVoiceStatus } from "../voice";
 
 type Msg = { kind: "moderator" | "investor" | "heading" | "verdict"; who?: number; role?: "opening" | "case" | "objection" | "ruling"; text: string; detail?: string };
 
-const firstSentence = (text?: string | null) => {
-  const t = text?.trim();
-  if (!t) return null;
-  const s = t.match(/^[\s\S]+?[.!?](?=\s+[A-Z“"]|\s*$)/)?.[0] ?? t;
-  return cut(s.trim(), 240);
-};
+/** What is on screen right now, for the scene to show over the speaker's head (who null: the moderator or the verdict). */
+export type Speech = { who: number | null; tag: string; text: string };
+
+const TAG = { opening: "Opening statement", case: "My case", objection: "I object", ruling: "My ruling" } as const;
 
 function script(a: Analysis, company: string): Msg[] {
   const L = a.lenses, out: Msg[] = [];
   out.push({ kind: "moderator", text: `The question for the panel: is ${company} worth investing in? ${L.length} investors, each judging by their own rules and the company's filings.` });
   out.push({ kind: "heading", text: "Opening statements" });
-  L.forEach((l, i) => {
-    const reading = firstSentence(l.narrative) ?? `${l.word} on my checks.`;
-    out.push({ kind: "investor", who: i, role: "opening", text: reading, detail: l.decision ? `Call: ${l.decision.label}. ${l.decision.why}` : undefined });
-  });
+  L.forEach((l, i) => out.push({ kind: "investor", who: i, role: "opening", text: opening(l) }));
   const faceoffs = pickFaceOffs(L);
   if (!faceoffs.length) out.push({ kind: "moderator", text: "They read it much the same way, so there is no face-off." });
   faceoffs.forEach((f, k) => {
     out.push({ kind: "heading", text: `Face-off${faceoffs.length > 1 ? ` ${k + 1} of ${faceoffs.length}` : ""}: ${surname(L[f.pair[0]])} vs ${surname(L[f.pair[1]])}` });
     f.turns.forEach((t) => {
-      const q = t.quote;
-      if (t.role === "ruling") {
-        out.push({ kind: "investor", who: t.by, role: "ruling", text: t.headline ?? "My ruling.", detail: `${q.head}: ${q.shown}. ${q.idea}.` });
-      } else {
-        const lead = t.role === "objection" ? `${surname(L[t.to])}, look at this. ` : "";
-        out.push({ kind: "investor", who: t.by, role: t.role, text: `${lead}${q.head}: ${q.shown}.`, detail: q.idea });
-      }
+      const q = t.quote, said = `${fact(q.head, q.shown)}.`;
+      if (t.role === "ruling") out.push({ kind: "investor", who: t.by, role: "ruling", text: `${t.headline ?? "I call it a split."} On my own checks: ${said}` });
+      else if (t.role === "objection") out.push({ kind: "investor", who: t.by, role: "objection", text: `${surname(L[t.to])}, I see it differently. ${said}`, detail: q.idea });
+      else out.push({ kind: "investor", who: t.by, role: "case", text: `Here is why I'm confident. ${said}`, detail: q.idea });
     });
   });
   out.push({ kind: "heading", text: "Final verdict" });
@@ -42,22 +36,28 @@ function script(a: Analysis, company: string): Msg[] {
   return out;
 }
 
+const speechOf = (m: Msg, a: Analysis): Speech | null =>
+  m.kind === "heading" ? null
+    : m.kind === "investor" ? { who: m.who!, tag: TAG[m.role!], text: m.text }
+      : { who: null, tag: m.kind === "verdict" ? "The panel's verdict" : "Moderator", text: m.kind === "verdict" ? `${m.text}. ${a.overall.headline}.` : m.text };
+
 const spoken = (m: Msg) => [m.text, m.detail && m.role !== "case" && m.role !== "objection" ? m.detail : ""].filter(Boolean).join(" ");
 const pause = (m: Msg) => (m.kind === "heading" ? 700 : Math.min(4200, 1100 + (m.text.length + (m.detail?.length ?? 0)) * 18));
 
-export function DebateLog({ a, company }: { a: Analysis; company: string }) {
+export function DebateLog({ a, company, onSpeak }: { a: Analysis; company: string; onSpeak?: (s: Speech | null) => void }) {
   const msgs = useMemo(() => script(a, company), [a, company]);
   const voice = useVoiceStatus();
   const [shown, setShown] = useState(0);              // how many lines are visible
   const [running, setRunning] = useState(false);
   const [useVoice, setUseVoice] = useState(false);
   const [typing, setTyping] = useState(false);
-  const bottom = useRef<HTMLDivElement | null>(null);
+  const log = useRef<HTMLDivElement | null>(null);
   const stop = useRef<AbortController | null>(null);
   const done = shown >= msgs.length;
 
-  useEffect(() => { bottom.current?.scrollIntoView({ behavior: "smooth", block: "nearest" }); }, [shown, typing]);
-  useEffect(() => () => { stop.current?.abort(); stopSpeaking(); }, []);
+  // keep the newest line in view by scrolling the log itself, never the page
+  useEffect(() => { const el = log.current; if (el && shown > 0) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); }, [shown, typing]);
+  useEffect(() => () => { stop.current?.abort(); stopSpeaking(); onSpeak?.(null); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
   // a link with "debate=play" starts the debate on arrival (for showing it to a room)
   useEffect(() => { if (/[?&]debate=play/.test(window.location.href)) start(); }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -72,7 +72,8 @@ export function DebateLog({ a, company }: { a: Analysis; company: string }) {
       if (ctl.signal.aborted) break;
       setTyping(false);
       setShown(i + 1);
-      const m = msgs[i];
+      const m = msgs[i], sp = speechOf(m, a);
+      if (sp) onSpeak?.(sp);
       if (useVoice && voice.data?.enabled && m.kind !== "heading") {
         const who = m.kind === "investor" && m.who != null ? a.lenses[m.who].key : "judge";
         try { await speak(who, spoken(m), ctl.signal); } catch { await new Promise((r) => setTimeout(r, pause(m))); }
@@ -84,10 +85,10 @@ export function DebateLog({ a, company }: { a: Analysis; company: string }) {
     if (!ctl.signal.aborted) setRunning(false);
   }
 
-  function start() { setShown(0); void run(0); }
+  function start() { setShown(0); onSpeak?.(null); void run(0); }
   const pauseRun = () => { stop.current?.abort(); stopSpeaking(); setTyping(false); setRunning(false); };
   const resume = () => void run(shown);
-  const skip = () => { pauseRun(); setShown(msgs.length); };
+  const skip = () => { pauseRun(); setShown(msgs.length); onSpeak?.(speechOf(msgs[msgs.length - 1], a)); };
 
   return (
     <section className="card p-5 grid gap-4" aria-label="The debate">
@@ -108,10 +109,9 @@ export function DebateLog({ a, company }: { a: Analysis; company: string }) {
         </div>
       </div>
 
-      <div role="log" aria-live="polite" className="grid gap-2.5 max-h-[560px] overflow-y-auto pr-1" style={{ minHeight: shown ? 120 : 0 }}>
+      <div ref={log} role="log" aria-live="polite" className="grid gap-2.5 max-h-[560px] overflow-y-auto pr-1" style={{ minHeight: shown ? 120 : 0 }}>
         {msgs.slice(0, shown).map((m, i) => <Line key={i} m={m} lenses={a.lenses} a={a} />)}
         {typing && <div className="mute text-xs pl-11">…</div>}
-        <div ref={bottom} />
       </div>
       {shown === 0 && <p className="m-0 mute text-sm">Press “Start the debate” to watch the panel argue it out.</p>}
     </section>
@@ -135,14 +135,14 @@ function Line({ m, lenses, a }: { m: Msg; lenses: Lens[]; a: Analysis }) {
     );
   }
   const l = lenses[m.who!], c = l.decision ? CALL_COLOR[l.decision.call] : "var(--mute)";
-  const tag = m.role === "ruling" ? "Judge" : m.role === "objection" ? "Objects" : m.role === "case" ? "Makes the case" : "Opening";
+  const tag = TAG[m.role!];
   return (
     <div className="flex gap-3 items-start">
-      <span aria-hidden className="inline-grid place-items-center w-8 h-8 rounded-full text-sm font-bold shrink-0" style={{ background: `color-mix(in srgb, ${c} 22%, transparent)`, color: c }}>{surname(l)[0]}</span>
+      <Avatar l={l} size={34} ring={c} />
       <div className="grid gap-0.5 min-w-0 rounded-xl px-3 py-2" style={{ background: m.role === "ruling" ? "color-mix(in srgb, #e6c350 12%, var(--panel2))" : "var(--panel2)" }}>
         <span className="text-xs"><b>{l.name}</b> <span className="mute">· {tag}</span></span>
         <span className="text-sm leading-relaxed">{m.text}</span>
-        {m.detail && <span className="mute text-xs leading-snug">{m.role === "case" || m.role === "objection" ? `Idea: ${m.detail}` : m.detail}</span>}
+        {m.detail && <span className="mute text-xs leading-snug">Why it matters: {m.detail}</span>}
       </div>
     </div>
   );

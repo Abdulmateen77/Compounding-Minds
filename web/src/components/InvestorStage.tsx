@@ -1,11 +1,11 @@
-import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import type { ChatMsg } from "../chat";
 import { fmtValue, type Report } from "../research";
 import { demoMode, useReducedMotion } from "../route";
 import InvestorPanel from "../scene/InvestorPanel";
 import { pickFaceOffs, surname } from "../scene/lenses";
 import { hasWebGL } from "../scene/support";
-import { DebateLog } from "./DebateLog";
+import { DebateLog, type Speech } from "./DebateLog";
 import { InvestorRoster } from "./InvestorRoster";
 
 // three + react-three-fiber are their own chunk, so the rest of the report stays light.
@@ -28,6 +28,15 @@ export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: R
   const [presenting, setPresenting] = useState(demoMode);
   const webgl = useMemo(hasWebGL, []);
   const a = r.analysis;
+  // the debate's current line, spoken over the speaker's head in the scene; the log under the scene keeps the transcript
+  const [speech, setSpeech] = useState<Speech | null>(null);
+  const stage = useRef<HTMLDivElement | null>(null);
+  const speaking = useRef(false);
+  const onSpeak = useCallback((s: Speech | null) => {
+    if (s && !speaking.current) stage.current?.scrollIntoView({ behavior: "smooth", block: "start" });   // bring the scene into view as it starts
+    speaking.current = !!s;
+    setSpeech(s);
+  }, []);
 
   const cards = useMemo(() => (r.scorecard ?? []).slice(0, 6).map((f) => ({ name: f.label, value: fmtValue(f.unit, f.value) })), [r.scorecard]);
 
@@ -69,7 +78,7 @@ export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: R
         <ResearchScene
           cik={c.cik} name={c.name} sub={[c.ticker, c.exchange].filter(Boolean).join(" · ")} asOf={r.as_of ?? r.data_through ?? ""}
           lenses={a.lenses} cards={cards} overall={a.overall} onFail={() => setFailed(true)} demo={demo} onExitDemo={exit} fromLoading={fromLoading}
-          debates={mode === "panel"} thinkingBelow={mode === "panel"} />
+          debates={mode === "panel"} thinkingBelow={mode === "panel"} speech={mode === "panel" ? speech : null} />
       </Suspense>
     </SceneBoundary>
   );
@@ -104,8 +113,8 @@ export function InvestorStage({ r, fromLoading = false, mode = "panel" }: { r: R
         </div>
         <button className="btn ghost" onClick={present} title="Full-screen, for showing to a room">Present</button>
       </div>
-      {scene(false)}
-      <DebateLog a={a} company={c.name} />
+      <div ref={stage} style={{ scrollMarginTop: 12 }}>{scene(false)}</div>
+      <DebateLog a={a} company={c.name} onSpeak={onSpeak} />
     </section>
   );
 }

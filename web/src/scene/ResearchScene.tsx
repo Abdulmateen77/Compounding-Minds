@@ -7,6 +7,8 @@ import { Director, useDirectorTick } from "./director";
 import { InvestorRoster } from "../components/InvestorRoster";
 import InvestorPanel from "./InvestorPanel";
 import { ThinkingCards } from "./ThinkingCards";
+import type { Speech } from "../components/DebateLog";
+import { Avatar } from "../components/Avatar";
 import SceneContents, { type Els, type Orbit, type SceneAgent, type SceneCard, type SceneVerdict, type StanceView } from "./SceneContents";
 import {
   MARK, checkLabel, counts, cut, pickFaceOffs, readingOf, speakSeconds, stanceOf, surname, thinkSeconds, faceTurnSeconds, typed,
@@ -38,6 +40,7 @@ type Props = {
   onExitDemo?: () => void;
   fromLoading?: boolean; // the investors were just shown researching: carry on from the end of the opening, not from the start
   debates?: boolean;
+  speech?: Speech | null; // the debate's current line (Investor panel tab), said over the speaker's head
   thinkingBelow?: boolean; // the Investor panel tab: what each investor is thinking goes in cards under the scene, not over their head
 };
 
@@ -67,6 +70,26 @@ const toggleFullscreen = () => {
 };
 
 const Caret = () => <span aria-hidden className="inline-block w-[0.5ch] opacity-70" style={{ animation: "dots 1s infinite" }}>▍</span>;
+
+/** A line of the debate, said by the investor over their own head: who, which turn it is, and the words typed out as they say them. */
+function SpeechCard({ lens, speech, big, color }: { lens: Lens; speech: Speech; big: boolean; color: string }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    setN(0);
+    const id = window.setInterval(() => setN((k) => (k >= speech.text.length ? (window.clearInterval(id), k) : k + 2)), 30);
+    return () => window.clearInterval(id);
+  }, [speech.text]);
+  return (
+    <div className={`rounded-xl p-3 shadow-xl grid gap-1.5 ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--panel)", border: `2px solid ${speech.tag === "My ruling" ? "#e6c350" : color}`, color: "var(--text)" }}>
+      <div className="flex items-center gap-2">
+        <Avatar l={lens} size={26} />
+        <b className="leading-tight">{lens.name}</b>
+        <span className="mute text-xs ml-auto">{speech.tag}</span>
+      </div>
+      <div style={{ lineHeight: 1.4 }}>“{speech.text.slice(0, n)}{n < speech.text.length ? <Caret /> : "”"}</div>
+    </div>
+  );
+}
 
 /** The investor's notebook while they work: what they have asked and found so far, and the question they are on, typed out. */
 function Notebook({ lens, i, dir, big, color }: { lens: Lens; i: number; dir: Director; big: boolean; color: string }) {
@@ -109,7 +132,7 @@ function Notebook({ lens, i, dir, big, color }: { lens: Lens; i: number; dir: Di
   );
 }
 
-export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, overall, onFail, demo = false, onExitDemo, fromLoading = false, debates = true, thinkingBelow = false }: Props) {
+export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, overall, onFail, demo = false, onExitDemo, fromLoading = false, debates = true, thinkingBelow = false, speech = null }: Props) {
   const n = lenses.length;
   // debates off (the Report tab): each investor analyses and gives a reading; the face-offs live on the Investor panel tab
   const faceoffs = useMemo(() => (debates ? pickFaceOffs(lenses) : []), [lenses, debates]);
@@ -173,6 +196,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
 
   const [hover, setHover] = useState<number | null>(null);
   const [sel, setSel] = useState<number | null>(null);
+  const [card, setCard] = useState<number | null>(null);      // the analysis pop-up (Investor panel tab)
   const [chats, setChats] = useState<Record<string, ChatMsg[]>>({});
   const [hint, setHint] = useState(true);
   const [large, setLarge] = useState(false);
@@ -188,9 +212,10 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
   const speaking = idx.find((i) => agentState(tl, i, t) === "speaking") ?? -1;
   const thinker = idx.find((i) => thinkProgress(tl, i, t) != null) ?? -1;
   const ad = dir.activeDebate(t), sp = dir.speakerAt(t);
-  const focus = sel != null || (thinkingBelow && !demo) ? -1 : (hover ?? (ad ? -1 : speaking >= 0 ? speaking : thinker));
+  const said = speech?.who ?? null;
+  const focus = said != null ? said : sel != null || (thinkingBelow && !demo) ? -1 : (hover ?? (ad ? -1 : speaking >= 0 ? speaking : thinker));
   els.current.focus = focus;
-  dir.spot = sel;                                              // the camera and that investor lean toward the viewer
+  dir.spot = sel;                                             // the camera and that investor lean toward the viewer
 
   // The beats you can jump to: each investor's research, each face-off, the overall reading.
   const starts = tl.speak.map((s, i) => s - tl.thinkLen[i]);
@@ -223,6 +248,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [demo, dir, onExitDemo]);   // eslint-disable-line react-hooks/exhaustive-deps
   const finished = dir.finished;
+  useEffect(() => { if (speech && !dir.finished) dir.seek(dir.tl.end); }, [speech, dir]);
   useEffect(() => {
     if (!demo || !finished) return;
     const id = window.setTimeout(() => dir.replay(), DEMO_LOOP_AFTER_MS);
@@ -282,7 +308,8 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
     if (thinker >= 0) { const m = lenses[thinker].checks.length, st = checkState(tl, thinker, t, m); capDetail = `${lenses[thinker].name} is working through ${m} checks (${Math.min(m, (st?.done ?? 0) + (st?.current != null && st.current >= (st?.done ?? 0) ? 1 : 0))} of ${m})`; }
     else if (speaking >= 0) capDetail = `${lenses[speaking].name} gives their reading`;
   }
-  if (ad) {
+  if (speech && speech.who == null) { capHead = speech.tag; capDetail = speech.text; }
+  else if (ad && !speech) {
     const [a, b] = ad.pair;
     capHead = faceoffs.length > 1 ? `Face-off ${ad.k + 1} of ${faceoffs.length}` : "Face-off";
     capDetail = sp?.judge ? `Judge ${lenses[sp.who].name}: ${faceoffs[ad.k].turns[sp.turn].headline}` : `${lenses[a].name} (${lenses[a].word}) and ${lenses[b].name} (${lenses[b].word})`;
@@ -347,7 +374,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
         >
           <SceneContents dir={dir} agents={agents} cards={cards} verdict={sceneVerdict} getView={getView}
             orbit={orbit} els={els} company={{ name, sector: sub, asOf }}
-            onHover={setHover} onSelect={choose} />
+            onHover={setHover} onSelect={thinkingBelow ? (i: number) => setCard(i) : choose} />
         </Canvas>
 
         {/* per desk: the face-off turns, then the reading */}
@@ -382,8 +409,9 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
         {/* the floating card above an investor: notebook, reading, or summary */}
         <div ref={(el) => { els.current.bubble = el; }} aria-hidden="true" className="absolute left-0 top-0 pointer-events-none"
           style={{ width: big ? 400 : 320, opacity: lens && focus >= 0 ? 1 : 0, transition: "opacity .2s", willChange: "transform" }}>
-          {lens && focus >= 0 && mode === "notebook" && <Notebook lens={lens} i={focus} dir={dir} big={big} color={lensColor} />}
-          {lens && focus >= 0 && mode !== "notebook" && (
+          {lens && said != null && <SpeechCard lens={lens} speech={speech!} big={big} color={lensColor} />}
+          {lens && said == null && focus >= 0 && mode === "notebook" && <Notebook lens={lens} i={focus} dir={dir} big={big} color={lensColor} />}
+          {lens && said == null && focus >= 0 && mode !== "notebook" && (
             <div className={`rounded-xl p-3 shadow-xl ${big ? "text-base" : "text-sm"}`} style={{ background: "var(--panel)", border: `2px solid ${lensColor}`, color: "var(--text)" }}>
               <div className="flex items-center justify-between gap-2">
                 <b>{lens.name}</b>
@@ -410,7 +438,7 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
         </div>
 
         {/* once it has played (or after Skip to the end): where they disagreed, each face-off replayable, or that nobody did */}
-        {t >= tl.stamp && sel == null && (
+        {t >= tl.stamp && sel == null && !speech && (
           <div className="absolute left-3 top-3 max-w-[46%] max-h-[62%] overflow-auto rounded-xl p-3 grid gap-2 pointer-events-auto content-start" style={{ background: "var(--panel)", border: "1px solid var(--line)" }}
             onPointerDown={(e) => e.stopPropagation()}>
             <div className="mute text-[11px] font-semibold uppercase tracking-wide">{faceoffs.length ? (faceoffs.length > 1 ? `${faceoffs.length} face-offs` : "Where they disagreed") : "No face-off"}</div>
@@ -495,9 +523,9 @@ export default function ResearchScene({ cik, name, sub, asOf, lenses, cards, ove
             <button className="btn ghost" onClick={() => { orbit.current = { az: 0, pol: 0 }; }}>Reset view</button>
           </div>
           {thinkingBelow
-            ? <ThinkingCards lenses={lenses} readings={readings} tl={tl} t={t} unlocked={unlocked && dir.finished} onAsk={choose} />
+            ? <ThinkingCards lenses={lenses} tl={tl} t={t} unlocked={unlocked && dir.finished} open={card} setOpen={setCard} onAsk={choose} />
             : <div className="mt-3"><InvestorRoster lenses={lenses} sel={sel} onChoose={choose} locked={!unlocked} /></div>}
-          <p className="mute text-xs mt-2 mb-0">{thinkingBelow ? "Click a card for that investor's checks and vote. " : ""}{unlocked ? `Click an investor in the scene${thinkingBelow ? "" : ", or choose one above,"} to question them one-on-one about their reading. ` : ""}Drag to tilt the camera. Space pauses; arrow keys tilt the camera.</p>
+          <p className="mute text-xs mt-2 mb-0">{thinkingBelow ? "Click an investor, in the scene or on their card, for their analysis and vote. " : unlocked ? "Click an investor in the scene, or choose one above, to question them one-on-one about their reading. " : ""}Drag to tilt the camera. Space pauses; arrow keys tilt the camera.</p>
         </>
       )}
     </div>

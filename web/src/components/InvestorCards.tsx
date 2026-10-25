@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { Avatar } from "./Avatar";
 import { STANCE_COLOR } from "../api/client";
 import { CALL_COLOR, type Check, type Lens } from "../research";
 import { MARK, checkLabel, counts, cut, stanceOf, surname } from "../scene/lenses";
@@ -39,7 +40,7 @@ export function InvestorBoxes({ lenses }: { lenses: Lens[] }) {
                 className="card text-left p-3 grid gap-1.5 cursor-pointer transition-transform hover:-translate-y-0.5"
                 style={{ color: "var(--text)", borderColor: on ? c : undefined, boxShadow: on ? `0 0 0 2px ${c}` : undefined }}>
                 <span className="flex items-center gap-2">
-                  <span aria-hidden className="inline-grid place-items-center w-9 h-9 rounded-full font-bold shrink-0" style={{ background: `color-mix(in srgb, ${c} 22%, transparent)`, color: c }}>{surname(l)[0]}</span>
+                  <Avatar l={l} size={36} ring={c} />
                   <span className="font-semibold text-sm leading-tight">{l.name}</span>
                 </span>
                 <span className="text-sm font-semibold" style={{ color: c }}>{l.decision?.label ?? l.word}</span>
@@ -81,8 +82,7 @@ export function PanellistCard({ l, wide = false }: { l: Lens; wide?: boolean }) 
       <header className={`grid gap-2 ${wide ? "md:col-span-2" : ""}`}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <span className="flex items-center gap-2 min-w-0">
-            <span aria-hidden className="inline-grid place-items-center w-8 h-8 rounded-full text-sm font-bold shrink-0"
-              style={{ background: `color-mix(in srgb, ${color} 20%, transparent)`, color }}>{surname(l)[0]}</span>
+            <Avatar l={l} size={34} ring={color} />
             <span className="font-semibold leading-tight">{l.name}</span>
           </span>
           <CallChip l={l} big={wide} />
