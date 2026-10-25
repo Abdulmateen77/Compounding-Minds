@@ -24,36 +24,36 @@
   /* breakpoints (sm, md, lg, xl, 2xl are Tailwind's own and match the system) */
   --breakpoint-xs: 30rem;                                            /* 480 */
 
-  /* radius: sm 4, DEFAULT 8, md 12, lg 16, xl 24, full */
-  --radius-sm: 0.25rem;  --radius-lg: 0.5rem;  --radius-xl: 0.75rem;  --radius-2xl: 1rem;  --radius-3xl: 1.5rem;
+  /* radius: small and square like a trading terminal. sm 2, lg 4 (controls), xl 6 and 2xl 6 (panels), 3xl 8, full */
+  --radius-sm: 0.125rem;  --radius-lg: 0.25rem;  --radius-xl: 0.375rem;  --radius-2xl: 0.375rem;  --radius-3xl: 0.5rem;
 
   /* shadows (dark surfaces barely show them, so cards use a border and only floating layers use a shadow) */
-  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06);
-  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -2px rgb(0 0 0 / 0.05);
-  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 10px 10px -5px rgb(0 0 0 / 0.04);
+  --shadow-sm: none;
+  --shadow-md: 0 2px 8px rgb(0 0 0 / 0.18);
+  --shadow-lg: 0 6px 20px rgb(0 0 0 / 0.22);
+  --shadow-xl: 0 12px 32px rgb(0 0 0 / 0.26);
 }
 
 :root {
   color-scheme: dark;
 
   /* surfaces */
-  --background: #070b14; --card: #0e1524; --card-alt: #121c30; --divider: #1f2b45;
-  --foreground: #e8edf8; --muted: #8a98b8; --overlay: rgb(0 0 0 / 0.5);
+  --background: #131722; --card: #1e222d; --card-alt: #2a2e39; --divider: #363a45;
+  --foreground: #d1d4dc; --muted: #8f93a0; --overlay: rgb(0 0 0 / 0.5);
 
   /* brand and semantic colour. Every text colour below is at least 4.5:1 on --background, --card and --card-alt. */
-  --primary: #4f8cff;   --primary-solid: #2f6fe0;   --primary-hover: #2760c4;   --on-primary: #ffffff;    /* solid = a fill that carries white text (4.7:1) */
-  --secondary: #a98bff; --accent: #f0925a;
-  --success: #2fd37c;   --on-success: #06210f;
+  --primary: #6c9bff;   --primary-solid: #2962ff;   --primary-hover: #1e53e5;   --on-primary: #ffffff;    /* solid = a fill that carries white text */
+  --secondary: #b39dff; --accent: #f0925a;
+  --success: #2ebd9f;   --on-success: #04211b;
   --warning: #f5b13d;
-  --error: #ff5a67;
+  --error: #ff6b78;
   --info: var(--primary);
 
   /* spacing: 8pt grid with 4px half-steps. Tailwind's p-1 = 4, p-2 = 8, p-3 = 12, p-4 = 16, p-6 = 24, p-8 = 32 */
   --space-xs: 4px; --space-sm: 8px; --space-md: 16px; --space-lg: 24px; --space-xl: 32px; --space-2xl: 48px; --space-3xl: 64px;
 
   /* component sizes */
-  --size-sm: 32px; --size-md: 40px; --size-lg: 48px; --size-touch: 44px;     /* control heights; touch is the floor on phones */
+  --size-sm: 28px; --size-md: 32px; --size-lg: 40px; --size-touch: 44px;     /* control heights; touch is the floor on phones */
   --icon-sm: 16px; --icon-md: 20px; --icon-lg: 24px; --icon-xl: 32px;
   --border-thin: 1px; --border-medium: 2px; --border-thick: 4px;
 
@@ -71,20 +71,22 @@
 @media (prefers-color-scheme: light) {
   :root {
     color-scheme: light;
-    --background: #f4f6fb; --card: #ffffff; --card-alt: #eef2fa; --divider: #d8dfee;
-    --foreground: #131a2b; --muted: #55627f; --overlay: rgb(0 0 0 / 0.4);
+    --background: #ffffff; --card: #ffffff; --card-alt: #f0f3fa; --divider: #e0e3eb;
+    --foreground: #131722; --muted: #5d606b; --overlay: rgb(0 0 0 / 0.4);
     /* the bright dark-mode colours fail contrast on white (1.7 to 3.2:1), so light mode uses deeper ones (4.8 to 6.4:1) */
-    --primary-hover: #174aa8;
-    --primary: #1e56c8; --secondary: #5f3fc9; --accent: #a84a14;
-    --success: #0a7040; --on-success: #ffffff;
+    --primary-hover: #1e53e5;
+    --primary: #2962ff; --primary-solid: #2962ff; --secondary: #5f3fc9; --accent: #a84a14;
+    --success: #067a67; --on-success: #ffffff;
     --warning: #8f5f00;
-    --error: #b91c28;
+    --error: #c9253a;
+    --shadow-md: 0 2px 8px rgb(19 23 34 / 0.1); --shadow-lg: 0 6px 20px rgb(19 23 34 / 0.12); --shadow-xl: 0 12px 32px rgb(19 23 34 / 0.14);
   }
 }
 
 /* ───────────────────────── base ───────────────────────── */
 
 html, body, #root { min-height: 100%; }
+* { scrollbar-width: thin; scrollbar-color: var(--divider) transparent; }
 html { -webkit-text-size-adjust: 100%; }
 /* anchor jumps glide and stop below the sticky tab bar; reduced motion turns the glide off */
 @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
@@ -92,9 +94,7 @@ section[id], div[id] { scroll-margin-top: 5rem; }
 body {
   margin: 0; background: var(--background); color: var(--foreground);
   font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased;
-  background-image: radial-gradient(900px 400px at 85% -10%, color-mix(in srgb, var(--primary) 18%, transparent), transparent),
-                    radial-gradient(700px 400px at -10% 10%, color-mix(in srgb, var(--secondary) 12%, transparent), transparent);
-  background-attachment: fixed;
+  font-size: var(--text-sm); font-feature-settings: "tnum" 1, "cv11" 1;
 }
 img, svg, video, canvas { max-width: 100%; }
 
@@ -115,31 +115,38 @@ img, svg, video, canvas { max-width: 100%; }
    justify-self keeps a button its own width inside a grid, where it would otherwise stretch to the whole row. */
 .btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm); justify-self: start;
-  min-height: var(--size-md); padding: 0 var(--space-lg); border: var(--border-thin) solid transparent; border-radius: 9999px;
-  font-weight: 600; background: var(--primary-solid); color: var(--on-primary); cursor: pointer; box-shadow: var(--shadow-sm);
+  min-height: var(--size-md); padding: 0 var(--space-md); border: var(--border-thin) solid transparent; border-radius: var(--radius-lg);
+  font-size: var(--text-sm); font-weight: 500; white-space: nowrap; background: var(--primary-solid); color: var(--on-primary); cursor: pointer;
   transition: background-color var(--duration) var(--ease-out), border-color var(--duration) var(--ease-out), color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
 }
-.btn.sm { min-height: var(--size-sm); padding: 0 var(--space-md); font-size: var(--text-sm); }
-.btn.lg { min-height: var(--size-lg); padding: 0 var(--space-xl); }
-.btn:hover:not(:disabled) { background: var(--primary-hover); box-shadow: var(--shadow-md); }
+.btn.sm { min-height: var(--size-sm); padding: 0 var(--space-sm); font-size: var(--text-xs); }
+.btn.lg { min-height: var(--size-lg); padding: 0 var(--space-lg); font-size: var(--text-base); }
+.btn:hover:not(:disabled) { background: var(--primary-hover); }
 .btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
-.btn.ghost { background: transparent; color: var(--muted); border-color: var(--divider); box-shadow: none; }
-.btn.ghost:hover:not(:disabled) { background: var(--card-alt); color: var(--foreground); border-color: color-mix(in srgb, var(--muted) 55%, var(--divider)); box-shadow: none; }
-.chip { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--text-xs); padding: var(--space-xs) var(--space-sm); border-radius: 9999px; border: var(--border-thin) solid var(--divider); color: var(--muted); transition: border-color var(--duration) var(--ease-out), color var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out); }
+.btn.ghost { background: transparent; color: var(--foreground); border-color: var(--divider); box-shadow: none; }
+.btn.ghost:hover:not(:disabled) { background: var(--card-alt); border-color: var(--divider); }
+.chip { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--text-xs); padding: 2px var(--space-sm); border-radius: var(--radius-lg); border: var(--border-thin) solid var(--divider); color: var(--muted); transition: border-color var(--duration) var(--ease-out), color var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out); }
 [role="tab"] { min-height: var(--size-sm); }
 button.chip:hover, a.chip:hover { border-color: color-mix(in srgb, var(--primary) 60%, var(--divider)); color: var(--foreground); }
 
 /* a card you can press (a button or link made into a card): the border warms and a shadow lifts it, nothing moves */
 a.card, button.card { cursor: pointer; transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out); }
-a.card:hover, button.card:hover { border-color: color-mix(in srgb, var(--primary) 45%, var(--divider)); box-shadow: var(--shadow-md); }
+a.card:hover, button.card:hover { border-color: color-mix(in srgb, var(--primary) 50%, var(--divider)); background: var(--card-alt); }
+
+/* the top bar: one thin strip, solid, with a hairline under it */
+.topbar { background: var(--card); border-bottom: var(--border-thin) solid var(--divider); }
+.field { background: var(--card-alt); border: var(--border-thin) solid transparent; border-radius: var(--radius-lg); color: var(--foreground); transition: border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out); }
+.field::placeholder { color: var(--muted); }
+.field:hover { border-color: var(--divider); }
+.field:focus { border-color: var(--primary-solid); background: var(--background); }
 
 /* top navigation and report tabs: colour fades, the underline is drawn by the border */
 .navlink { color: var(--muted); border-bottom: var(--border-medium) solid transparent; transition: color var(--duration) var(--ease-out), border-color var(--duration) var(--ease-out); }
 .navlink:hover { color: var(--foreground); }
 .navlink[aria-current="page"] { color: var(--foreground); border-color: var(--primary); }
-.tab { color: var(--muted); border-radius: var(--radius-lg); transition: color var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out); }
-.tab:hover { color: var(--foreground); background: color-mix(in srgb, var(--card) 70%, transparent); }
-.tab[aria-current="page"] { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--divider); }
+.tab { color: var(--muted); border-bottom: var(--border-medium) solid transparent; border-radius: 0; transition: color var(--duration-fast) var(--ease-out), border-color var(--duration-fast) var(--ease-out), background-color var(--duration-fast) var(--ease-out); }
+.tab:hover { color: var(--foreground); background: var(--card-alt); }
+.tab[aria-current="page"] { color: var(--foreground); border-bottom-color: var(--primary-solid); }
 
 /* a section that opens and closes: the row grows from 0fr to 1fr, so the height animates without measuring anything.
    The inner box must have min-height 0 and hide its overflow for the row to collapse. */

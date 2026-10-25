@@ -38,21 +38,22 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
   };
 
   return (
-    <div ref={box} className={compact ? "relative w-full sm:w-72" : "max-w-2xl relative"}
+    <div ref={box} className={compact ? "relative w-full max-w-sm" : "max-w-2xl relative"}
       onBlur={(e) => { if (!box.current?.contains(e.relatedTarget as Node | null)) setOpen(false); }}>
+      {compact && <svg aria-hidden viewBox="0 0 20 20" width="14" height="14" className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"><circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" /></svg>}
       <input autoFocus={autoFocus && !window.matchMedia("(pointer: coarse)").matches} value={value} onChange={(e) => set(e.target.value)} onKeyDown={onKeyDown} onFocus={() => setOpen(true)}
         role="combobox" aria-expanded={showing} aria-controls={list} aria-autocomplete="list" aria-label="Search a company by name or ticker"
         aria-activedescendant={showing && results[active] ? `${list}-${active}` : undefined} autoComplete="off" spellCheck={false}
         placeholder={compact ? "Search a company or ticker" : "Company name or ticker, for example Tesla or TSLA"}
-        className={`card w-full outline-none ${compact ? "px-4 min-h-10 text-sm" : "px-5 min-h-12 text-lg"}`} style={{ color: "var(--foreground)", borderColor: compact ? undefined : "var(--primary)" }} />
+        className={`field w-full outline-none ${compact ? "pl-9 pr-3 min-h-8 text-sm" : "px-4 min-h-12 text-lg"}`} style={compact ? undefined : { borderColor: "var(--divider)" }} />
       {showing && (
-        <div id={list} role="listbox" aria-label="Matching companies" className={`card absolute mt-2 z-[var(--z-popover)] overflow-hidden ${compact ? "right-0 w-[min(92vw,22rem)]" : "left-0 right-0"}`} style={{ boxShadow: "0 12px 40px rgba(0,0,0,.25)" }}>
+        <div id={list} role="listbox" aria-label="Matching companies" className={`card absolute mt-1 z-[var(--z-popover)] overflow-hidden ${compact ? "left-0 w-[min(92vw,24rem)]" : "left-0 right-0"}`} style={{ boxShadow: "var(--shadow-lg)" }}>
           {s.isLoading && <div className="p-4 mute text-sm" role="status">Searching the SEC company list…</div>}
           {s.isError && <div className="p-4 text-sm" role="alert" style={{ color: "var(--error)" }}>Could not reach the search. Is the API running?</div>}
           {results.map((c, i) => (
             <div key={c.cik} id={`${list}-${i}`} role="option" aria-selected={i === active} tabIndex={-1}
               onMouseDown={(e) => e.preventDefault()} onClick={() => pick(c)} onMouseEnter={() => setActive(i)}
-              className="w-full text-left px-4 py-3 flex items-center justify-between gap-3 cursor-pointer"
+              className="w-full text-left px-3 py-2 text-sm flex items-center justify-between gap-3 cursor-pointer"
               style={{ color: "var(--foreground)", borderBottom: "1px solid var(--divider)", background: i === active ? "var(--card-alt)" : "transparent" }}>
               <span><span className="font-semibold">{c.name}</span> <span className="num mute text-sm">{c.ticker}</span></span>
               {!compact && <span className="chip">{c.exchange ?? "US"} · United States</span>}

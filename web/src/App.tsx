@@ -23,18 +23,20 @@ export default function App() {
           {health.data.banner}
         </div>
       )}
-      <header className="page pt-6 pb-2 flex items-center justify-between gap-x-4 gap-y-2 flex-wrap">
-        <a href="#/" className="flex items-center gap-2 py-2 font-semibold tracking-tight no-underline" style={{ color: "var(--foreground)" }}>
-          <span className="inline-block w-6 h-6 rounded-lg" style={{ background: "linear-gradient(135deg,var(--primary),var(--secondary))" }} aria-hidden />
-          Compounding Minds
-        </a>
-        <nav aria-label="Pages" className="flex gap-5 text-sm font-medium">
-          <a href="#/" aria-current={onResearch ? "page" : undefined} className="navlink py-1 no-underline">Research</a>
-          <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="navlink py-1 no-underline">Track record</a>
-        </nav>
-        {route.name !== "home" && <CompanySearch compact />}
+      <header className="topbar sticky top-0 z-[var(--z-sticky)]">
+        <div className="page h-12 flex items-center gap-x-4">
+          <a href="#/" className="flex items-center gap-2 text-sm font-semibold no-underline shrink-0" style={{ color: "var(--foreground)" }}>
+            <span className="inline-block w-5 h-5 rounded-lg" style={{ background: "var(--primary-solid)" }} aria-hidden />
+            <span className="hidden xs:inline">Compounding Minds</span>
+          </a>
+          <div className="flex-1 min-w-0 flex justify-center sm:justify-start">{route.name !== "home" && <CompanySearch compact />}</div>
+          <nav aria-label="Pages" className="flex gap-4 text-sm font-medium h-full shrink-0">
+            <a href="#/" aria-current={onResearch ? "page" : undefined} className="navlink inline-flex items-center no-underline">Research</a>
+            <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="navlink inline-flex items-center no-underline">Track record</a>
+          </nav>
+        </div>
       </header>
-      <main id="main" tabIndex={-1} className="page py-6 flex-1 outline-none">
+      <main id="main" tabIndex={-1} className="page py-4 flex-1 outline-none">
         <AnimatePresence mode="wait">
           <motion.div key={route.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0, transition: { duration: DUR.slow, ease: EASE_SOFT } }} exit={{ opacity: 0, transition: { duration: DUR.fast } }}>
             {route.name === "home" && <Research />}
