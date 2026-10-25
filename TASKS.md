@@ -2,7 +2,7 @@
 
 Who builds what, in what order. Spec: [README.md](README.md). Pattern and flow: [ARCHITECTURE.md](ARCHITECTURE.md). Rules: [CLAUDE.md](CLAUDE.md). Pictures: [system-map.html](system-map.html), [user-journey.html](user-journey.html).
 
-**Code freeze: Sun 25 Oct 10:00.** Rule: only edit your own files unless asked. Small PRs, `main` always runs, tests pass before merge.
+**Deadline: confirmed by the organisers (do not plan around a fixed time).** Rule: only edit your own files unless asked. Small PRs, `main` always runs, tests pass before merge.
 
 ---
 
@@ -98,7 +98,7 @@ Notes for B:
 - `agents/cache.py` now writes UTF-8: on Windows a reply containing a character such as "≈" crashed the replay.
 - The replay agents' prompt files (`principles/<investor>.md`) are unchanged on purpose: the demo replays from a cache keyed on the prompt.
 
-## 0f. Where the project is now (Sun 25 Oct, ~02:00; freeze 10:00)
+## 0f. Where the project is now (Sun 25 Oct, ~02:00)
 
 Pushed to `main` (`594842e`). 666 tests pass (5 skip). The app runs from `main` at http://localhost:8000.
 
@@ -302,7 +302,7 @@ Moat and Valuation metric sets and agents, cross-examination round, `screener/`,
 | Sat 21:00 to Sun 01:00 | Metrics for the three MVP agents, `get_metrics` real, agents on real data | Grader rules for all three questions, `corrections.py`, load all 50 companies |
 | Sun 01:00 to 05:00 | Frozen twins, baselines, held-out harness, tool servers | Replay orchestrator, full replay run, synthesizer weights, dashboard v1 |
 | Sun 05:00 to 08:00 | Held-out run, quality report and critique, copy and demo script | Dashboard polish, correction spotlight, final report |
-| Sun 08:00 to 10:00 | Record the backup video together, freeze checks, README results | |
+| Sun morning | Record the backup video together, final checks, README results | |
 
 ---
 

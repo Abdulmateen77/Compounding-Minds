@@ -40,6 +40,23 @@ Built for the **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026).
 
 ---
 
+## Who it is for, and why they come back
+
+**The user:** an individual investor, or a junior analyst, who follows a handful of companies and wants a trustworthy first read
+on a name before spending hours in its filings.
+
+**The task it saves them from:** reading the latest 10-K or 10-Q, computing the ratios by hand, working out what the share price
+assumes, and asking "would a careful investor still like this?" for each company on their list.
+
+**Why they come back every quarter:** the answer changes when the company files again. Each new 10-Q or 10-K lands every three
+months, and the app notices a newer filing and re-reads it (the page says which filing the figures come from, and **Refresh data**
+forces a re-read). Their earlier lookups are kept in the search box, so the names they follow are one click away.
+
+**Not built yet:** a watchlist that flags when a new filing changes an investor's call. It is the obvious next step, and we do not
+claim it today.
+
+---
+
 ## How it fits the judging criteria
 
 | Criterion | What we built | Where to see it | The honest limit |
@@ -221,7 +238,7 @@ research panel. The roles "Person A" and "Person B" were the two builders' work 
 
 A team of AI analysts that grades itself against reality and compounds from every mistake.
 
-Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026). Code freeze **Sun 25 Oct 10:00**.
+Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026).
 Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITECTURE.md) (agent pattern and flow), [system-map.html](system-map.html) (layered system architecture diagram), [architecture.html](architecture.html) (one quarter in time order, data pipeline, agent anatomy, learning loop), [user-journey.html](user-journey.html) (user inputs, outputs and dashboard screens) and [DATA_ARCHITECTURE.md](DATA_ARCHITECTURE.md) (same flow as Mermaid), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
 
 ---
@@ -313,7 +330,7 @@ This is a research-support and QA loop for analysts, not a replacement for an in
 | All code written during the event | No pasted legacy code. Open-source libraries only. |
 | Every LLM call routes through Mubit | One shared client, base URL set to Mubit, one adapter per agent. |
 | Judged on: Mubit use, usefulness, execution, live demo | The correction to model update step must be **visible on screen**. |
-| Code freeze Sun 25 Oct 10:00 | Backup demo video recorded before freeze. |
+| Submission deadline (confirmed by the organisers) | Backup demo video recorded early. |
 
 *(Resolved: Mubit has no correction or update API. `agents/MUBIT.md` records what we checked. The loop is described in section 10.)*
 
@@ -646,7 +663,7 @@ Prevents the demo from just showing overfitting.
 - **Split by time and by company.** Train window: 2018-2022. Held-out window: 2023-2024. Hold out ~10 companies across all years.
 - Mubit updates are learned **only** from train-window corrections.
 - Report accuracy and Brier on held-out for: (a) frozen agents, (b) learned agents, (c) baselines.
-- Held-out results are generated once, before freeze, and shown as a single slide/panel. No tuning against them.
+- Held-out results are generated once, before submission, and shown as a single slide/panel. No tuning against them.
 - Stretch: frontier-model comparison (same questions, a larger model with no learning), shown as a bar next to ours.
 
 **Results: the investor checks, back-tested (Sat 24 Oct).** `python -m research.backtest` runs the Buffett and Munger checks of the research report at every quarter from 2018Q1 to 2023Q4 for the 50 companies, through the date gate, and compares them with what happened over the next twelve months (1,184 company-quarters; no model, repeatable; summary in `research/evidence.json`, shown in the app).
@@ -795,7 +812,7 @@ Minimum tests (the project cannot demo without these):
 7. **COVID (30s):** crash drops accuracy, recovery follows.
 8. **Held-out (20s):** frozen vs learned vs baseline on unseen years.
 
-Backup: a recorded video of the full flow, made before freeze. If live fails, play it.
+Backup: a recorded video of the full flow, made early. If live fails, play it.
 
 ---
 
@@ -833,7 +850,7 @@ Backup: a recorded video of the full flow, made before freeze. If live fails, pl
 | 10-20 | Metrics for MVP agents, grader rules, first grades | Risk + Scenarios, Synthesizer, reflection prompt, ModelUpdater |
 | 20-30 | Replay orchestrator, full ingest QA, dashboard v1 | Correction loop with real Mubit, held-out eval harness |
 | 30-34 | Dashboard polish, correction spotlight | Full replay run, baselines, held-out report |
-| 34-37 | Record backup video, freeze checks | Tune demo script, README results section |
+| 34-37 | Record backup video, final checks | Tune demo script, README results section |
 
 ---
 

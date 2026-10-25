@@ -279,7 +279,7 @@ Mubit's real update API is not yet known. Code against these interfaces, ask at 
 - Correction to Mubit update is visible on screen in the demo.
 - Learned agents beat their frozen twins on held-out data, or the result is reported honestly with calibration gains.
 - No leakage test failures.
-- Backup demo video recorded before code freeze (Sun 25 Oct 10:00).
+- Backup demo video recorded early, before the submission deadline.
 
 ### 7.6 Scope
 

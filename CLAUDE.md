@@ -4,7 +4,7 @@ Project context for Claude Code. Read this first, then `README.md` (full spec), 
 
 ## What this is
 
-A multi-agent investment research system built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026, code freeze **Sun 25 Oct 10:00**). Each agent follows a legendary investor's principles (Buffett, Graham, Munger, Dalio), makes a **checkable call** about a company, and is **graded by what actually happened** in later SEC filings. Wrong calls become corrections; Each wrong call becomes a lesson the same analyst reads next time; **Mubit** records every call (it has no correction API, see `agents/MUBIT.md`). The demo replays 2018-2024 quarter by quarter against a frozen twin; the honest result is in `README.md`.
+A multi-agent investment research system built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026; the organisers confirm the final deadline). Each agent follows a legendary investor's principles (Buffett, Graham, Munger, Dalio), makes a **checkable call** about a company, and is **graded by what actually happened** in later SEC filings. Wrong calls become corrections; Each wrong call becomes a lesson the same analyst reads next time; **Mubit** records every call (it has no correction API, see `agents/MUBIT.md`). The demo replays 2018-2024 quarter by quarter against a frozen twin; the honest result is in `README.md`.
 
 One sentence: a team of AI analysts that grades itself against reality and improves every time it's wrong.
 
