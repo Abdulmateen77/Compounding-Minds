@@ -39,7 +39,7 @@
 
   /* surfaces */
   --background: #131722; --card: #1e222d; --card-alt: #2a2e39; --divider: #363a45;
-  --foreground: #d1d4dc; --muted: #8f93a0; --overlay: rgb(0 0 0 / 0.5);
+  --foreground: #d1d4dc; --muted: #9ba0ad; --overlay: rgb(0 0 0 / 0.5);
 
   /* brand and semantic colour. Every text colour below is at least 4.5:1 on --background, --card and --card-alt. */
   --primary: #6c9bff;   --primary-solid: #2962ff;   --primary-hover: #1e53e5;   --on-primary: #ffffff;    /* solid = a fill that carries white text */
@@ -76,7 +76,7 @@
     /* the bright dark-mode colours fail contrast on white (1.7 to 3.2:1), so light mode uses deeper ones (4.8 to 6.4:1) */
     --primary-hover: #1e53e5;
     --primary: #2962ff; --primary-solid: #2962ff; --secondary: #5f3fc9; --accent: #a84a14;
-    --success: #067a67; --on-success: #ffffff;
+    --success: #05695a; --on-success: #ffffff;
     --warning: #8f5f00;
     --error: #c9253a;
     --shadow-md: 0 2px 8px rgb(19 23 34 / 0.1); --shadow-lg: 0 6px 20px rgb(19 23 34 / 0.12); --shadow-xl: 0 12px 32px rgb(19 23 34 / 0.14);

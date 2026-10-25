@@ -41,7 +41,7 @@ export function CompanySearch({ q, onQ, compact = false, autoFocus = false }: { 
     <div ref={box} className={compact ? "relative w-full max-w-sm" : "max-w-2xl relative"}
       onBlur={(e) => { if (!box.current?.contains(e.relatedTarget as Node | null)) setOpen(false); }}>
       {compact && <svg aria-hidden viewBox="0 0 20 20" width="14" height="14" className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" fill="none" stroke="var(--muted)" strokeWidth="1.8" strokeLinecap="round"><circle cx="8.5" cy="8.5" r="5.5" /><path d="M13 13l4 4" /></svg>}
-      <input autoFocus={autoFocus && !window.matchMedia("(pointer: coarse)").matches} value={value} onChange={(e) => set(e.target.value)} onKeyDown={onKeyDown} onFocus={() => setOpen(true)}
+      <input maxLength={80} autoFocus={autoFocus && !window.matchMedia("(pointer: coarse)").matches} value={value} onChange={(e) => set(e.target.value)} onKeyDown={onKeyDown} onFocus={() => setOpen(true)}
         role="combobox" aria-expanded={showing} aria-controls={list} aria-autocomplete="list" aria-label="Search a company by name or ticker"
         aria-activedescendant={showing && results[active] ? `${list}-${active}` : undefined} autoComplete="off" spellCheck={false}
         placeholder={compact ? "Search a company or ticker" : "Company name or ticker, for example Tesla or TSLA"}

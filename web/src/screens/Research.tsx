@@ -107,7 +107,7 @@ function TabBar({ cik, view }: { cik: string; view: ResearchView }) {
     box.scrollTo({ left: Math.max(0, left), behavior: "smooth" });   // scrolls the row itself, never the page
   }, [view]);
   return (
-    <nav ref={row} aria-label="Pages of this report" className="tabrow sticky top-12 z-[var(--z-sticky)] flex" style={{ background: "var(--background)", borderBottom: "1px solid var(--divider)" }}>
+    <nav ref={row} aria-label="Pages of this report" className="tabrow sticky top-0 sm:top-12 z-[var(--z-sticky)] flex" style={{ background: "var(--background)", borderBottom: "1px solid var(--divider)" }}>
       {TABS.map((t) => (
         <a key={t.id} href={researchHref(cik, t.id)} title={t.hint} aria-current={view === t.id ? "page" : undefined}
           className="tab px-4 py-3 text-sm font-medium no-underline whitespace-nowrap">{t.label}</a>
@@ -126,7 +126,7 @@ function ReportPage({ cik, view: asked }: { cik: string; view: ResearchView }) {
     if (view === "investors") { waited.current = true; return <ResearchingRoom cik={cik} plain={(name) => <Loading name={name} />} />; }
     return <Loading name={recallPicked(cik)?.name} />;
   }
-  if (q.isError || !q.data) return <div className="grid gap-3"><ErrorBox msg={String(q.error ?? "Could not build the report.")} onRetry={() => q.refetch()} /><a className="btn ghost justify-self-start no-underline" href="#/">← Search again</a></div>;
+  if (q.isError || !q.data) return <div className="grid gap-3"><ErrorBox msg={q.error instanceof Error ? q.error.message : "Could not build the report."} onRetry={() => q.refetch()} /><a className="btn ghost justify-self-start no-underline" href="#/">← Search again</a></div>;
   const r = q.data, c = r.company;
 
   if (!r.supported) {

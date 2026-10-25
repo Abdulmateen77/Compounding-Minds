@@ -96,7 +96,7 @@ function CheckRow({ k }: { k: Check }) {
   const C = CHECK[k.result];
   return (
     <li className="flex gap-3 items-start">
-      <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 20%, transparent)`, color: C.color }}>{C.mark}</span>
+      <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 14%, transparent)`, color: C.color }}>{C.mark}</span>
       <div className="grid gap-1 text-sm">
         <span className="font-medium">{k.check}</span>
         <span className="num text-xs">{k.shown}</span>
@@ -262,7 +262,7 @@ export function QuickCheckBlock({ q }: { q: QuickCheck }) {
               const C = CHECK[i.result];
               return (
                 <li key={i.key} className="flex gap-3 items-start">
-                  <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 20%, transparent)`, color: C.color }}>{C.mark}</span>
+                  <span aria-label={C.word} className="inline-grid place-items-center w-6 h-6 rounded-full shrink-0 text-xs" style={{ background: `color-mix(in srgb, ${C.color} 14%, transparent)`, color: C.color }}>{C.mark}</span>
                   <div className="grid gap-1 text-sm">
                     <span className="font-medium">{i.label}: <span className="font-normal">{i.found}</span></span>
                     <span className="mute text-xs">Look for: {i.rule}</span>
