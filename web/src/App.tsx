@@ -7,14 +7,13 @@ import Verdict from "./screens/Verdict";
 import Mubit from "./screens/Mubit";
 import Research from "./screens/Research";
 import { CompanySearch } from "./components/CompanySearch";
-import { DUR } from "./motion";
+import { DUR, EASE_SOFT } from "./motion";
 
 export default function App() {
   const route = useRoute();
   const health = useQuery({ queryKey: ["health"], queryFn: api.health });
   const onMubit = route.name === "mubit";
   const onResearch = route.name === "home" || route.name === "research";
-  const navStyle = (on: boolean) => ({ color: on ? "var(--foreground)" : "var(--muted)", borderBottom: `2px solid ${on ? "var(--primary)" : "transparent"}` });
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -30,14 +29,14 @@ export default function App() {
           Compounding Minds
         </a>
         <nav aria-label="Pages" className="flex gap-5 text-sm font-medium">
-          <a href="#/" aria-current={onResearch ? "page" : undefined} className="py-1 no-underline" style={navStyle(onResearch)}>Research</a>
-          <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="py-1 no-underline" style={navStyle(onMubit)}>Track record</a>
+          <a href="#/" aria-current={onResearch ? "page" : undefined} className="navlink py-1 no-underline">Research</a>
+          <a href="#/mubit" aria-current={onMubit ? "page" : undefined} className="navlink py-1 no-underline">Track record</a>
         </nav>
         {route.name !== "home" && <CompanySearch compact />}
       </header>
       <main id="main" tabIndex={-1} className="page py-6 flex-1 outline-none">
         <AnimatePresence mode="wait">
-          <motion.div key={route.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: DUR.base }}>
+          <motion.div key={route.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0, transition: { duration: DUR.slow, ease: EASE_SOFT } }} exit={{ opacity: 0, transition: { duration: DUR.fast } }}>
             {route.name === "home" && <Research />}
             {route.name === "research" && <Research cik={route.cik} view={route.view} />}
             {route.name === "run" && <Run id={route.id} />}

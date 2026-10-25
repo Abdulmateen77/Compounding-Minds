@@ -42,7 +42,7 @@
   --foreground: #e8edf8; --muted: #8a98b8; --overlay: rgb(0 0 0 / 0.5);
 
   /* brand and semantic colour. Every text colour below is at least 4.5:1 on --background, --card and --card-alt. */
-  --primary: #4f8cff;   --primary-solid: #2f6fe0;   --on-primary: #ffffff;    /* solid = a fill that carries white text (4.7:1) */
+  --primary: #4f8cff;   --primary-solid: #2f6fe0;   --primary-hover: #2760c4;   --on-primary: #ffffff;    /* solid = a fill that carries white text (4.7:1) */
   --secondary: #a98bff; --accent: #f0925a;
   --success: #2fd37c;   --on-success: #06210f;
   --warning: #f5b13d;
@@ -58,11 +58,12 @@
   --border-thin: 1px; --border-medium: 2px; --border-thick: 4px;
 
   /* container: the content width at each breakpoint */
-  --container-lg: 1024px; --container-xl: 1280px; --container-2xl: 1536px;
+  --container-lg: 1024px; --container-xl: 1152px;   /* stops at 1152 (6xl): wider lines and cards only stretch the page */
 
   /* motion */
   --duration-fast: 150ms; --duration: 250ms; --duration-slow: 350ms; --duration-slower: 500ms;
   --ease-out: ease-out; --ease-in-out: ease-in-out;
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);       /* the long, gentle ease used for reveals and page changes */
 
   /* z-index: dropdown 1000, sticky 1020, overlay 1030, modal 1040, popover 1050, tooltip 1060, notification 1070 */
   --z-dropdown: 1000; --z-sticky: 1020; --z-overlay: 1030; --z-modal: 1040; --z-popover: 1050; --z-tooltip: 1060; --z-notification: 1070;
@@ -73,6 +74,7 @@
     --background: #f4f6fb; --card: #ffffff; --card-alt: #eef2fa; --divider: #d8dfee;
     --foreground: #131a2b; --muted: #55627f; --overlay: rgb(0 0 0 / 0.4);
     /* the bright dark-mode colours fail contrast on white (1.7 to 3.2:1), so light mode uses deeper ones (4.8 to 6.4:1) */
+    --primary-hover: #174aa8;
     --primary: #1e56c8; --secondary: #5f3fc9; --accent: #a84a14;
     --success: #0a7040; --on-success: #ffffff;
     --warning: #8f5f00;
@@ -84,6 +86,9 @@
 
 html, body, #root { min-height: 100%; }
 html { -webkit-text-size-adjust: 100%; }
+/* anchor jumps glide and stop below the sticky tab bar; reduced motion turns the glide off */
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+section[id], div[id] { scroll-margin-top: 5rem; }
 body {
   margin: 0; background: var(--background); color: var(--foreground);
   font-family: var(--font-sans); line-height: 1.5; -webkit-font-smoothing: antialiased;
@@ -106,24 +111,46 @@ img, svg, video, canvas { max-width: 100%; }
 .mute { color: var(--muted); }
 .num { font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
 
-/* button: md is 40px tall with 16px side padding; .sm is 32/12 and .lg is 48/20 */
+/* button: a pill, md is 40px tall with 16px side padding; .sm is 32/12 and .lg is 48/20. Hover changes colour, it does not move.
+   justify-self keeps a button its own width inside a grid, where it would otherwise stretch to the whole row. */
 .btn {
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm);
-  min-height: var(--size-md); padding: 0 var(--space-md); border: 0; border-radius: var(--radius-xl);
-  font-weight: 600; background: var(--primary-solid); color: var(--on-primary); cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-sm); justify-self: start;
+  min-height: var(--size-md); padding: 0 var(--space-lg); border: var(--border-thin) solid transparent; border-radius: 9999px;
+  font-weight: 600; background: var(--primary-solid); color: var(--on-primary); cursor: pointer; box-shadow: var(--shadow-sm);
+  transition: background-color var(--duration) var(--ease-out), border-color var(--duration) var(--ease-out), color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out), opacity var(--duration-fast) var(--ease-out);
 }
-.btn.sm { min-height: var(--size-sm); padding: 0 12px; font-size: var(--text-sm); }
-.btn.lg { min-height: var(--size-lg); padding: 0 20px; }
-.btn:hover { transform: translateY(-1px); } .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
-.btn.ghost { background: transparent; color: var(--muted); border: var(--border-thin) solid var(--divider); }
-.chip { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--text-xs); padding: var(--space-xs) var(--space-sm); border-radius: 9999px; border: var(--border-thin) solid var(--divider); color: var(--muted); }
+.btn.sm { min-height: var(--size-sm); padding: 0 var(--space-md); font-size: var(--text-sm); }
+.btn.lg { min-height: var(--size-lg); padding: 0 var(--space-xl); }
+.btn:hover:not(:disabled) { background: var(--primary-hover); box-shadow: var(--shadow-md); }
+.btn:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.btn.ghost { background: transparent; color: var(--muted); border-color: var(--divider); box-shadow: none; }
+.btn.ghost:hover:not(:disabled) { background: var(--card-alt); color: var(--foreground); border-color: color-mix(in srgb, var(--muted) 55%, var(--divider)); box-shadow: none; }
+.chip { display: inline-flex; align-items: center; gap: var(--space-xs); font-size: var(--text-xs); padding: var(--space-xs) var(--space-sm); border-radius: 9999px; border: var(--border-thin) solid var(--divider); color: var(--muted); transition: border-color var(--duration) var(--ease-out), color var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out); }
+[role="tab"] { min-height: var(--size-sm); }
+button.chip:hover, a.chip:hover { border-color: color-mix(in srgb, var(--primary) 60%, var(--divider)); color: var(--foreground); }
 
-/* content width: grows with the screen, at the container sizes of the system */
+/* a card you can press (a button or link made into a card): the border warms and a shadow lifts it, nothing moves */
+a.card, button.card { cursor: pointer; transition: border-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out); }
+a.card:hover, button.card:hover { border-color: color-mix(in srgb, var(--primary) 45%, var(--divider)); box-shadow: var(--shadow-md); }
+
+/* top navigation and report tabs: colour fades, the underline is drawn by the border */
+.navlink { color: var(--muted); border-bottom: var(--border-medium) solid transparent; transition: color var(--duration) var(--ease-out), border-color var(--duration) var(--ease-out); }
+.navlink:hover { color: var(--foreground); }
+.navlink[aria-current="page"] { color: var(--foreground); border-color: var(--primary); }
+.tab { color: var(--muted); border-radius: var(--radius-lg); transition: color var(--duration) var(--ease-out), background-color var(--duration) var(--ease-out), box-shadow var(--duration) var(--ease-out); }
+.tab:hover { color: var(--foreground); background: color-mix(in srgb, var(--card) 70%, transparent); }
+.tab[aria-current="page"] { background: var(--card); color: var(--foreground); box-shadow: 0 0 0 1px var(--divider); }
+
+/* a section that opens and closes: the row grows from 0fr to 1fr, so the height animates without measuring anything.
+   The inner box must have min-height 0 and hide its overflow for the row to collapse. */
+.collapse { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--duration-slow) var(--ease-out), opacity var(--duration-slow) var(--ease-out); }
+.collapse[data-open="true"] { grid-template-rows: 1fr; opacity: 1; }
+.collapse > .collapse-inner { min-height: 0; overflow: hidden; }
+
+/* content width: grows with the screen up to 1152, then stops. Reading text stays on max-w-3xl inside it. */
 .page { width: 100%; margin-inline: auto; max-width: var(--container-lg); padding-inline: max(var(--space-md), env(safe-area-inset-left)) max(var(--space-md), env(safe-area-inset-right)); }
 @media (min-width: 640px) { .page { padding-inline: var(--space-lg); } }
 @media (min-width: 1280px) { .page { max-width: var(--container-xl); } }
-@media (min-width: 1536px) { .page { max-width: var(--container-2xl); } }
 
 /* keyboard users always see where they are; mouse users do not get a ring on click */
 :focus-visible { outline: var(--border-medium) solid var(--primary); outline-offset: 2px; border-radius: var(--radius-lg); }
@@ -133,6 +160,7 @@ input:focus-visible, textarea:focus-visible { outline-offset: 0; }
 
 @keyframes dots { 0%, 100% { opacity: .25; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-2px); } }
 @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+@keyframes spin { to { transform: rotate(360deg); } }
 @keyframes popin { from { opacity: 0; transform: translateY(6px) scale(.98); } to { opacity: 1; transform: none; } }
 
 /* scrolling tab rows: snap to a tab, hide the bar, keep momentum */
@@ -146,6 +174,7 @@ input:focus-visible, textarea:focus-visible { outline-offset: 0; }
 @media (max-width: 640px), (pointer: coarse) {
   .btn, .btn.sm, .btn.lg { min-height: var(--size-touch); }
   button.chip, a.chip, [role="tab"] { min-height: var(--size-md); }
+  .tab, .navlink { min-height: var(--size-touch); display: inline-flex; align-items: center; }
   select, input { font-size: 16px; }                 /* below 16px, iOS Safari zooms the page when a field is focused */
   main a.underline, main button.underline, header a.underline { display: inline-block; padding: .6rem .4rem; margin: -.6rem -.4rem; }
   header nav a { padding-block: 12px; }

@@ -37,7 +37,7 @@ export function InvestorBoxes({ lenses }: { lenses: Lens[] }) {
           return (
             <li key={l.key} className="contents">
               <button onClick={() => setOpen(on ? null : l.key)} aria-expanded={on}
-                className="card text-left p-3 grid gap-2 cursor-pointer transition-transform hover:-translate-y-0.5"
+                className="card text-left p-3 grid gap-2 cursor-pointer"
                 style={{ color: "var(--foreground)", borderColor: on ? c : undefined, boxShadow: on ? `0 0 0 2px ${c}` : undefined }}>
                 <span className="flex items-center gap-2">
                   <Avatar l={l} size={36} ring={c} />

@@ -84,7 +84,7 @@ export function Highlights({ r }: { r: Report }) {
   ].slice(0, 3);
   return (
     <section className="grid gap-3" aria-label="What stands out">
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 md:grid-cols-2 items-start">
         <Pick items={strengths} tone="good" empty="No figure stands out as a clear strength." />
         <Pick items={concerns} tone="warn" empty="No figure raises a concern." />
       </div>
