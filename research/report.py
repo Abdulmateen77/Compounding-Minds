@@ -15,7 +15,7 @@ from typing import Callable
 from metrics import fundamentals, risk, scenarios
 from metrics.context import Context, Result, combine
 
-from . import dividends, quick_check
+from . import dividends, outlook, quick_check
 from .analysis import analyse
 
 STALE_DAYS = 500            # a last revenue quarter older than this means we cannot read the company's revenue
@@ -259,8 +259,27 @@ def build_report(company_id: str, as_of: date, profile: dict, *, quote=None, sha
         "missing": [f["label"] for f in all_figs if f["value"] is None],
     }
     out["analysis"] = analyse(out)
+    m = out.get("market") or {}
+    out["outlook"] = outlook.build(yearly_growth=_yearly_growth(ctx), val=out["analysis"]["valuation"], shares=m.get("shares"),
+                                   net_debt=cur.net_debt.value if cur.net_debt is not None else None, price=m.get("price"))
     out["quick_check"] = quick_check.run(out)
     return out
+
+
+def _yearly_growth(ctx: Context, years: int = 10) -> list[float]:
+    """Revenue growth for each of up to ten years, year-end to year-end, from the company's own filings."""
+    ends = [ctx.q0] if ctx.q0 else []
+    while ends and len(ends) <= years:
+        prev = ctx.back(ends[-1], 4)
+        if prev is None:
+            break
+        ends.append(prev)
+    out = []
+    for new, old in zip(ends, ends[1:]):
+        a, b = ctx.ttm("revenue", new), ctx.ttm("revenue", old)
+        if a is not None and b is not None and b.value > 0:
+            out.append(a.value / b.value - 1)
+    return out[::-1]
 
 
 def _roic(ctx: Context, b: Base) -> Result | None:

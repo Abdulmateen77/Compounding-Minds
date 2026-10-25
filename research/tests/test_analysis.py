@@ -66,7 +66,7 @@ def test_overall_view_rules():
 def test_every_check_names_its_principle_source_and_the_number_it_used():
     F.install(F.build_facts())
     a = build_report("anon_001", AFTER, PROFILE)["analysis"]
-    assert [l["key"] for l in a["lenses"]] == ["buffett", "munger", "graham", "lynch", "dalio", "jhunjhunwala"]
+    assert [l["key"] for l in a["lenses"]] == ["buffett", "munger", "lynch", "dalio", "jhunjhunwala"]
     assert {l["key"] for l in a["lenses"] if l["backtested"]} == {"buffett", "munger"}
     for lens in a["lenses"]:
         for c in lens["checks"]:
@@ -131,3 +131,19 @@ def test_every_guide_check_line_is_parseable_and_every_lens_check_id_resolves():
         lines = [l for l in (Path(analysis.GUIDES_DIR) / f"{name}.md").read_text(encoding="utf-8").splitlines()
                  if re.match(rf"^{name}\.g\d+b? \|", l)]
         assert len(lines) >= 5 and all(len(l.split("|")) == 4 for l in lines), name
+
+
+def test_each_investor_makes_a_call_and_price_minded_ones_wait_when_the_price_is_too_high():
+    rich, fair = {"available": True, "position": "above_bull"}, {"available": True, "position": "near_base"}
+    assert analysis.decide("buffett", 0.8, fair)["call"] == "invest"
+    assert analysis.decide("buffett", 0.8, rich)["call"] == "wait"          # quality, but the price is too high for him
+    assert analysis.decide("munger", 0.8, rich)["call"] == "invest"         # his checks are about failure, not price
+    assert analysis.decide("dalio", 0.5, fair)["call"] == "wait" and analysis.decide("dalio", 0.2, fair)["call"] == "avoid"
+    assert analysis.decide("lynch", None, fair)["label"] == "Not enough data"
+
+
+def test_the_panel_tally_names_the_majority_or_says_it_is_split():
+    mk = lambda *calls: [{"decision": {"call": c}} for c in calls]            # noqa: E731
+    assert analysis.panel(mk("invest", "invest", "invest", "wait", "avoid"))["headline"] == "3 of 5 investors would invest"
+    assert "split" in analysis.panel(mk("invest", "invest", "wait", "wait", "avoid"))["headline"]
+    assert analysis.panel(mk("avoid", "avoid", "avoid", "wait", "invest"))["tone"] == "warn"

@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from typing import Literal
 
 from fastapi import Depends, FastAPI, HTTPException, Query
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, Response, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
@@ -152,6 +152,24 @@ def research_search(q: str = Query("", max_length=80)):
         return research_service().search(q)
     except Exception as e:
         raise HTTPException(502, f"Could not search the SEC company list: {e}")
+
+
+@app.get("/api/voice/status")
+def voice_status():
+    """Whether investor voices are on (ElevenLabs key set) and who has which voice."""
+    from research import voice
+    return voice.status()
+
+
+@app.post("/api/voice")
+def voice_line(body: dict):
+    """One line in an investor's voice, as MP3. Cached on disk, so a line is generated once."""
+    from research import voice
+    try:
+        audio = voice.speak(str(body.get("investor", "")), str(body.get("text", "")))
+    except voice.VoiceError as e:
+        raise HTTPException(503 if "off" in str(e) or "reach" in str(e) else 400, str(e))
+    return Response(content=audio, media_type="audio/mpeg", headers={"Cache-Control": "public, max-age=86400"})
 
 
 @app.get("/api/research/evidence")

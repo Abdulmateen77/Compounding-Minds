@@ -35,7 +35,6 @@ CITATION = {
 }
 INVESTORS = [("buffett", "Warren Buffett", "Is it a durable business that turns profit into cash?"),
              ("munger", "Charlie Munger", "How could this business fail?"),
-             ("graham", "Benjamin Graham", "Is there a margin of safety in the price?"),
              ("lynch", "Peter Lynch", "What kind of stock is it, and is the price fair for its growth?"),
              ("dalio", "Ray Dalio", "How exposed is it to the cycle, and what is the range of outcomes?"),
              ("jhunjhunwala", "Rakesh Jhunjhunwala", "A long-term outperformer with honest leadership, cash and high returns?")]
@@ -494,6 +493,35 @@ def future(val: dict) -> dict | None:
     return {"scenarios": rows}
 
 
+CALL = {"invest": "Would invest", "wait": "Would wait", "avoid": "Would not invest"}
+PRICE_MINDED = {"buffett", "lynch", "jhunjhunwala"}      # their own rules include the price paid
+
+
+def decide(key: str, fit: float | None, val: dict) -> dict:
+    """Each investor's call on their own checks. Price-minded investors wait when the price is above even the optimistic case."""
+    if fit is None:
+        return {"call": "wait", "label": "Not enough data", "why": "Too few of this investor's checks could be run."}
+    if fit >= 0.7:
+        if key in PRICE_MINDED and val.get("available") and val.get("position") == "above_bull":
+            return {"call": "wait", "label": CALL["wait"], "why": "Passes most checks, but the price is above even the optimistic case."}
+        return {"call": "invest", "label": CALL["invest"], "why": "Passes most of this investor's checks."}
+    if fit >= 0.4:
+        return {"call": "wait", "label": CALL["wait"], "why": "Some checks pass and some fail: not enough to commit."}
+    return {"call": "avoid", "label": CALL["avoid"], "why": "Fails most of this investor's checks."}
+
+
+def panel(lenses: list[dict]) -> dict:
+    n = {k: sum(1 for l in lenses if l["decision"]["call"] == k) for k in CALL}
+    total = len(lenses)
+    if n["invest"] > total / 2:
+        head, tone = f"{n['invest']} of {total} investors would invest", "good"
+    elif n["avoid"] > total / 2:
+        head, tone = f"{n['avoid']} of {total} investors would not invest", "warn"
+    else:
+        head, tone = f"The panel is split: {n['invest']} would invest, {n['wait']} would wait, {n['avoid']} would not", "watch"
+    return {"counts": n, "total": total, "headline": head, "tone": tone}
+
+
 def analyse(report: dict) -> dict:
     f0 = Facts(report, {})
     shares = (report.get("market") or {}).get("shares")
@@ -515,5 +543,5 @@ def analyse(report: dict) -> dict:
         fits[key] = x
         lenses.append({"key": key, "name": name, "question": question, "fit": x, "word": fit_word(x, key), "checks": checks,
                        "backtested": key in BACKTESTED, "caveat": CAVEAT.get(key), "looks_for": LOOKS_FOR.get(key, []),
-                       "book": BOOK.get(key), **extra})
-    return {"valuation": val, "lenses": lenses, "overall": overall(fits, val), "future": future(val)}
+                       "book": BOOK.get(key), "decision": decide(key, x, val), **extra})
+    return {"valuation": val, "lenses": lenses, "overall": overall(fits, val), "future": future(val), "panel": panel(lenses)}
