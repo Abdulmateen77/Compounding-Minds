@@ -148,11 +148,11 @@ a.card:hover, button.card:hover { border-color: color-mix(in srgb, var(--primary
 .tab:hover { color: var(--foreground); background: var(--card-alt); }
 .tab[aria-current="page"] { color: var(--foreground); border-bottom-color: var(--primary-solid); }
 
-/* a section that opens and closes: the row grows from 0fr to 1fr, so the height animates without measuring anything.
+/* a section that opens and closes (not named .collapse: Tailwind has a utility of that name that sets visibility: collapse and hides the body): the row grows from 0fr to 1fr, so the height animates without measuring anything.
    The inner box must have min-height 0 and hide its overflow for the row to collapse. */
-.collapse { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--duration-slow) var(--ease-out), opacity var(--duration-slow) var(--ease-out); }
-.collapse[data-open="true"] { grid-template-rows: 1fr; opacity: 1; }
-.collapse > .collapse-inner { min-height: 0; overflow: hidden; }
+.expander { display: grid; grid-template-rows: 0fr; opacity: 0; transition: grid-template-rows var(--duration-slow) var(--ease-out), opacity var(--duration-slow) var(--ease-out); }
+.expander[data-open="true"] { grid-template-rows: 1fr; opacity: 1; }
+.expander > .expander-inner { min-height: 0; overflow: hidden; }
 
 /* content width: grows with the screen up to 1152, then stops. Reading text stays on max-w-3xl inside it. */
 .page { width: 100%; margin-inline: auto; max-width: var(--container-lg); padding-inline: max(var(--space-md), env(safe-area-inset-left)) max(var(--space-md), env(safe-area-inset-right)); }

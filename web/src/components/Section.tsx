@@ -38,8 +38,8 @@ export function Collapse({ open, id, children }: { open: boolean; id?: string; c
   const [seen, setSeen] = useState(open);
   useEffect(() => { if (open) setSeen(true); }, [open]);
   return (
-    <div id={id} className="collapse" data-open={open} inert={!open}>
-      <div className="collapse-inner">{(open || seen) && children}</div>
+    <div id={id} className="expander" data-open={open} inert={!open}>
+      <div className="expander-inner">{(open || seen) && children}</div>
     </div>
   );
 }
