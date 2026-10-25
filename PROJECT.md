@@ -8,7 +8,7 @@ Overview document: what it is, who it is for, and how it is built. Agent pattern
 
 A team of AI analysts that grades itself against reality and improves every time it is wrong.
 
-Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t` it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings reported. Wrong calls become **corrections**, and **Mubit** turns corrections into per-agent model updates.
+Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t` it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings reported. Wrong calls become **corrections**; each becomes a lesson that goes into that analyst's next prompt, every call is recorded by **Mubit**, and a frozen twin shows whether the lessons helped (Mubit has no correction API: see `agents/MUBIT.md`).
 
 It is a research-support and QA loop for analysts. It is not an autonomous fund, a trading system or a source of financial advice.
 
@@ -16,7 +16,7 @@ It is a research-support and QA loop for analysts. It is not an autonomous fund,
 1. **Falsifiable.** Every call has a question that filings can answer. No price predictions.
 2. **Point-in-time honest.** Data is filtered by `filed_date <= as_of` in one place, with a leakage test.
 3. **No LLM-generated numbers.** Python computes every metric. Agents only judge.
-4. **Self-correcting.** Graded misses become lessons, and lessons become model updates.
+4. **Self-correcting.** Graded misses become lessons the same analyst reads next time, tested against a frozen twin.
 5. **Traceable.** Every number links back to a filing accession.
 
 ---

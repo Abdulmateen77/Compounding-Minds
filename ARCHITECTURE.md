@@ -12,7 +12,7 @@ Multi-agent design, data flow and the reasoning behind both. Companions: [PROJEC
 |---|---|---|
 | **Parallel / Fan-Out–Fan-In** | Specialist agents run independently on the same input. The synthesizer aggregates their calls. | **Core** |
 | **Shared Blackboard / Shared State** | Postgres is the only coordination channel. Agents never message each other. | Core |
-| **Critic–Refiner / Reflection** | Python grader (external verifier) scores calls, a reflection LLM writes a lesson, Mubit updates the agent that erred. | Core (the learning mechanism) |
+| **Critic–Refiner / Reflection** | Python grader (external verifier) scores calls, a reflection LLM writes a lesson, and the lesson goes into the next prompt of the agent that erred (Mubit records the calls). | Core (the learning mechanism) |
 | **Sequential / Pipeline** | The replay loop runs call, grade, correct, update, snapshot, once per quarter. This is deterministic code, not agents. | Core (control flow) |
 | **Debate / Consensus** | One optional cross-examination round before synthesis. | Stretch |
 
@@ -62,7 +62,7 @@ Multi-agent design, data flow and the reasoning behind both. Companions: [PROJEC
                                            |
                        reflection LLM call (lesson text)
                                            |
-                       ModelUpdater -> Mubit (per-agent update)
+                       MubitUpdater -> lesson memory (read in that agent's next prompt)
                                            |
                                     [dashboard/]
 ```
@@ -125,7 +125,7 @@ act (AgentCall) -> verify (Python grader vs filings) -> reflect (lesson) -> upda
 What makes it different from typical LLM self-critique:
 - **The verifier is rules, not an LLM judge.** It uses filed numbers. The single exception: Sapling classifies going-concern text for the Risk rule, and the rule turns that label into the grade.
 - **The reward is delayed and objective.** It arrives with the next filing.
-- **Learning persists.** Lessons change the agent's model (Mubit) or principles and few-shot memory (`FakeModelUpdater`).
+- **Learning persists.** Lessons persist in the agent's lesson memory and are read in its next prompt; Mubit records the calls. `FakeModelUpdater` is the offline stand-in.
 - **Updates are per agent.** An error attributes to one agent and one set of principles (`principle_refs`).
 
 Safeguards:
@@ -153,7 +153,7 @@ Safeguards:
 | No LLM numbers | Metrics engine in Python, `evidence` checked against engine output at parse time |
 | Gradable calls | Fixed `question_id`s and Pydantic `AgentCall` schema, one repair retry then drop |
 | Reproducible replay | Temperature 0, fixed seeds, response cache keyed by prompt hash |
-| Mubit routing | One `LLMGateway`, one adapter per agent |
+| Mubit routing | One `LLMGateway`; one Mubit task per analyst (records the calls; lessons go in the next prompt) |
 | Demo safety | Replay precomputed offline, dashboard reads Postgres only, `FakeModelUpdater` fallback labelled in the UI |
 
 ---

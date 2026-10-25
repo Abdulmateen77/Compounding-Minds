@@ -57,7 +57,13 @@ is no API to read it, so `get_model_version` is our own lesson counter, not a Mu
 | Daily training limit (resets 00:00 UTC), pause between trainings, 3 adapter starts per day in Try models | Send the training batch early, not on demo morning |
 | Starter credit: only listed models (we use `claude-haiku-4-5`), body at most 8 MiB, only `POST /v1/messages`, `count_tokens` and `GET /v1/models` on Anthropic | `MubitGateway` default model |
 
-## Still to ask Mubit (office hours)
+## One call that does not go through the gateway
+
+`grader/sapling.py` posts going-concern passages straight to Mubit's Banyan Sapling verifier endpoint (it is a verifier, not a chat model, and has its own interface). Verdicts are cached, so a replay makes no live calls. Every chat-model call in the repo goes through `MubitGateway`.
+
+## Still to ask Mubit (office hours): unanswered at submission
+
+We did not get answers to these before the deadline, so nothing in the app depends on them.
 
 1. Is training switched on for our workspace, and is Try models on?
 2. Is there any way, even private or beta, to submit an outcome or correction for a call (an API,

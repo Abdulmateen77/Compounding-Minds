@@ -48,7 +48,7 @@ export default function Mubit({ agent }: { agent?: string }) {
 
       {tab === "checks" && <EvidencePanel />}
       {tab === "learning" && (<>
-        <p className="mute m-0 max-w-2xl text-sm">Every wrong call becomes a correction, and Mubit turns corrections into a new model version. Each analyst here is compared with a frozen twin that never updates.{asOf && <> Figures run to <span className="num">{asOf}</span>.</>}</p>
+        <p className="mute m-0 max-w-2xl text-sm">Every wrong call becomes a lesson that goes into the analyst's next prompt, and Mubit records the calls. Each analyst here is compared with a frozen twin that never gets lessons.{asOf && <> Figures run to <span className="num">{asOf}</span>.</>}</p>
 
       {failed && <ErrorBox msg="Could not load track records. Is the API running?" onRetry={() => qs.forEach((q) => q.refetch())} />}
       {loading && <div className="grid gap-3 grid-cols-2 md:grid-cols-4"><Skeleton h={96} /><Skeleton h={96} /><Skeleton h={96} /><Skeleton h={96} /></div>}
@@ -132,7 +132,7 @@ function HeldOut() {
       <div className="overflow-x-auto">
         <table className="w-full text-sm num">
           <thead className="mute text-xs text-left">
-            <tr><th className="py-1 pr-4 font-normal">Analyst</th><th className="pr-4 font-normal">calls</th><th className="pr-4 font-normal">Learns with Mubit</th>
+            <tr><th className="py-1 pr-4 font-normal">Analyst</th><th className="pr-4 font-normal">calls</th><th className="pr-4 font-normal">With lessons</th>
               <th className="pr-4 font-normal">Frozen twin</th><th className="pr-4 font-normal">difference</th><th className="pr-4 font-normal">Naive</th><th className="font-normal">Base rate</th></tr>
           </thead>
           <tbody>
@@ -187,7 +187,7 @@ function AgentDetail({ d }: { d: TrackRecord }) {
       </div>
       <Curve d={d} />
       <div className="mute text-xs mt-2 flex gap-5 flex-wrap">
-        <span style={{ color: "var(--success)" }}>Learns with Mubit{l != null && <span className="num"> {pct(l)}</span>}</span>
+        <span style={{ color: "var(--success)" }}>With lessons{l != null && <span className="num"> {pct(l)}</span>}</span>
         <span>Frozen twin{f != null && <span className="num"> {pct(f)}</span>}</span>
         <span>Rolling accuracy by quarter</span>
       </div>

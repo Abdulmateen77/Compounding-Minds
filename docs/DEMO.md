@@ -1,32 +1,36 @@
 # Demo script and judge Q&A
 
-Written for: the team presenting at the hackathon (3 to 4 minutes live, then questions). Numbers marked **[replay]** come from the final replay and are filled in once it has finished and been read (see the bottom of this file).
+The 2-minute video is the main thing judges see, so the script below is timed to **110 seconds**, about 270 spoken words at an easy
+pace. The longer version (3 to 4 minutes live) is in the Q&A section's source, the product tour, if you present in person.
 
-## Before you go on stage
-1. Start the app: `DASHBOARD_SOURCE=data/runs_final USE_STUBS=0 python -m uvicorn api.main:app --port 8000`, open http://localhost:8000.
-2. **Warm the companies you will show.** The first lookup of a company takes 10 to 20 seconds (it reads the filings and asks the model for the written parts); after that it is instant for an hour. Open Tesla and Coca-Cola once before you start.
+## Before you record
+1. Start the app: `make demo` (needs Python 3.11+ and Node 20+; it serves http://localhost:8000). The Track record tab reads the
+   committed replay in `demo_data/runs_final`, so it needs no keys.
+2. For the Research part, put `SEC_USER_AGENT`, `MUBIT_API_KEY` and `MUBIT_BASE_URL` in `.env`. **Warm the company you will show**:
+   the first lookup takes 10 to 20 seconds (it reads the filings and asks the model for the written parts), then it is instant for an hour.
+   Open Tesla (or Coca-Cola) once before you record.
 3. If the network or Yahoo is down, the report still builds (price and multiples are simply missing). Say so, and carry on.
-4. Have the backup video ready. Record it from this script.
+4. Record the screen at 1080p, with the browser window at about 1440 wide, one take per section, and cut them together. Put the link in the README (`VIDEO_LINK_HERE`).
 
-## The script (about 3 minutes 45 seconds)
+## The script (110 seconds)
 
-**0:00 The problem (15 s).** "Every investor is told to read the annual report. Nobody reads fifty of them. So we built something that reads them for you, shows its working, and tells you how far to trust it."
+**0:00 The problem (10 s).** *Screen: the landing page.* "Nobody reads fifty annual reports. This reads them for you, shows its working, and checks itself against what really happened."
 
-**0:15 Type a company (20 s).** Type "Tesla". The dropdown says *Tesla, Inc., Nasdaq, United States.* Press Enter. "Any US-listed company. London and Europe are next."
+**0:10 Type a company (10 s).** *Type "Tesla", press Enter.* "Any US-listed company. It reads the filings."
 
-**0:35 The verdict (25 s).** Top of the report: *Mixed evidence: some strengths, some doubts*, with six investor chips. "This reads the filings, not the news. Every number is computed in Python from the SEC filings. The AI only writes words."
+**0:20 Numbers you can trace (15 s).** *The verdict and chips, then hover one figure so the SEC filing shows.* "Every figure is computed in Python and names the filing it came from. The AI only writes words, and a guard drops any sentence with a number the checks did not produce."
 
-**1:00 The numbers (30 s).** Scroll through growth, cash and the balance sheet. Hover a figure: it shows the SEC filing it came from. "Sales are up 8% over twelve months, but only 2.6% a year over three. Free cash flow is $3.3 billion, about 3% of sales, because capital spending jumped to 15% of sales."
+**0:35 The company in its own words (10 s).** *Scroll to the quoted plans.* "These plans are copied word for word from the annual report, with a link. A model can only choose among sentences that exist."
 
-**1:30 The company in its own words (20 s).** The quoted plans: "We currently expect our capital expenditures to be in excess of $20 billion in 2026." "These are copied word for word from its annual report, with a link. A model may only choose among sentences that exist; it cannot write one."
+**0:45 Five investors read the same facts (15 s).** *Open the Investors tab; click Buffett, then the price-assumption line.* "Buffett, Munger, Lynch, Jhunjhunwala and Dalio read the same figures as rule checks from our own written guides, each with a source. The valuation shows what growth today's price already assumes. Research, not advice: no price target."
 
-**1:50 How investors would read it (45 s).** Open the investor cards. Buffett: cash margin down while capital spending is up. Graham: the price assumes more than 45% growth a year, against 9.9% delivered. Lynch: names the kind of stock and compares the P/E with the growth rate. Munger: few ways to fail. Read one "Looking ahead" paragraph aloud. "Each view comes from the investor's own book and a checklist in our words. Every line cites its source."
+**1:00 Do the checks work? (15 s).** *Scroll to the back-test box.* "We ran the checks on 50 companies at every quarter from 2018 to 2023, using only filings public at the time. Companies passing few of Munger's failure checks had a dividend cut or auditor change in 13% of cases, against 2% for those passing most. Right direction, but modest."
 
-**2:35 Does it work? (40 s).** Scroll to *Have these checks actually worked?* "We ran the same checks on 50 companies at every quarter from 2018 to 2023, using only the filings public at the time, and compared with what happened next. Munger's failure checks: companies passing few of them had a dividend cut or auditor change in **13%** of cases, against **2%** for those passing most. The right direction, but modest, and these events are rare. Buffett's quality checks: the companies that passed most kept a typical **14%** free-cash-flow margin a year later, against **4%** for those that passed few. And we say plainly what it does not show: the checks said nothing about sales growth, and we did not test whether prices rose."
+**1:15 It grades its own analysts, and Mubit (25 s).** *Open Track record, pick Fundamentals, show the latest lesson, then the learned and frozen lines.* "AI analysts make calls from 2018 to 2024, seeing only what was public then. Python grades each against the next filing. Every wrong call becomes a lesson that goes into that analyst's next prompt. All model calls go through Mubit, which records them. An identical frozen twin never gets lessons."
 
-**3:15 It checks itself, and learns (30 s).** Open *Past test*. "The original product: AI analysts make a call, Python grades it against the next filing, and every wrong call becomes a lesson the analyst reads next time. All model calls go through Mubit, which records them and trains small models on them. Mubit has no API for corrections, so our code puts the lesson in the next prompt, and we show the learned analyst beside an identical one that never learns." Show one wrong call, its lesson, and the same analyst re-asked. **[replay: name the example and the held-out result]**
+**1:40 The honest result (10 s).** *Show the held-out numbers on the Track record page.* "On years and companies it never saw, the learned analyst did not beat its twin: 58% against 60% on cash margins, 58% against 64% on revenue. We report that, because a result you can't lose isn't a test."
 
-**3:45 Close (15 s).** "Research, not advice. Every figure from the filings, every claim tested or labelled untested. Next: London and Europe."
+**1:50 Close.** "Research, not advice."
 
 ## Judge Q&A
 
@@ -61,12 +65,11 @@ US-listed companies only for now; a search for anything else says so. Banks and 
 Some companies never report operating income or a depreciation total. We estimate them (revenue minus total costs; depreciation alone) and mark them with an approximation sign and a note on the page. The grader's rule for the replay stays stricter.
 
 **What did not work?**
-The original replay analysts did not clearly beat a simple "always the common answer" baseline on the cash-and-margin question, because that outcome is rare. The research product does not depend on them: its checks are rules, tested directly. **[replay: add the held-out numbers]**
+Learning did not help in the replay. On the held-out window (2023-2024) the learned analyst scored 58.0% against its frozen twin's 60.0% on the cash-margin question (the base rate alone is 60.0%), and 57.9% against 63.8% on the revenue-bucket question; Brier scores were level and worse respectively. The Risk analyst's stored grades predate a grading fix, so we do not quote its accuracy. The research product does not depend on the analysts: its checks are rules, tested directly.
 
 **What would you do with another week?**
 Add UK and European listings through a market-data service; back-test the price checks once we have historical prices; read ownership and insider filings for the Jhunjhunwala checks; and fold the best of the new guide rules into the replay analysts' prompts in one deliberate change.
 
-## Filling in the replay numbers (after the run finishes)
-1. `python -m eval.run --from-replay data/runs_final --tag final` writes B's held-out report.
-2. `python -m quality.cli --runs data/runs_final --out quality/out` writes the quality report with the base-rate baseline.
-3. Read both against "always the most common outcome", not the always-yes baseline, and write what they say, including if the analysts do not win.
+## Where the replay numbers come from
+1. `python -m eval.run --from-replay demo_data/runs_final --tag final --agents fundamentals,scenarios` writes the held-out report (`eval/reports/heldout_report.md`), with no model calls.
+2. Read it against the base rate as well as the always-yes baseline, and write what it says, including when the analysts do not win.

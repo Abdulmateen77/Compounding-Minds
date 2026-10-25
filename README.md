@@ -1,4 +1,86 @@
-# Compounding Minds: Full Spec
+# Compounding Minds
+
+**Type any US-listed company and get a research report built from its SEC filings, read through the habits of mind of five
+legendary investors, from analysts that are graded against what the filings later said.** Built for the Night Shift: Mubit
+Hackathon (London, 23-25 Oct 2026).
+
+**Demo video (2 min):** VIDEO_LINK_HERE
+
+## What it does
+
+- **Research any company today.** Search a name or ticker. The app reads the company's SEC filings and shows growth, profit, cash,
+  balance sheet, risks and the company's own words on its plans (copied word for word from the 10-K). Buffett, Munger, Lynch,
+  Jhunjhunwala and Dalio each read the same figures as rule checks, and one overall reading follows with a cash-flow valuation,
+  what today's price assumes and a five-year outlook. Python computes every figure and names its filing; models only write words,
+  behind a guard that rejects any number the checks did not produce. It is research, not advice, and gives no price target.
+- **Grade the analysts against reality.** The **Track record** tab replays 2018-2024 quarter by quarter on 50 companies. At each
+  quarter an analyst sees only filings public at that date and makes a checkable call (will free-cash-flow margin improve? which
+  revenue bucket comes next?). Python grades it against the later filing. A wrong call becomes a lesson.
+
+## How Mubit is used
+
+- **Every model call goes through Mubit** (`agents/gateway.py`, one task per analyst), so Mubit records it. Calls that must not
+  train anything (the held-out evaluation, the frozen control, probes) are sent with recording off, and the run keeps a ledger
+  (`python -m agents.ledger`).
+- **A correction becomes a lesson that the same analyst reads next time.** Mubit has no API for submitting corrections
+  (`agents/MUBIT.md` records what we checked), so our correction loop stores each lesson and puts the latest ones in the
+  analyst's next prompt. The "model version" shown in the app is that lesson counter, not a Mubit adapter version. Training
+  small models on the recorded calls happens on Mubit's side, in its console.
+- **A frozen twin proves or disproves the lesson.** An identical analyst never gets lessons. The learned analyst is only said to
+  help if it beats the twin on years and companies it never learned from.
+
+## Results (all produced by the code in this repo)
+
+The 2018-2024 replay (50 companies, 28 quarters, claude-haiku-5-5; 322 lessons for these two analysts, learned from 2018-2022 on 40 companies) is
+committed in `demo_data/runs_final`; its held-out report is `eval/reports/heldout_report.md`. Held-out window 2023-2024, accuracy:
+
+| Analyst and question | Learned | Frozen twin | Naive baseline |
+|---|---|---|---|
+| Fundamentals: free-cash-flow margin improves next quarter (n = 295) | 58.0% | 60.0% | 40.0% (always yes); 60.0% (base rate) |
+| Scenarios: next-year revenue bucket (n = 392) | 57.9% | 63.8% | 51.5% (always base) |
+
+**Read honestly: the learned analyst did not beat its frozen twin in this run** (Brier scores are level on Fundamentals and worse
+on Scenarios), so we do not claim that accuracy climbs. The Scenarios analyst clearly beats the naive baselines, and the Fundamentals
+analyst matches the base rate. What the run does show is the whole loop working end to end with every step visible: call,
+grading from the next filing, lesson, the same analyst asked again, and the comparison with its twin. The Risk analyst is left out
+of the headline because most of its stored grades in this run predate a grading fix; the app withholds its hit rate.
+
+The investor checks in the report were also back-tested on 1,184 company-quarters through the date gate
+(`python -m research.backtest`, summary in `research/evidence.json`): companies passing few of Munger's failure checks had a
+dividend cut or auditor change in 13% of cases against 2% for those passing most; Buffett's quality checks predicted
+free-cash-flow margins a year later (14% against 4%) but said nothing about sales growth. See section 9 of the spec below for the caveats.
+
+## Run it
+
+```bash
+pip install -r requirements.txt         # Python 3.11 or newer; Node 20 or newer for the web app
+cp .env.example .env                    # optional: see below
+make demo                               # builds the web app and serves it at http://localhost:8000
+```
+
+With no keys, the **Track record** tab works fully from the committed replay and no network call is made. The **Research** tab
+reads live SEC filings, so it needs internet access and a `SEC_USER_AGENT` (your name and email) in `.env`; the written parts
+need `MUBIT_API_KEY` and `MUBIT_BASE_URL`, and without them the figures still show but the prose is left out. Tests:
+`make test` (offline; database tests skip themselves when Postgres is not reachable).
+
+## Where things are
+
+`research/` live company reports and the investor checks. `agents/` analysts, the Mubit gateway, lessons and the replay runner.
+`grader/` rules that grade a call from later filings. `store/` the point-in-time database gate (`store/queries.py`; leakage test
+in `store/tests/test_leakage.py`). `eval/` held-out evaluation. `api/` and `web/` the FastAPI service and the React app.
+`ingest/` SEC loaders. `principles/` the investors' checkable rules in our own words with sources.
+
+Open-source libraries are used as dependencies (`requirements.txt`, `web/package.json`). `.claude/skills/` holds third-party Claude Code skill packages (not project code, licences included where required). All other code was written during the event, 23-25 Oct 2026.
+
+---
+
+# Appendix: the original spec (written on day one, partly superseded)
+
+The rest of this file is the plan we started from. Where it differs from the section above, the section above is right: the UI is
+the React app in `web/` (not Streamlit), the replay result is above, Mubit has no correction API, and Graham is no longer on the
+research panel. The roles "Person A" and "Person B" were the two builders' work split.
+
+## Compounding Minds: full spec
 
 A team of AI analysts that grades itself against reality and compounds from every mistake.
 
@@ -40,7 +122,7 @@ range with assumptions. It still gives no price target and no buy or sell instru
 
 ## 1. Concept
 
-Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t`, it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings actually reported. Wrong calls become **corrections**. **Mubit** turns corrections into per-agent model updates, so the next round is better.
+Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t`, it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings actually reported. Wrong calls become **corrections**. **Mubit** records every call; our loop turns each correction into a lesson the same analyst reads next time (Mubit has no correction API, see `agents/MUBIT.md`), and a frozen twin shows whether that helped.
 
 The demo's **Time Machine** replay runs 2018-2024 quarter by quarter. The audience watches accuracy climb, the COVID crash (2020) break the agents, then recovery as corrections accumulate.
 
@@ -73,7 +155,7 @@ This is a research-support and QA loop for analysts, not a replacement for an in
 | Judged on: Mubit use, usefulness, execution, live demo | The correction to model update step must be **visible on screen**. |
 | Code freeze Sun 25 Oct 10:00 | Backup demo video recorded before freeze. |
 
-Mubit's exact update API is unknown to us. Do not guess endpoints. Ask at office hours and read the docs the team has. Until then, code against the `ModelUpdater` interface in section 10.
+*(Resolved: Mubit has no correction or update API. `agents/MUBIT.md` records what we checked. The loop is described in section 10.)*
 
 ---
 
@@ -108,7 +190,7 @@ Mubit's exact update API is unknown to us. Do not guess endpoints. Ask at office
 ```
 
 ### Stack
-Python 3.11, FastAPI, PostgreSQL, `edgartools`, `fredapi`, `pandas`, MCP Python SDK, Streamlit (default) or React for the dashboard, LLM calls via Mubit.
+Python 3.11, FastAPI, PostgreSQL, `edgartools`, `fredapi`, `pandas`, MCP Python SDK, React (`web/`) served by FastAPI (`api/`); Streamlit (`dashboard/`) was the first dashboard, LLM calls via Mubit.
 
 ---
 
@@ -417,7 +499,7 @@ Prevents the demo from just showing overfitting.
 
 Read honestly: Munger's failure checks point the right way but only modestly. An earlier run showed 3% against 45% and a correlation of -0.27; that was an artefact, because both the check and the outcome mistook the timing of dividend payments (a payment slipping over a quarter-end) for a cut. With a cut required to last two quarters on both sides it shrank to 2% against 13%. Buffett's quality checks predict that cash margins persist (partly because the check measures cash margin), and say nothing about sales growth. Quarterly windows overlap, so the p-values overstate certainty; the one-window-per-year column is the cleaner read. Not tested: Graham, Lynch, Dalio and Jhunjhunwala (they need historical prices we do not hold), and no check tests whether a share price rose.
 
-**Status (harness built, results pending).** `eval/` implements the split, the frozen twin (`agents/frozen.py`), both baselines, the frontier-model arm (`--frontier-model`), accuracy curves (`--curves`) and the report. Run `python -m eval.run` for an offline preview (stub metrics, scripted LLM, stamped NOT RESULTS, written to `data/eval_preview/`). `python -m eval.run --live` is a dry run that prints the call count; `--live --yes` spends real Mubit calls. `--save postgres` (or `--save <dir>` for JSONL) stores runs, calls, grades, corrections, snapshots and the report for the dashboard (`agents/run_store.py`, extra tables in `schemas/run_extras.sql`). The official report goes to `eval/reports/` only for runs on real inputs and is never overwritten without `--force`. It needs Person A's real `get_metrics` and the fundamentals and scenarios grader rules first (`eval/metrics_source.py` is the one switch). Results section: none yet, by design.
+**Status (done).** `eval/` implements the split, the frozen twin, both baselines and the report. The final held-out report from the finished replay is `eval/reports/heldout_report.md` (summary and honest reading at the top of this file); it was produced offline from `demo_data/runs_final` with `python -m eval.run --from-replay demo_data/runs_final --tag final --agents fundamentals,scenarios`. `python -m eval.run` alone is an offline preview on stub metrics and is stamped NOT RESULTS.
 
 ---
 
@@ -435,15 +517,15 @@ class ModelUpdater:
     def status(self, ref: UpdateRef) -> UpdateStatus: ...
 ```
 
-- A `FakeModelUpdater` (appends lessons to the agent's principle file / few-shot memory) is the fallback so the demo works if Mubit's API is late or flaky. It must be labelled as fallback in the UI if used.
+- **As built:** `MubitUpdater` stores each lesson and links it to the Mubit request ID of the reflection call that wrote it; the lesson is added to the analyst's next prompt. `FakeModelUpdater` is the offline fallback used by tests and previews, and is labelled as fallback in the UI.
 - The dashboard shows, for a chosen correction: the original call, the actual outcome, the lesson, the Mubit update reference, and the agent's model version before and after, then the same company asked again in a later quarter.
-- **Open items for office hours:** exact update endpoint and payload, latency of updates, per-agent isolation, rate limits, how version IDs are exposed.
+- **Office-hours questions:** the answers we found are in `agents/MUBIT.md` (no correction API; per-task recording; training in the console). The ones we could not confirm are listed at the bottom of that file as unanswered.
 
 ---
 
 ## 11. Dashboard (`dashboard/`) : owner B
 
-Streamlit by default (fast to build). Reads only from Postgres, never calls live APIs.
+*(Superseded: the shipped UI is the React app in `web/`; `dashboard/` is the Streamlit version and its data layer.)* Reads only from Postgres, never calls live APIs.
 
 | View | Content |
 |---|---|
@@ -563,7 +645,7 @@ Backup: a recorded video of the full flow, made before freeze. If live fails, pl
 |---|---|
 | Look-ahead leakage | Single gate, leakage test, anonymization, masked dates |
 | LLM memorizes company outcomes | Anonymize, strip names/tickers, mask years, report held-out by company |
-| Mubit API late or unclear | `ModelUpdater` interface and `FakeModelUpdater` fallback, ask at office hours early |
+| Mubit has no correction API | Lessons go in the next prompt; frozen twin measures the effect; `FakeModelUpdater` for offline runs |
 | SEC rate limits / slow ingest | Start ingest by Hour 3, cache raw, ~50 companies only |
 | XBRL concept inconsistency across filers | Small fixed concept map with fallbacks; drop companies that don't map cleanly |
 | Replay too slow for live demo | Precompute everything, replay stored results, show one live loop |
@@ -597,9 +679,9 @@ Backup: a recorded video of the full flow, made before freeze. If live fails, pl
 
 ## 19. Open questions
 
-1. Mubit update API shape and latency (office hours).
-2. Exact universe list (decide by Hour 3).
-3. Streamlit vs React (default Streamlit unless someone wants the polish).
+1. *(Resolved: Mubit has no correction API; see `agents/MUBIT.md`.)*
+2. *(Resolved: `ingest/universe.json`.)*
+3. *(Resolved: React in `web/`.)*
 4. How many corrections per agent per quarter before updates become noisy (start at 10, tune on train window).
 5. Whether to include Valuation in MVP if Fundamentals/Risk/Scenarios finish early.
 

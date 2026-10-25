@@ -6,7 +6,7 @@
 Usage (offline, stub metrics, scripted LLM, fallback updater):
     python -m agents.correction_loop
     python -m agents.correction_loop --company anon_001 --as-of 2019-06-30 --next 2019-09-30 --json data/loop.json
-    python -m agents.correction_loop --live      # real Mubit gateway (once implemented)
+    python -m agents.correction_loop --live      # real Mubit gateway (agents.gateway.MubitGateway; needs MUBIT_API_KEY)
 """
 from __future__ import annotations
 
