@@ -2,6 +2,10 @@
 
 A team of AI analysts that grades itself against reality and compounds from every mistake.
 
+**Live app:** [compounding-minds on Vercel](https://compounding-minds-1qxb902x1-syedabdulmateen55-5589.vercel.app/#/research/21344/investors)
+
+Multi-agent investment research. Agents following Buffett, Graham, Munger and Dalio make checkable calls about companies, a Python grader scores them against later SEC filings, and Mubit turns each miss into a per-agent model update.
+
 Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026). Code freeze **Sun 25 Oct 10:00**.
 Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITECTURE.md) (agent pattern and flow), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
 
