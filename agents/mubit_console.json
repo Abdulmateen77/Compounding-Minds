@@ -1,0 +1,33 @@
+{
+  "read_at": "2026-10-25T03:36Z",
+  "source": "Copied by hand from the Mubit console (Adapters and Tasks pages). Mubit has no API that returns these figures.",
+  "pass_rule": "A version passes when it matches the provider model's recorded answers within 5 points of 100%, or within 15 when there are too few test cases to tell them apart.",
+  "adapters": [
+    {"task": "Fundamentals analyst following 3", "kind": "analyst", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.133, "test_cases": 15, "target": 0.95},
+    {"task": "Fundamentals analyst following 4", "kind": "analyst", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.167, "test_cases": 12, "target": 0.95},
+    {"task": "Risk analyst following Munger's 2", "kind": "analyst", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.778, "test_cases": 18, "target": 0.85},
+    {"task": "Risk analyst following Munger's 3", "kind": "analyst", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.538, "test_cases": 13, "target": 0.95},
+    {"task": "Scenarios analyst following Dalio's 2", "kind": "analyst", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.765, "test_cases": 17, "target": 0.85},
+    {"task": "Scenarios analyst following Dalio's 3", "kind": "analyst", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.615, "test_cases": 13, "target": 0.85},
+    {"task": "Valuation analyst following", "kind": "analyst", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.643, "test_cases": 14, "target": 0.85},
+    {"task": "Explain in plain English", "kind": "narrative", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.143, "test_cases": 14, "target": 0.95},
+    {"task": "REFLECTION REVIEW", "kind": "reflection", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.0, "test_cases": 13, "target": 0.95},
+    {"task": "REFLECTION REVIEW 2", "kind": "reflection", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.0, "test_cases": 17, "target": 0.95},
+    {"task": "REFLECTION REVIEW 3", "kind": "reflection", "version": "v1", "base_model": "Qwen3-4B-Instruct-2507", "matched": 0.0, "test_cases": 11, "target": 0.95}
+  ],
+  "training": {
+    "note": "600 real prompts (200 per analyst, training companies only, with the learned lessons) sent on 25 Oct 2026 03:05-03:24 UTC on claude-haiku-4-5, after the reply format was pinned. No adapter version has been trained on them yet.",
+    "tasks": [
+      {"task": "Fundamentals analyst following 2", "agent": "fundamentals", "calls_7d": 202, "kept": 0, "needed": 25, "status": "Reviewing examples"},
+      {"task": "Risk analyst following Munger's", "agent": "risk", "calls_7d": 230, "kept": 22, "needed": 25, "status": "Reviewing examples"},
+      {"task": "Scenarios analyst following Dalio's", "agent": "scenarios", "calls_7d": 250, "kept": 12, "needed": 25, "status": "Reviewing examples"}
+    ]
+  },
+  "agreement": {
+    "note": "How often the provider model (claude-haiku-4-5) agrees with itself on the same real prompt, asked twice and not recorded (python -m agents.agreement). A pair agrees on the same answer, probabilities within 0.05, the same evidence and nearly the same principles. Our own measure, not Mubit's test: an adapter cannot match a provider that disagrees with itself.",
+    "before": {"label": "Original prompt, no lessons", "pairs": 15,
+               "fundamentals": 0.333, "risk": 0.467, "scenarios": 0.333},
+    "after": {"label": "Pinned reply format, with the learned lessons", "pairs": 40,
+              "fundamentals": 0.975, "risk": 0.95, "scenarios": 0.95}
+  }
+}

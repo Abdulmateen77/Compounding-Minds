@@ -1,160 +1,353 @@
 # TASKS: Compounding Minds
 
-Who builds what, in what order. Spec: [README.md](README.md). Pattern and flow: [ARCHITECTURE.md](ARCHITECTURE.md). Rules: [CLAUDE.md](CLAUDE.md).
+Who builds what, in what order. Spec: [README.md](README.md). Pattern and flow: [ARCHITECTURE.md](ARCHITECTURE.md). Rules: [CLAUDE.md](CLAUDE.md). Pictures: [system-map.html](system-map.html), [user-journey.html](user-journey.html).
 
-**Person A: data and grading.** Owns `ingest/`, `store/`, `metrics/`, `tools/`, `grader/`, `dashboard/`, `screener/`.
-**Person B: agents and Mubit.** Owns `agents/`, `principles/`, `eval/`, `memos/`.
-**Shared:** `schemas/` (either may edit, tell the other), `.env.example`, repo root docs.
-
-Code freeze: **Sun 25 Oct 10:00**. Rule: only edit your own directories unless asked. Small PRs, `main` always runs.
+**Deadline: confirmed by the organisers (do not plan around a fixed time).** Rule: only edit your own files unless asked. Small PRs, `main` always runs, tests pass before merge.
 
 ---
 
-## 1. The contract between A and B
+## 0. The split in one table
 
-B must never be blocked on A. These land first.
+| | **Person A: content, data and agents** | **Person B: ingestion, grading, orchestration and output** |
+|---|---|---|
+| **One line** | Decides what the agents know and say, structures the data they read, builds the agents | Pulls the data in, marks the agents against reality, runs the replay, shows the result |
+| **Content** | Principles, prompts, lesson wording, dashboard and memo copy, demo script | n/a |
+| **Data** | Source spec, concept map, universe, schema, point-in-time gate, metrics engine, MCP tools | Ingestion: fetchers, raw cache, parsing into tables |
+| **Agents** | Runner, specs, adapters, Mubit client, all agents, frozen twins, baselines, held-out harness | n/a |
+| **Grading** | n/a | Grader rules, corrections, calibration |
+| **Orchestration** | n/a | Replay loop, response cache, correction loop, runs |
+| **Synthesis** | n/a | Synthesizer and its weights |
+| **Output** | n/a | Final report, memo, dashboard |
+| **Directories** | `principles/`, `agents/` (except the files listed below), `store/`, `metrics/`, `tools/`, `eval/`, `screener/` | `ingest/`, `grader/`, `dashboard/`, `memos/`, plus the `agents/` files listed below |
+| **Shared** | `schemas/`, `.env.example`, root docs, the backup video | |
 
-| Deliverable | Owner | Due | Notes |
-|---|---|---|---|
-| `schemas/` Pydantic models: `AgentCall`, `Grade`, `Correction` | B writes, A reviews | Hour 2 | Shapes fixed in README section 6 |
-| `store/stubs/`: 5 stub metric bundles per MVP agent | A | Hour 3 | Match `get_metrics` output exactly |
-| `get_metrics_stub()` with env flag to flip to the real store | A | Hour 3 | `USE_STUB_STORE=1` |
-| `grade(call) -> Grade` with a stub rule set | A | Hour 3 | Lets B test the loop on fake outcomes |
-| `LLMGateway` and `ModelUpdater` interfaces, `FakeModelUpdater` | B | Hour 3 | Code against the interface, not Mubit's API |
-| `.env.example` | A | Hour 1 | Keys listed, no values |
+**Files inside `agents/` that Person B owns** (they are orchestration, not agent logic): `synthesizer.py`, `correction_loop.py`, `cache.py`, `mubit_batch.py`, `offline.py`.
 
-Interface (store gate): `get_facts`, `get_events`, `get_macro`, `get_metrics`, all with `as_of`. Do not change without telling the other person.
+**The line between A and B on data.** A decides *what* the data is: which sources, which XBRL concepts, which table shapes, what the metrics mean. B does the *work of getting it in*: fetching, caching, and loading rows that match A's schema and concept map. A never writes a fetcher; B never defines a metric.
 
 ---
 
-## 2. Person A: data and grading
+## 0b. Integration notes (Sat 24 Oct, ~17:45): A's branch merged with B's `person-b/eval`
 
-### A1. Foundations (Hours 0-3)
-- [ ] Repo hygiene: `.env.example`, Postgres via Docker or local, README run instructions
-- [ ] `store/schema.sql` with all tables, `filed_date NOT NULL`, `vintage_date NOT NULL` for macro
-- [ ] Freeze `ingest/universe.json` (about 50 companies, sector mix, some COVID losers and winners, about 10 held out). Assign `anon_001`...`anon_050`
-- [ ] SEC fetcher with `User-Agent`, under about 10 requests per second, raw cache on disk
-- [ ] Stub bundles and `grade()` stub (see section 1)
+What the merge found, and what was done. 499 tests pass on the merged branch (4 skip: 3 need the `mcp` package).
 
-### A2. Data layer (Hours 3-10)
-- [ ] Ingest `company_tickers.json`, XBRL `companyfacts`, `submissions` (8-K item codes), FRED + ALFRED vintages, prices
-- [ ] Small fixed XBRL concept map with fallbacks. Drop companies that do not map cleanly
-- [ ] `store/queries.py`: the only gate. Latest row per `(concept, period_end)` with `filed_date <= as_of`. Never order or filter by `period_end` for visibility
-- [ ] `store/tests/test_leakage.py`: no row after `as_of`, known restatement invisible before its filing, macro returns the vintage valid at `t`
-- [ ] Prices ingest (context only)
+| Finding | Resolution |
+|---|---|
+| **Two sources of truth for held-out companies.** B's split picked them by hash; `universe.json` (and so the `companies` table) carries curated `held_out` flags. The replay could have learned from a company the database calls held out | `eval/split.py::pick_held_out` now uses the `universe.json` flags for any run over the real universe (30 or more universe companies). Stub runs and tests keep the hash. A test proves the replay, the report and the database agree |
+| **Two evaluation packages with the same file names** | B's `eval/` (held-out harness, wired to the dashboard) is kept as is. Hermes's package moved to `quality/` (frozen twin, strict baselines, quality report with critique) |
+| **B's parser dropped a restatement filed under a different tag** (the 2018 revenue-rule change) | `ingest/parse.py::_resolve` now chooses the tag per period AND per filing, as `store.concepts.resolve_concept` does. Regression test in `ingest/tests/test_parse_restatement.py` |
+| **`companies.short_history`** (Palantir) missing from B's row builder | Added to `ingest/load.py` and its contract test |
+| **`eval.run --save` crashed** (`write_snapshot` missing `n_correct`) | Fixed in `eval/run.py` |
+| **Two loaders** (A's `ingest/pipeline.py` and B's `ingest/load.py`) | B's is the loader of record; A's is kept as a tested reference (see `ingest/README.md`) |
+| **8 API tests failed on a fresh checkout** | They need demo data in `data/runs` (gitignored). Generate it with `python -m eval.run --agents fundamentals,risk,scenarios --curves --save data/runs` before running them |
+| **Hermes's test assumed an older grader** | Test helper updated: B's grader now derives the resolution date itself |
 
-### A3. Metrics and tools (Hours 10-20)
-- [ ] `metrics/` for MVP agents: Fundamentals, Risk, Scenarios. Each metric returns `{name, value, unit, as_of, inputs: [accession...]}`
-- [ ] `get_metrics(company_id, agent, as_of)` on top of the three getters
-- [ ] Traceability test: every `inputs` accession exists in `facts`
+**B's four requests (Sat evening), all answered**
+
+| B asked for | Where it is |
+|---|---|
+| Postgres backend, and `_latest_per_key` keyed on `(concept, period_start, period_end)` | `store/pg.py`, wired by `queries.use_postgres(conn)` (no argument connects with `DATABASE_URL`). The gate key is `(concept, period_start, period_end)` |
+| `source_tag`, `fiscal_year` on `Fact`; `going_concern_hits` on `Event` | `schemas/models.py` (optional fields, defaults keep old callers working) |
+| `run_agent` that reads lessons from the updater so learned differs from frozen | `agents.entry:replay_runner`, which has the keyword signature B's replay expects: `python -m grader.replay --runner agents.entry:replay_runner`. It reads lessons from the updater, skips unusable bundles, blocks leaking prompts, and counts outcomes in `agents.entry.OUTCOMES`. Checked in B's real offline replay: the learned arm reached version 4 while the frozen arm stayed at 0 |
+| Real `get_metrics`, and one held-out report path | `metrics.get_metrics`, switched on with `USE_STUBS=0` in `eval/metrics_source.py` (it still needs `--live` to count as real). **The one path is `eval/reports/heldout_report.json`**, written once by `python -m eval.run --live`; the dashboard reads only that and `data/eval_preview/`. A's quality report is separate (`quality/out/`) |
+
+Held-out reporting: B's dashboard reads B's `heldout_report.json` (segments `all_companies`, `seen_companies`, `unseen_companies`). Hermes's `quality/` writes a different format with an extra time slice; it feeds `quality.md` and the README results section, not the dashboard.
+
+## 0c. First real data (Sat 24 Oct, ~19:00)
+
+Keys are in `.env` and verified (`python -m store.envcheck --ping`: SEC, FRED, Mubit all answer). B's downloader loaded all 50
+companies in 55 seconds: **95,556 facts, 23,421 filing events, 29,182 macro rows** in the development Postgres.
+
+| Result on real data | Detail |
+|---|---|
+| Metrics engine works on real Apple filings | Plausible numbers (operating margin 25%, FCF margin 23%, ROIC 31%); a quarter that had not been filed by `as_of` is correctly invisible; prompt leak check clean |
+| Usable bundles (of 50 companies), 2018 to 2023 | Risk 47 to 50, Scenarios 47 to 50, Fundamentals 28 (early 2018) rising to 38 to 46 |
+| Fixed because of real data | Operating income fallback, total-debt concept, extra depreciation / dividend / capex / revenue tags, 52-week calendars, a FRED request that was rejected (market series must not ask for vintages), ExxonMobil replaced by Chevron. Details in `metrics/SPEC.md` section 1b |
+| Not fixable from tags | Costco CF 2016 to 2019 and Nvidia FY2019 capex are absent from the SEC data; Disney and Palantir have short histories |
+| Still to do | The going-concern text pass (`python -m ingest load --filing-text`, downloads 10-K and 10-Q text), so `going_concern_hits` is real rather than 0 |
+
+## 0d. First live replay (Sat 24 Oct, ~21:30)
+
+4 companies, Fundamentals and Scenarios, the four 2019 quarters plus 4 settle quarters, real Mubit calls (`claude-haiku-5-5`).
+
+| Finding | Fix |
+|---|---|
+| **Replies were cut off mid-JSON** (a third of them, mostly Scenarios, which cites 8 metrics). The model "thinks" first and the thinking counts against `max_tokens`, so the cap of 1024 left about 300 tokens for the answer | `agents/gateway.py`: thinking off by default (`MUBIT_THINKING=1` turns it on), cap raised to 2048, and a reply that still stops at `max_tokens` is retried once with double and then raises, so a cut-off reply is never returned or cached. Cache key bumped to v2 so the old cut-off replies are not reused. Dropped calls fell from 14 to 4 |
+| **Too slow:** 526 s for 82 calls (about 6 s each, one at a time). The full replay is about 8,400 analyst calls, which would take about 15 hours | `grader/replay.py --workers N` (or `REPLAY_WORKERS`) runs the model calls of one quarter side by side. Metrics and bookkeeping stay sequential and in order, so the result is identical to a sequential run (a test proves it). **73 s with 8 workers, 7 times faster** |
+| **30 of 82 grades unresolvable**, all Fundamentals: the grader kept its own copy of the quarter logic and knew nothing of derived operating income or 52-week calendars | `grader/facts.py` now reads quarters from `metrics.context.Context`, the same code the agent's numbers come from. Re-grading the same calls: unresolvable 30 to 2 |
+| The learned arm's lessons | Specific, cite our metrics and principles (for example `dalio.04`), no company names or years; the prompt leak guard never fired |
+
+Full-replay estimate from this trial: about 1.3 calls per second with 8 workers, so about 8,400 analyst calls take roughly 2 hours (about 1 hour at 16 workers, if Mubit allows it), plus reflections. Cost depends on the Mubit credit: each call is about 700 tokens in and 700 out.
+
+## 0e. The pivot: research any listed company (Sat 24 Oct, evening) : owner A
+
+The product is now a report on any US-listed company as it stands today (README section 0). Built by A in `research/`, with the API routes and the Research screen it needs (B's `api/main.py` and `web/`: B, please read them before editing).
+
+| Piece | State |
+|---|---|
+| Search by name or ticker, market shown | Done (US only). A search that finds nothing says London and Europe are not covered |
+| Report: growth, profit, cash, balance sheet, R&D, risk, plans in the company's own words, price and multiples | Done; every figure names its filings; approximations marked |
+| Investor lenses from the books in `principles/guides/` | Done: Buffett, Munger, Lynch, Dalio, Jhunjhunwala (Graham off the panel); each check cites its source; only Buffett and Munger are back-tested, and the page says so |
+| Valuation range, what the price assumes, ten-year scenarios, overall reading | Done; assumptions on the page; not a price target, not advice |
+| Back-test of the Buffett and Munger checks | Done: Munger's failure checks point the right way but modestly (13% vs 2%; an earlier 45% vs 3% was an artefact of dividend timing, fixed); Buffett's predict cash margin (typical 14% vs 4%), not sales growth |
+| Demo script and judge Q&A | `docs/DEMO.md`; replay numbers to fill in |
+| Not done | UK and European listings; banks and insurers only partly covered; price checks not back-tested (no historical prices) |
+
+Notes for B:
+- `main` fails on every Fundamentals call until `person-a/env-and-checks` is merged: an earlier GitHub merge dropped the `total_debt` concept that `metrics/fundamentals.py` reads, and left `anon_026` named Chevron with Exxon's CIK. Both are fixed on the branch.
+- `agents/cache.py` now writes UTF-8: on Windows a reply containing a character such as "≈" crashed the replay.
+- The replay agents' prompt files (`principles/<investor>.md`) are unchanged on purpose: the demo replays from a cache keyed on the prompt.
+
+## 0f. Where the project is now (Sun 25 Oct, ~02:00)
+
+Pushed to `main` (`594842e`). 666 tests pass (5 skip). The app runs from `main` at http://localhost:8000.
+
+| Area | State |
+|---|---|
+| Research report (Report tab) | Done: the investors' take first, the numbers with sources, 5-minute check, Firecrawl news, valuation, 5-year outlook, back-test evidence |
+| Investor panel (3D office) | Done: prologue, a card per investor with face, live check and vote, click-open analysis pop-up, debate said in the scene in the first person with the log below. Graham is off the panel |
+| Investors | Buffett, Munger, Lynch, Dalio, Jhunjhunwala; per-investor invest, wait or avoid and a panel tally |
+| Voices | Built (ElevenLabs through `/api/voice`, cached on disk). **Off until `ELEVENLABS_API_KEY` is in `.env`** |
+| Data | Live SEC data judged fresh by content; 50-company replay store in Postgres; a copy on Supabase (row-level security on) |
+| Replay (final) | Finished into `data/runs_final` (calls, grades, corrections) |
+| Mubit | All model calls route through Mubit. No corrections API exists, so lessons go into the next prompt and the learned analyst is shown beside an identical frozen one. **Adapter training is not started** (needs 25 kept examples per task; 3 adapter starts per UTC day; waiting on the console Tasks and Adapters pages) |
+
+**Still to do, in order**
+1. Read the final replay: `python -m eval.run --from-replay data/runs_final --tag final`, then `quality.cli --runs`; measure what the dividend-timing fix did to Risk grades. Fill the `[replay]` numbers in `docs/DEMO.md`.
+2. Mubit: report the console Tasks and Adapters state so the adapter plan can be fixed. Fallback idea: a compact Munger risk-read training task.
+3. Record the backup demo video from `docs/DEMO.md` (team). Never cut.
+4. Add the ElevenLabs key and listen to the debate once end to end.
+5. Optional: bind Postgres to 127.0.0.1 in `docker-compose` (the replay has finished); UK and European listings; financial-company metrics; Alpaca price history to back-test the price checks.
+
+**Known limits, stated on the page:** only Buffett and Munger are back-tested; the SEC feed can lag a filing (the page flags it); banks and insurers are only partly covered.
+
+## 1. Where we were (Sat 24 Oct, ~19:00; kept for the record)
+
+Checked against the repo and the local Postgres. 531 tests pass (4 skip). Postgres holds the 50-company universe: 97,591 facts and 23,788 events. `.env` has `USE_STUBS=0` and `USE_FAKE_UPDATER=0`. `MUBIT_BASE_URL` is empty in `.env`.
+
+| Area | State | Owner |
+|---|---|---|
+| `ingest/` | Built and loaded: universe, facts, events (50 companies) | B |
+| `store/`: schema, date gate, Postgres backend, leakage test | Built | A |
+| `metrics/`, `tools/` | Built (engine, quarters, composites, MCP tools) | A |
+| `agents/`, `principles/`, `schemas/` | Built. Citations in `principles/SOURCES.md` still to verify | A / Shared |
+| `grader/` and `grader/replay.py` | Built. Replay has uncommitted work in progress (parallel workers) | B |
+| `eval/`, `quality/`, `dashboard/`, `api/`, `web/` | Built. Run on stub data so far | A / B |
+| **Real held-out result (`heldout.json`, handoff 9)** | **Not produced.** `data/eval_preview/` is stub output marked NOT RESULTS | A / B |
+| **Mubit corrections-to-update path** | **Open.** No public endpoint known (`data/mubit_docs/`); ask at office hours. The labelled fallback updater is the plan B | A |
+
+---
+
+## 2. The contract between A and B
+
+Neither side should wait on the other. These handoffs have times. Anything late is raised in chat right away.
+
+| # | From | To | Deliverable | Due |
+|---|---|---|---|---|
+| 1 | A | B | `ingest/universe.json` (50 companies, anon IDs, sector, 10 held out) | Sat 17:00 |
+| 2 | A | B | Final `store/schema.sql` and the XBRL concept map (concept, fallbacks, unit) | Sat 17:00 |
+| 3 | B | A | Raw SEC data cached and parsed into Postgres for 5 companies | Sat 19:00 |
+| 4 | A | B | Postgres backend in `store/queries.py`, leakage test passing on real rows | Sat 21:00 |
+| 5 | A | B | `get_metrics(company, agent, as_of)` real for Fundamentals, Risk and Scenarios | Sat 22:00 |
+| 6 | B | A | All 50 companies and macro loaded, ingest QA report | Sat 23:00 |
+| 7 | A | B | `run_agent(company_id, as_of) -> AgentCall` (the runner entry point the replay calls) | Sat 20:00 |
+| 8 | B | A | `grade(call) -> Grade` with real rules for all three MVP questions | Sat 23:00 |
+| 9 | B | B | The held-out report, written once to `eval/reports/heldout_report.json` by `python -m eval.run --live` (the one agreed path; the dashboard reads it). A's quality report is separate: `quality/out/` | Sun 05:00 |
+| 10 | B | A | Quarterly snapshots in Postgres (for A's quality report) | Sun 03:00 |
+
+Interfaces that do not change without telling the other person: `get_facts`, `get_events`, `get_macro`, `get_metrics`, and the three models in `schemas/`.
+
+---
+
+## 3. Person A: content, data and agents
+
+### Phases (work through these in order)
+
+| Phase | Goal | Due | Handoff | Status |
+|---|---|---|---|---|
+| **1. Contract** | Universe, concept map, final schema, metric spec, principles checked against the metrics | Sat 17:00 | 1, 2 | Done in code. Citations still to verify |
+| **2. Real store** | Postgres backend for the date gate, loaders, parsers, leakage test on real rows, `run_agent` entry point | Sat 21:00 | 4, 7 | **Done** except the leakage test on real filings (needs B's download, handoff 3). Backend, loaders, parsers, date-gate fix and `agents/entry.py` are built and tested on a real Postgres |
+| **3. Metrics and tools** | The 22 metrics computed from real facts, `get_metrics` real, MCP tools | Sat 22:00 | 5 | **Engine done** (`metrics/`, 34 tests against hand-worked values, identical on Postgres). MCP tools are workstream H1 (Hermes) |
+| **4. Agents on real data** | Run the 3 MVP agents on real metrics, tune prompts, measure JSON validity and evidence match | Sun 01:00 | | **Groundwork done**: prompt leak guard and a no-model dry run. Running the agents needs a Mubit key in `.env` and real data loaded (B, handoff 3) |
+| **5. Evaluation** | Frozen twins, baselines, held-out run, quality report with critique | Sun 05:00 | 9 | Not started |
+| **6. Content and freeze** | Copy, demo script, README results, backup video | Sun 08:00 | | Not started |
+
+**Unblocked for Person B now.** Everything after the network call is built and tested: `docker compose up -d`, `python -m store.migrate`, then follow [ingest/README.md](ingest/README.md). B's only job to get real data flowing is to download the raw SEC and FRED files into the cache; `ingest/pipeline.py` parses and loads them, and `store.quality.coverage` reports which companies are missing what.
+
+**Phase 4 groundwork delivered**
+- `agents/leakcheck.py`: every prompt is checked for a company name, ticker, calendar year or accession number before it is sent. A prompt that fails is **blocked** and the model is never called (status `blocked` from `Entry.attempt`). It is narrow on purpose: two real false alarms were found and fixed in testing (a decimal metric like `0.2018` is not a year, and "target" the word is not Target the company).
+- `python -m agents.dryrun --company anon_007 --as-of 2019-06-30`: prints the exact prompt each agent would be sent, its size, what is missing, and the leak result, with no model call. `--stubs` works without a database.
+- `store.db.connect` now gives up after 10 seconds instead of hanging when the database is down.
+
+**Phase 2 delivered**
+- `store/pg.py`: Postgres backend for the date gate. It only supplies candidate rows, so the visibility rule stays in `store/queries.py` and cannot differ from the tested in-memory one.
+- `store/db.py`, `store/migrate.py`: connection, schema apply, idempotent bulk loaders (re-running inserts nothing).
+- `ingest/parse_facts.py`, `parse_submissions.py`, `parse_fred.py`: raw SEC and FRED JSON to rows. Pure functions, tested on fixtures shaped like the real responses.
+- `ingest/pipeline.py`: loads a cache directory into Postgres, offline. `store/quality.py`: per-company coverage and drop candidates.
+- **Bug fixed in the date gate:** it kept one fact per `(concept, period_end)`, but a Q2 10-Q reports a 3-month and a 6-month figure ending the same day, so one was silently dropped. It now keys on `(concept, period_start, period_end)`, with a regression test.
+- **Design fix in the concept map:** a restatement filed under a different tag (the 2018 revenue-recognition change) is now kept, so the gate can show the old value before the restatement and the new one after.
+- `docker-compose.yml`, `.env.example`, and a `pg_conn` test fixture that skips cleanly when no database is reachable.
+
+Phase 1 can be worked now with no dependency on B. Phase 2 starts as soon as handoff 3 (5 companies in Postgres) lands: until then, build the Postgres backend against the in-memory gate tests so it is ready to run.
+
+**Phase 1 delivered**
+- `ingest/universe.json`: 50 companies (Tesla, Nvidia, Palantir, AMD, Meta and Amazon added, and low-value names such as Kohl's, Chevron, 3M, Freeport, NextEra and PepsiCo dropped to keep it short), anon IDs from a seeded shuffle, 10 held out, COVID groups. Palantir is flagged `short_history` (first filing 2020). Built by `ingest/build_universe.py`, validated by `ingest/universe.py`, tested.
+- `store/concepts.py`: the XBRL concept map (22 concepts, tag fallbacks, which are cumulative in a 10-Q), macro series, and the inputs each of the 22 metrics needs. `resolve_concept` merges tags per period and keeps restated rows.
+- `store/schema.sql`: idempotent-load keys, `held_out` and `covid_group` on companies, going-concern count on events, macro vintage index, a `snapshots` table for the dashboard. Parsed with a real Postgres parser in a test.
+- `metrics/SPEC.md`: the formula for every metric, how quarters are derived from filings, and what happens when data is missing.
+- `principles/`: Graham expanded to 6 rules; `buffett.05` no longer cites a metric the Fundamentals agent is never shown; `principles/SOURCES.md` lists every citation still to verify; `agents/tests/test_principles_contract.py` keeps rules and metrics in sync.
+
+### A1. Content production
+- [~] Review the four `principles/*.md` files. Format, count and metric names are now tested. **Still to do: check each citation against the source (see `principles/SOURCES.md`)**
+- [ ] Final question wording for each agent (the six `question_id`s in README 7.1)
+- [ ] Prompt templates per agent: anonymous ID, relative quarters (Q-8 to Q0), no names or dates
+- [ ] Reflection (lesson) prompt tuned on real misses: cites a principle or a metric, never a company name (starting point exists in `agents/reflection.py`)
+- [ ] Copy: dashboard labels, empty and error states, the disclaimer, memo section templates
+- [ ] Demo script (3 to 4 minutes) and talking points
+- [ ] README results section, written after the held-out run
+
+### A2. Data sources pipeline and structuring
+- [x] Source spec: which XBRL concepts feed each metric, with fallbacks. Drop rule for companies that do not map cleanly is in `metrics/SPEC.md` (3 or more missing metrics)
+- [x] `ingest/universe.json`: 50 US companies, COVID losers and winners, 10 held out, `anon_001` to `anon_050` **(handoff 1)**. Sector is hand-assigned; SIC comes from B's ingest
+- [x] Concept map `store/concepts.py` **(handoff 2)**
+- [x] Final `store/schema.sql`: keys, indexes, `filed_date NOT NULL`, `vintage_date NOT NULL` for macro, `snapshots` table **(handoff 2)**
+- [x] `metrics/SPEC.md`: formulas for all 22 metrics and the quarter-derivation rules
+- [x] Date gate in `store/queries.py` with an in-memory backend, and `store/tests/test_leakage.py`
+- [x] **Postgres backend** for the gate. Latest row per (concept, period_end) with `filed_date <= as_of`. Leakage test on real rows **(handoff 4)**
+- [x] `metrics/` engine for Fundamentals, Risk and Scenarios. Each metric returns name, value, unit, as_of and the filing accessions **(handoff 5)**
+- [x] Traceability test: every accession a metric cites is a real filing of that company and was filed by `as_of`
+- [x] `get_metrics` real. `agents/entry.py` uses it unless `USE_STUBS=1`; set `USE_STUBS=0` once real data is loaded
 - [ ] `tools/` MCP servers: `get_metric_series`, `get_recent_events`, `get_macro_snapshot`, `peer_compare`
-- [ ] Hour 10 checkpoint: real metrics for one company flow into one agent
+- [ ] Data quality report per company (coverage, gaps), agreed with B's ingest QA
 
-### A4. Grader (Hours 10-20)
-- [ ] `grader/config.py`: bucket thresholds (bear < 0%, base 0 to 10%, bull > 10%)
-- [ ] `grader/rules.py`: one rule per `question_id` with a fixture each, including a restatement case
-- [ ] `grader/grade.py`: Brier score (binary and multiclass), `unresolvable` handling
-- [ ] `grader/corrections.py`: select corrections (cap N per agent per quarter, default 10, by confidence), assign `error_type`
+### A3. Agents
+- [x] Runner, specs for Fundamentals, Risk and Scenarios, date masking, Mubit gateway
+- [x] `agents/entry.py`: `Entry(gateway, updater).attempt(agent, company_id, as_of)` is the entry point **(handoff 7)**. It returns `ok`, `skipped` (bundle not usable, the model is never asked) or `dropped` (invalid reply), so the replay can count each
+- [ ] Run each agent on real metrics for one company, then widen. Check: JSON valid rate, evidence matches the metrics engine, tool calls capped at about 5 **(Sat 20:00)**
+- [ ] Mubit: per-agent identity, and the office-hours answers on the update API (endpoint, latency, version IDs). The gateway already notes that no public corrections endpoint is known
+- [ ] Confirm the model version is stamped into every `AgentCall`
 
-### A5. Replay and dashboard (Hours 20-34)
-- [ ] `grader/replay.py`: quarter loop 2018Q1 to 2024Q4, grade only calls whose resolution filing is visible, snapshot metrics. Deterministic, with a response cache keyed by prompt hash (coordinate with B)
-- [ ] Full ingest QA, drop bad companies
-- [ ] `dashboard/` v1: replay timeline, accuracy curves with COVID window shaded, committee table
-- [ ] Correction spotlight: call, actual, lesson, Mubit ref, model version before and after
-- [ ] Held-out panel (reads B's `eval/` output)
-- [ ] Disclaimer footer always visible
-- [ ] Hour 30 checkpoint: full replay running
-
-### A6. Freeze (Hours 34-37)
-- [ ] Record backup demo video of the full flow
-- [ ] Freeze checks: tests pass, no secrets committed, demo runs from cache with no live API calls
+### A4. Agent quality report (`quality/`, built by Hermes; B owns the held-out harness in `eval/`)
+- [ ] Frozen twin of each agent (never updated)
+- [ ] Baselines: always yes, base rate
+- [ ] Held-out harness: split by time (train 2018 to 2022, held out 2023 to 2024) and by company (about 10). Learning from train-window corrections only
+- [ ] Run once, before freeze, no tuning against it. The held-out report is B's `eval/reports/heldout_report.json` **(handoff 9)**; `quality/` writes the quality report to `quality/out/` and does not feed the dashboard
+- [ ] Quality report per agent: valid-JSON rate, evidence match, accuracy, Brier, calibration, overconfidence gap, and a short written critique of where each agent is weak
 
 ### A stretch (in order)
-`grader/calibration.py` track record, `screener/` watchlist flags, Moat and Valuation metric sets, legend scoreboard view.
+Moat and Valuation metric sets and agents, cross-examination round, `screener/`, frontier-model comparison.
 
 ---
 
-## 3. Person B: agents and Mubit
+## 4. Person B: ingestion, grading, orchestration and output
 
-### B1. Foundations (Hours 0-3)
-- [ ] `schemas/` Pydantic models (see section 1)
-- [ ] `LLMGateway`, `ModelUpdater` interfaces, `FakeModelUpdater` (appends lessons to principles or few-shot memory, labelled fallback)
-- [ ] Mubit client setup (one base URL). **Ask at office hours:** exact update endpoint and payload, update latency, per-agent isolation, rate limits, how version IDs are exposed. Do not guess endpoints
-- [ ] Draft `principles/` skeletons
+### B1. Ingestion (`ingest/`)
+- [x] SEC fetcher: User-Agent with name and email, under about 10 requests a second, every raw response cached to disk before parsing
+- [x] Pull `companyfacts`, `submissions` and filing text for the universe
+- [~] FRED and ALFRED macro with vintage dates. Prices from Stooq (context only) (Stooq: code built, no prices downloaded; nothing reads prices)
+- [x] Parse into A's schema using A's concept map. `filed_date` on every row. A restatement is a new row, never an overwrite
+- [x] Event extractor: 8-K item codes, going-concern passages for the risk rule
+- [x] 5 companies loaded **(handoff 3, Sat 19:00)**, then all 50 **(handoff 6, Sat 23:00)**
+- [x] Ingest QA report. The whole load must re-run from the raw cache with no network. `python -m ingest load` writes `qa_report.txt`/`.json`; `--raw-dir` reloads offline
+- [ ] Stretch: 8-K Exhibit 99.1 and FOMC pages through Firecrawl (dated pages only, no numbers); Live today fetch
 
-### B2. First agent (Hours 3-10)
-- [ ] `agents/runner`: load principles, receive anon `company_id`, `as_of` and metrics, allow at most about 5 tool calls, return one `AgentCall`. One repair retry, then drop and log
-- [ ] Parse-time check that `evidence` values match metrics engine output
-- [ ] Prompts contain only anon ID and metrics. No names, tickers or dates beyond relative framing (Q-8 to Q0)
-- [ ] Fundamentals agent working on stubs
-- [ ] `agents/adapters/<agent>.py`: one per agent, each with its own Mubit identity
-- [ ] `principles/buffett.md` (5-10 rules in own words, `id | rule | how to check | source`, no long quotes)
+### B2. Grading (`grader/`)
+- [x] Brier scoring (binary and multiclass), `grade()`, Risk going-concern check through Sapling with a cache
+- [x] Risk: auditor change (8-K item 4.01) and dividend-cut (25% or more) checks
+- [x] Fundamentals rule: FCF margin and operating margin both up in the next reported quarter
+- [x] Scenarios rule: bucket from actual revenue growth. Thresholds in `grader/config.py`, tuned on the train window only
+- [x] One fixture per `question_id`, including a restatement case. `unresolvable` is excluded and logged **(handoff 8, Sat 23:00)**
+- [x] `grader/corrections.py`: pick the misses (cap N per agent per quarter, default 10, highest confidence first) and assign `error_type`
+- [x] Align the docs with the Sapling exception: [ARCHITECTURE.md](ARCHITECTURE.md), [PROJECT.md](PROJECT.md) and the diagrams still say "no LLM"
+- [x] Stretch: `grader/calibration.py` track record
 
-### B3. MVP agents and synthesizer (Hours 10-20)
-- [ ] Risk (Munger) and Scenarios (Dalio) agents, plus `principles/munger.md` and `principles/dalio.md`
-- [ ] Synthesizer: weights from `grades` computed in Python, LLM only writes the rationale, calibrated confidence
-- [ ] Reflection prompt that produces the `lesson`. It must cite a principle or metric and never name a company
-- [ ] Real `ModelUpdater` against Mubit, using whatever office hours confirmed
-- [ ] Hour 20 checkpoint: full vertical slice (one company, one agent, one quarter, graded and corrected)
+### B3. Orchestration
+- [x] Correction loop CLI and an offline demo that runs without Mubit
+- [x] `grader/replay.py`: quarter loop 2018Q1 to 2024Q4. Set `as_of`, call A's `run_agent` for every company and agent, store calls, grade only calls whose filing is now visible, make corrections, call `ModelUpdater`, snapshot
+- [x] `runs` table with train and held-out kinds. Learning from train-window corrections only
+- [x] Deterministic replay: temperature 0, response cache keyed by prompt hash **and model version** (a Mubit update changes the model, so old cache entries stop matching)
+- [~] Full replay run offline before the demo, results stored. Real run `--tag final` into `data/runs_final` in progress (started Sat 19:06, about 90 min, about $7.55 on haiku-5-5: `python -m grader.estimate`)
+- [x] Rough cost and time estimate for the full run, done before starting it
 
-### B4. Correction loop and eval (Hours 20-30)
-- [ ] Correction loop with real Mubit: lesson, `submit_corrections`, model version stamped into later `AgentCall.model`
-- [ ] Frozen twin of each agent (no learning)
-- [ ] `eval/` held-out harness: split by time (train 2018-2022, held-out 2023-2024) and by company (about 10 held out). Learning from train-window corrections only
-- [ ] Baselines: always-yes, base rate
+### B4. Synthesis
+- [x] Synthesizer exists
+- [x] Weights from each agent's trailing accuracy, computed in Python from `grades`. The LLM only writes the rationale
+- [x] Calibrated confidence for the committee verdict, graded as a composite of the underlying outcomes
+- [x] Tests for the weighting
 
-### B5. Full run and report (Hours 30-37)
-- [ ] Full replay run with real agents, results stored
-- [ ] Held-out report: frozen vs learned vs baselines, generated once, no tuning against it
-- [ ] Tune the demo script, README results section
-- [ ] Rehearse the live correction-to-update moment
+### B5. Final output
+- [x] Final report per company and quarter: verdict, each agent's reasoning, a metric table rendered by Python with source accessions. `python -m memos.report --runs data/runs_final --company anon_007 --quarter 2019Q2 [--metrics postgres] [--reveal]`
+- [x] Name reveal at render time, only for the demo company
+- [x] Stretch: memo (`memos/`). The LLM writes prose around `{{metric:name}}` placeholders that Python fills. A number not from the metrics engine is rejected
 
-### B stretch (in order)
-Valuation and Moat agents with `principles/graham.md`, frontier-model comparison, cross-examination round, `memos/` drafting with placeholder number check.
+### B6. Dashboard (`dashboard/`, Streamlit, reads Postgres only)
+- [x] Controls: company list (anonymous IDs with sector, plus a search box), quarter slider, Play, Step, speed, Learned vs Frozen toggle
+- [x] Committee table with evidence drawer
+- [x] Right or wrong results after Step
+- [x] Correction spotlight: call, reality, lesson, Mubit update, model version before and after. Labelled "fallback" if the fake updater was used
+- [x] Accuracy curves, learned vs frozen, COVID window shaded
+- [x] Run live loop button for one company and quarter
+- [x] Held-out panel reading `eval/reports/heldout_report.json` (B's, written by `python -m eval.run --live`)
+- [x] Disclaimer footer on every view
+- [ ] Stretch: Live today tab, watchlist, memo view, track record. See [user-journey.html](user-journey.html)
 
 ---
 
-## 4. Integration checkpoints
+## 5. Timeline
 
-| Hour | Checkpoint | Both must |
+| When | Person A | Person B |
 |---|---|---|
-| 3 | Contract landed | Schemas, stubs, `grade()` stub, interfaces merged |
-| 10 | Real metrics into one agent | A: metrics for one company via real store. B: Fundamentals consuming them |
-| 20 | Vertical slice | One company, one agent, one quarter: call, grade, correction, update |
-| 30 | Full replay | All MVP agents, all quarters, dashboard showing results |
-| 34 | Demo-ready | Backup video recorded, held-out report in, freeze checks run |
+| Sat 15:00 to 17:00 | Universe, concept map, final schema, principles review | Fetcher skeleton, raw cache, start pulling SEC data |
+| Sat 17:00 to 21:00 | Postgres backend, leakage test on real rows, `run_agent` entry point | 5 companies parsed into Postgres, events, FRED and prices |
+| Sat 21:00 to Sun 01:00 | Metrics for the three MVP agents, `get_metrics` real, agents on real data | Grader rules for all three questions, `corrections.py`, load all 50 companies |
+| Sun 01:00 to 05:00 | Frozen twins, baselines, held-out harness, tool servers | Replay orchestrator, full replay run, synthesizer weights, dashboard v1 |
+| Sun 05:00 to 08:00 | Held-out run, quality report and critique, copy and demo script | Dashboard polish, correction spotlight, final report |
+| Sun morning | Record the backup video together, final checks, README results | |
 
 ---
 
-## 5. Hand-offs and shared decisions
+## 6. Checkpoints
+
+| When | Checkpoint | Pass condition |
+|---|---|---|
+| Sat 17:00 | Contract landed | Universe, schema and concept map merged |
+| Sat 21:00 | Real data, one company | Metrics for one company, from real rows, reach one agent |
+| Sun 01:00 | Vertical slice | One company, one agent, one quarter: call, grade, correction, update |
+| Sun 05:00 | Full replay | All three MVP agents, all quarters, the dashboard showing results |
+| Sun 08:00 | Demo-ready | Held-out report in, backup video recorded |
+| Sun 09:00 | Freeze checks | Tests pass, no secrets in git, the demo runs from cache with no live API calls |
+
+---
+
+## 7. Decisions still open
 
 | Item | Who decides | By |
 |---|---|---|
-| Universe list | A (B reviews sector mix) | Hour 3 |
-| Streamlit vs React | A (default Streamlit) | Hour 3 |
-| Mubit update API shape | B (report back to A for the dashboard) | After office hours |
-| Corrections per agent per quarter | Both, tune on train window | Hour 20 |
-| LLM response cache format | A and B | Hour 20 |
-| Whether Valuation joins MVP | Both, if Fundamentals, Risk and Scenarios finish early | Hour 20 |
+| Mubit update API shape, and what to do if there is no corrections endpoint | A, then tell B for the dashboard | After office hours |
+| Whether Valuation joins the MVP | Both | Sun 01:00 |
+| Corrections per agent per quarter | Both, tune on the train window | Sun 01:00 |
+| Streamlit or React | B (default Streamlit) | Sat 17:00 |
+| Sapling in the grader: keep, or replace with a rule | B, tell A | Sat 21:00 |
+| Whether to build the Live today tab | Both | Sun 05:00 |
 
 ---
 
-## 6. Definition of done (MVP)
+## 8. Definition of done (MVP)
 
-- [ ] Leakage test passes
+- [ ] Leakage test passes on real rows
 - [ ] One grader fixture per MVP `question_id` passes
 - [ ] Every stub and real call validates against `AgentCall`
 - [ ] Metrics traceability test passes
 - [ ] Smoke test passes: one company, one agent, two consecutive quarters, with a correction
 - [ ] Dashboard runs from Postgres only, no live API calls
-- [ ] Correction-to-Mubit update visible on screen (or labelled fallback)
+- [ ] Correction to Mubit update visible on screen (or labelled fallback)
 - [ ] Held-out report generated once
 - [ ] Backup demo video recorded
 - [ ] No secrets in git
 
-## 7. Cut list (if behind)
+## 9. Cut list (if behind)
 
-Drop in this order: frontier-model comparison, legend scoreboard, cross-examination, memos, screener, Moat, Valuation, calibration tracker.
+Drop in this order: frontier-model comparison, legend scoreboard, cross-examination, memos, screener, Live today, Moat, Valuation, calibration tracker.
 **Never cut:** point-in-time store, reality grader, correction-to-Mubit loop, held-out eval, backup demo video.
 
 ---

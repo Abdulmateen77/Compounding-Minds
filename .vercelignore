@@ -1,0 +1,13 @@
+# demo_data/runs_final is committed, so a git-connected Vercel deploy works too.
+.git
+.venv
+.env
+**/__pycache__
+.pytest_cache
+node_modules
+web/node_modules
+web/dist
+video
+data/llm_cache
+data/mubit_docs
+agents/memory

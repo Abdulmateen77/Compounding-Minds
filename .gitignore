@@ -6,3 +6,8 @@ node_modules/
 *.sqlite
 data/
 .DS_Store
+agents/memory/
+.vercel
+/public/
+web/dist/
+.env.local

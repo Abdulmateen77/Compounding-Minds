@@ -4,9 +4,18 @@ Project context for Claude Code. Read this first, then `README.md` (full spec), 
 
 ## What this is
 
-A multi-agent investment research system built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026, code freeze **Sun 25 Oct 10:00**). Each agent follows a legendary investor's principles (Buffett, Graham, Munger, Dalio), makes a **checkable call** about a company, and is **graded by what actually happened** in later SEC filings. Wrong calls become corrections; **Mubit** turns corrections into per-agent model updates. The demo replays 2018-2024 quarter by quarter and shows accuracy climbing, a COVID crash, then recovery.
+A multi-agent investment research system built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026; the organisers confirm the final deadline). Each agent follows a legendary investor's principles (Buffett, Graham, Munger, Dalio), makes a **checkable call** about a company, and is **graded by what actually happened** in later SEC filings. Wrong calls become corrections; Each wrong call becomes a lesson the same analyst reads next time; **Mubit** records every call (it has no correction API, see `agents/MUBIT.md`). The demo replays 2018-2024 quarter by quarter against a frozen twin; the honest result is in `README.md`.
 
 One sentence: a team of AI analysts that grades itself against reality and improves every time it's wrong.
+
+**The product (pivot, Sat 24 Oct):** type any US-listed company and get a research report from its SEC filings today, in two
+tabs. **Report:** the investors' take first (a tally and a card per investor), then growth, profit, cash, balance sheet, R&D,
+risk, the company's own words on plans, a 5-minute check, news, a cash-flow valuation with stated assumptions, and a 5-year
+outlook. **Investor panel:** a 3D office where each investor (Buffett, Munger, Lynch, Dalio, Jhunjhunwala; Graham is off the
+panel) works through their checks, then a debate said in the first person over the speaker's head, ending in a panel verdict.
+Code in `research/` (owner A); the panel UI in `web/`. Python computes every number; models only write words, with a guard on
+numbers. The reading describes evidence and price, never gives a price target or personal advice. The replay below remains
+the evidence for the learning loop and the Mubit story.
 
 ## Hackathon rules that constrain the code
 
@@ -17,10 +26,11 @@ One sentence: a team of AI analysts that grades itself against reality and impro
 
 ## Team of two
 
-- **Person A: data and grading.** Owns `ingest/`, `store/`, `metrics/`, `tools/`, `grader/`, `dashboard/`.
-- **Person B: agents and Mubit.** Owns `agents/`, `principles/`, `eval/`.
-- Only edit your owner's directories unless asked. Small PRs, `main` always runs.
-- Person B builds against **stub JSON** matching the schemas until A's store is ready.
+- **Person A: content, data and agents.** Owns `principles/`, `agents/` (except the files below), `store/`, `metrics/`, `tools/`, `quality/` (frozen-twin quality report), `screener/`. Decides what the data is (sources, concept map, schema, metrics) and builds the agents.
+- **Person B: ingestion, grading, orchestration and output.** Owns `ingest/`, `grader/`, `eval/` (held-out harness), `dashboard/`, `api/`, `web/`, `memos/`, plus `agents/synthesizer.py`, `agents/correction_loop.py`, `agents/cache.py`, `agents/mubit_batch.py`, `agents/offline.py`. Fetches the data in, grades the calls, runs the replay, shows the result.
+- Shared: `schemas/`, `.env.example`, root docs. Full split and handoff times are in `TASKS.md`.
+- Only edit your owner's files unless asked. Small PRs, `main` always runs.
+- Until the real store is ready, everyone builds against **stub JSON** matching the schemas (`USE_STUBS=1`).
 
 ## Non-negotiable rules
 
@@ -46,7 +56,7 @@ One sentence: a team of AI analysts that grades itself against reality and impro
 
 Supporting: **replay orchestrator** (advances one quarter, enforces as-of date) and **reality grader** (scores calls, emits corrections).
 
-**MVP:** Fundamentals, Risk, Scenarios + synthesizer + grader + Mubit correction loop + replay dashboard, ~50 US companies.
+**MVP:** Fundamentals, Risk, Scenarios + synthesizer + grader + Mubit correction loop + replay dashboard, 50 US companies (see `ingest/universe.json`).
 **Stretch:** Valuation, Moat, cross-examination round, legend scoreboard, frontier-model comparison, Firecrawl press releases, and the analyst workflow layer (README 11b): watchlist screener (`screener/`, A), memo drafting (`memos/`, B), calibration track record (`grader/calibration.py`, A). Memos may not contain any number the metrics engine did not produce. Screener flags are "needs attention", never buy/sell.
 **Never cut:** point-in-time store, reality grader, correction-to-Mubit loop, held-out eval, backup demo video.
 

@@ -1,19 +1,306 @@
-# Compounding Minds: Full Spec
+# Compounding Minds
+
+**Type any US-listed company and get a research report built from its SEC filings, read through the habits of mind of five
+legendary investors, from analysts that are graded against what the filings later said.**
+
+Built for the **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026).
+
+| | |
+|---|---|
+| **Live app** | https://compounding-minds.vercel.app (search any US-listed company; the first lookup takes 20 to 30 seconds) |
+| **Research view** | [Investors tab](https://compounding-minds-1qxb902x1-syedabdulmateen55-5589.vercel.app/#/research/21344/investors) |
+| **Demo video (2 min)** | VIDEO_LINK_HERE |
+| **Run it yourself** | `pip install -r requirements.txt` then `make demo` (see [Run it](#run-it)) |
+| **Code** | this repository; tests: `make test` (705 pass offline) |
+
+---
+
+## The 30-second version
+
+**The problem.** Nobody reads fifty annual reports, and most "AI analyst" demos make claims nobody checks.
+
+**What we built.** Two things that share one engine:
+
+1. **A research report for any US-listed company, today.** It reads the company's SEC filings and shows growth, profit, cash,
+   balance sheet, risks and the company's own plans (quoted word for word from its annual report). Five investors (Warren Buffett,
+   Charlie Munger, Peter Lynch, Ray Dalio, Rakesh Jhunjhunwala) read the same figures as rule checks and each gives a call: would
+   invest, would wait, or would not. A cash-flow valuation shows what growth today's price assumes, and a five-year outlook shows
+   how likely the business is to be bigger.
+2. **A scoreboard that grades AI analysts against reality.** The **Track record** tab replays 2018 to 2024 quarter by quarter on 50
+   companies. At each quarter an analyst sees only filings public on that date and makes a call that can be checked (will
+   free-cash-flow margin improve next quarter? which revenue bucket comes next?). Python grades it against the later filing. A
+   wrong call becomes a lesson that goes into that analyst's next prompt, and an identical "frozen twin" that never learns is the
+   control.
+
+**Why you can trust it.**
+- **Python computes every figure** and each one names the SEC filing it came from. Models only write words, behind a guard that
+  drops any sentence containing a number the checks did not produce.
+- **No look-ahead.** Every stored value carries the date it was filed, and one function (`store/queries.py`) hides anything filed
+  after the as-of date, with a leakage test.
+- **No price predictions, no advice.** Every call is about the business as filed; the page says it is research, not advice.
+
+---
+
+## Who it is for, and why they come back
+
+**The user:** an individual investor, or a junior analyst, who follows a handful of companies and wants a trustworthy first read
+on a name before spending hours in its filings.
+
+**The task it saves them from:** reading the latest 10-K or 10-Q, computing the ratios by hand, working out what the share price
+assumes, and asking "would a careful investor still like this?" for each company on their list.
+
+**Why they come back every quarter:** the answer changes when the company files again. Each new 10-Q or 10-K lands every three
+months, and the app notices a newer filing and re-reads it (the page says which filing the figures come from, and **Refresh data**
+forces a re-read). Their earlier lookups are kept in the search box, so the names they follow are one click away.
+
+**Not built yet:** a watchlist that flags when a new filing changes an investor's call. It is the obvious next step, and we do not
+claim it today.
+
+---
+
+## How it fits the judging criteria
+
+| Criterion | What we built | Where to see it | The honest limit |
+|---|---|---|---|
+| **Use of Mubit** | Every chat-model call goes through Mubit (`agents/gateway.py`, one task per analyst). A graded miss becomes a lesson the same analyst reads next time, and Mubit records those calls and trains small adapters on them. | Track record tab: the lesson, the same analyst asked again, the learned analyst beside its frozen twin, and a "Mubit adapters" panel. | Mubit has no API for submitting corrections, so the lesson loop is ours. No adapter has passed Mubit's test yet. Details in [How Mubit is used](#how-mubit-is-used). |
+| **Usefulness** | A research task people repeat every time they look at a stock: read the filings, check the basics, see what the price assumes. Works on any US-listed company in about 30 seconds. | The live app. Search any company. | US-listed only for now (London and Europe are next); banks and insurers are only partly covered. |
+| **Technical execution** | A point-in-time database gate, a grader with fixed rules, a held-out evaluation with a frozen twin, a number guard on every written sentence, 705 passing tests, and a deployed app. | `store/tests/test_leakage.py`, `eval/`, the live app. | The learned analysts did not beat their frozen twins in our run (see [Results](#results)). We say so rather than hide it. |
+| **Demo** | A 110-second script and a live app that works with no keys for the Track record tab. | [docs/DEMO.md](docs/DEMO.md), the video above. | The Research tab needs internet access to the SEC. |
+
+---
+
+## What you can do in the app
+
+Search a company, then use the five tabs:
+
+| Tab | What it answers |
+|---|---|
+| **Overview** | Is it any good? The panel's verdict (for example "2 would invest, 3 would wait"), the headline figures, what stands out, a quick screen, the five investors with their calls (click one for their full analysis, or ask them a question), and the latest news. |
+| **Financials** | How are the numbers? Six years in one chart, then growth, profit, cash, balance sheet and reinvestment, one question at a time, and the risk checks. |
+| **Value and outlook** | What is it worth? The share price and multiples, a cash-flow valuation (bear, base and bull cases and what growth today's price assumes), the next five years, and what management says about its plans. |
+| **Investor panel** | A 3D office where the five investors work through their checks, give their readings and argue where they disagree in front of a judge, then a final panel verdict. Every line is built from their own checks; with an ElevenLabs key each investor speaks in their own (AI) voice. |
+| **Sources and data** | Where does it all come from? Every figure and check as a table with the filing behind it, and a CSV export. |
+
+The separate **Track record** page holds the replay, the grading, the lessons and the held-out comparison.
+
+---
+
+## How it works
+
+```mermaid
+flowchart LR
+    SEC[SEC filings<br/>XBRL + submissions] --> STORE[(Point-in-time store<br/>every row has filed_date)]
+    STORE -->|"only rows with filed_date <= as-of"| METRICS[Python metrics<br/>every figure computed here]
+    METRICS --> CHECKS[Investor checks<br/>pass / partly / fail]
+    METRICS --> VAL[Valuation and<br/>5-year outlook]
+    CHECKS --> REPORT[Research report<br/>live app]
+    VAL --> REPORT
+    CHECKS -. written reading .-> LLM[Model via Mubit<br/>words only, number guard]
+    LLM --> REPORT
+
+    METRICS --> CALL[Analyst call<br/>fixed JSON, via Mubit]
+    CALL --> GRADE[Python grader<br/>vs the next filing]
+    GRADE -->|wrong| LESSON[Lesson]
+    LESSON -->|into the next prompt| CALL
+    CALL --> TWIN[Frozen twin<br/>no lessons]
+    GRADE --> HELD[Held-out report<br/>learned vs twin vs baselines]
+    TWIN --> HELD
+```
+
+- **Point-in-time gate.** The replay and the back-test both see the world as of a date, and the live report uses today. One
+  function enforces it, so look-ahead leakage has one place to be wrong and one test.
+- **Rules, not opinions.** The investor checks are checklists distilled from each investor's published writing, in our own words,
+  each with a source (`principles/`, `principles/SOURCES.md`). Each check is pass, partly, fail or unknown.
+- **Fixed call format.** Analysts answer in the same JSON shape every time, so calls can be graded and compared.
+- **Graded by what actually happened.** The grader (`grader/`) is rules over later filings. The one model in it only classifies
+  going-concern text and never produces a number or a grade.
+
+---
+
+## How Mubit is used
+
+- **Every chat-model call goes through Mubit** (`agents/gateway.py`, one task per analyst), so Mubit records it. Calls that must
+  not train anything (the held-out evaluation, the frozen control, probes) are sent with recording off, and a ledger counts what
+  is recorded (`python -m agents.ledger`).
+- **A correction becomes a lesson the same analyst reads next time.** Mubit has no API for submitting corrections
+  (`agents/MUBIT.md` records what we checked in its docs), so our correction loop stores each lesson and puts the latest ones in
+  the analyst's next prompt. The "model version" in the app is that lesson counter, **not** a Mubit adapter version.
+- **Mubit then trains small adapters on the recorded calls.** It tests each adapter against the provider model's own answers.
+  Our first adapters scored well below Mubit's pass mark (best 77.8% against an 85% target, Fundamentals 13 to 17% against 95%,
+  read from the console at 03:36 UTC on 25 Oct and copied into `agents/mubit_console.json`). The cause was on our side: the
+  provider model disagreed with itself on the same prompt. We pinned the reply format, which raised its self-agreement on real
+  prompts from 33 to 47% up to 95 to 98% (`python -m agents.agreement`), and sent 600 fresh real prompts to train on. **No
+  adapter has passed yet**, and the Track record page shows Mubit's results next to this measure.
+- **A frozen twin proves or disproves the lesson.** An identical analyst never gets lessons. The learned analyst is only said to
+  help if it beats the twin on years and companies it never learned from.
+- One call does not use the chat gateway: going-concern passages go to Mubit's Sapling verifier endpoint
+  (`grader/sapling.py`), which is a verifier rather than a chat model. Its verdicts are cached.
+
+---
+
+## Results
+
+All produced by the code in this repository, and reproducible.
+
+**The 2018 to 2024 replay.** 50 companies, 28 quarters, claude-haiku-5-5; 322 lessons for these two analysts, learned from 2018
+to 2022 on 40 companies. It is committed in `demo_data/runs_final`, and its held-out report is
+`eval/reports/heldout_report.md`. On the held-out window (2023 to 2024), accuracy:
+
+| Analyst and question | Learned | Frozen twin | Naive baseline |
+|---|---|---|---|
+| Fundamentals: free-cash-flow margin improves next quarter (n = 295) | 58.0% | 60.0% | 40.0% (always yes); 60.0% (base rate) |
+| Scenarios: next-year revenue bucket (n = 392) | 57.9% | 63.8% | 51.5% (always base) |
+
+**Read honestly: the learned analyst did not beat its frozen twin in this run** (Brier scores are level on Fundamentals and worse
+on Scenarios), so we do not claim that accuracy climbs. The Scenarios analyst clearly beats the naive baselines, and the
+Fundamentals analyst matches the base rate. What the run does show is the whole loop working end to end with every step visible:
+call, grading from the next filing, lesson, the same analyst asked again, and the comparison with its twin. The Risk analyst is
+left out of the headline because most of its stored grades in this run predate a grading fix; the app withholds its hit rate.
+
+**Do the investor checks mean anything?** They were back-tested on 1,184 company-quarters through the date gate
+(`python -m research.backtest`, summary in `research/evidence.json`):
+
+- Companies passing few of **Munger's** failure checks had a dividend cut or auditor change in **13%** of cases, against **2%** for
+  those passing most. The right direction, but modest, and these events are rare.
+- **Buffett's** quality checks predicted free-cash-flow margins a year later (typical **14%** against **4%**) but said nothing
+  about sales growth.
+- Lynch, Dalio and Jhunjhunwala are **not** back-tested (they need historical prices we do not hold), and the app says so. No
+  check tests whether a share price rose.
+
+See section 9 of the spec below for the caveats.
+
+---
+
+## Run it
+
+```bash
+pip install -r requirements.txt         # Python 3.11 or newer; Node 20 or newer for the web app
+cp .env.example .env                    # optional: see below
+make demo                               # builds the web app and serves it at http://localhost:8000
+```
+
+- **No keys needed** for the **Track record** tab: it reads the committed replay and makes no network call.
+- The **Research** tab reads live SEC filings, so it needs internet access and a `SEC_USER_AGENT` (your name and email) in `.env`.
+  The written parts need `MUBIT_API_KEY` and `MUBIT_BASE_URL`; without them the figures still show but the prose is left out.
+- Optional: `FIRECRAWL_API_KEY` adds news (words only, never figures); `ELEVENLABS_API_KEY` adds the investors' voices.
+- Tests: `make test` (offline; database tests skip themselves when Postgres is not reachable).
+- A copy is deployed on Vercel (`vercel.json`); the API serves the committed replay from `demo_data/runs_final`.
+
+---
+
+## Where things are
+
+| Folder | What is in it |
+|---|---|
+| `research/` | The live company report: figures, investor checks, valuation, five-year outlook, news, chat |
+| `agents/` | The analysts, the Mubit gateway, lessons, the replay runner, the agreement measure |
+| `grader/` | Rules that grade a call from later filings |
+| `store/` | The point-in-time database gate (`store/queries.py`; leakage test in `store/tests/test_leakage.py`) |
+| `eval/` | The held-out evaluation: learned vs frozen twin vs baselines |
+| `principles/` | Each investor's checkable rules in our own words, with sources |
+| `ingest/` | SEC loaders and the 50-company universe |
+| `api/`, `web/` | The FastAPI service and the React app (including the 3D investor office) |
+| `docs/DEMO.md` | The 110-second demo script and the judge Q&A |
+
+More detail: [ARCHITECTURE.md](ARCHITECTURE.md) (the agent pattern), [PROJECT.md](PROJECT.md) (overview), [TASKS.md](TASKS.md)
+(who built what and where it stands), [agents/MUBIT.md](agents/MUBIT.md) (what Mubit's docs say, and what we still could not
+confirm).
+
+---
+
+## Limits, and what is next
+
+- **Mubit:** no correction API, and no adapter has passed yet. We could not get answers from Mubit on whether a passing adapter can
+  serve live calls (listed in `agents/MUBIT.md`).
+- **Coverage:** US-listed companies only today; banks and insurers only partly; UK and European listings are next.
+- **Evidence:** only Buffett's and Munger's checks are back-tested; the price-based checks await historical prices.
+- **Data freshness:** the SEC feed can lag a filing by a day or two; the page says which filing the figures come from and flags it
+  when the feed is behind.
+- **It is research, not advice.** No price targets, and nothing on the site tells you to buy or sell.
+
+## Built during the event
+
+Built by two people over the hackathon weekend: **Abdul Mateen** (content, data, the investor checks, valuation and outlook, the
+research report and the investor panel) and **AhamadFalah** (ingestion, grading, replay, the Mubit integration and the web app).
+
+Open-source libraries are used as dependencies (`requirements.txt`, `web/package.json`). `.claude/skills/` holds third-party Claude
+Code skill packages (not project code, licences included where required). All other code was written during the event, 23 to 25
+Oct 2026.
+
+---
+
+# Appendix: the original spec (written on day one, partly superseded)
+
+The rest of this file is the plan we started from. Where it differs from the section above, the section above is right: the UI is
+the React app in `web/` (not Streamlit), the replay result is above, Mubit has no correction API, and Graham is no longer on the
+research panel. The roles "Person A" and "Person B" were the two builders' work split.
+
+## Compounding Minds: full spec
 
 A team of AI analysts that grades itself against reality and compounds from every mistake.
 
-**Live app:** [compounding-minds on Vercel](https://compounding-minds-1qxb902x1-syedabdulmateen55-5589.vercel.app/#/research/21344/investors)
+Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026).
+Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITECTURE.md) (agent pattern and flow), [system-map.html](system-map.html) (layered system architecture diagram), [architecture.html](architecture.html) (one quarter in time order, data pipeline, agent anatomy, learning loop), [user-journey.html](user-journey.html) (user inputs, outputs and dashboard screens) and [DATA_ARCHITECTURE.md](DATA_ARCHITECTURE.md) (same flow as Mermaid), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
 
-Multi-agent investment research. Agents following Buffett, Graham, Munger and Dalio make checkable calls about companies, a Python grader scores them against later SEC filings, and Mubit turns each miss into a per-agent model update.
+---
 
-Built for **Night Shift: Mubit Hackathon** (London, 23-25 Oct 2026). Code freeze **Sun 25 Oct 10:00**.
-Companion files: [PROJECT.md](PROJECT.md) (overview), [ARCHITECTURE.md](ARCHITECTURE.md) (agent pattern and flow), [CLAUDE.md](CLAUDE.md) (rules for Claude Code), `TASKS.md` (who builds what).
+## 0. The product: research any listed company, today
+
+Type a company name or ticker. The app finds it (US exchanges today; London and Europe are next), reads its SEC filings and
+builds a report with two tabs.
+
+**Report tab**
+- **The investors' take**, first: the panel's tally ("2 would invest, 3 would wait, 0 would not"), a box per investor with their
+  face, and a click-open card of their checks and final call.
+- **The numbers:** growth, profit, cash, balance sheet, reinvestment and R&D, risk checks, what the company says about its own plans,
+  price and market multiples, each figure naming the filing it came from.
+- **A 5-minute check** (debt to equity, return on capital, sales growth, promoter holding, dilution), **news** (Firecrawl),
+  a **cash-flow valuation** under three stated growth cases with what today's price assumes, and **the next five years**: the chance
+  the business is bigger, drawn from its own growth record, and value per share year by year beside the share price.
+
+**Investor panel tab**
+- The 3D office plays a prologue: each investor works through their own checks, then gives a reading. Under the animation a card per
+  investor (face, name, the check they are on, their reading, their vote) follows along at a fixed height.
+- Click a card, or the investor in the scene, for a pop-up in their own words: their call, why, the strongest points for and against,
+  what they would watch next, every check folded away.
+- **"Start the debate"** plays opening statements, face-offs between those who disagree most (with a judge) and a final verdict. Each
+  line is said over the speaker's head in the scene, in the first person, and the transcript stays in a log below. With an
+  ElevenLabs key each investor speaks in their own voice.
+
+The panel is five investors: **Buffett, Munger, Lynch, Dalio, Jhunjhunwala** (Graham's code is kept but he is off the panel). Each
+check is pass, partly, fail or unknown, and `decide()` turns them into invest, wait or avoid; price-minded investors wait when the
+price is above even the optimistic case.
+
+How it stays honest:
+- **Python computes every figure** and each one names the SEC filings it came from. Models only write words: a paragraph per
+  investor, checked so it cannot use a number the checks did not produce, and a choice among verbatim sentences from the 10-K. The
+  first-person wording of the debate and pop-ups is a rewrite of the same checks; no new facts.
+- **The investor lenses are the checklists in `principles/`**, turned into checks with their verified sources (`principles/SOURCES.md`).
+- **The valuation is a plain cash-flow calculation with its assumptions on the page**, including the reverse question
+  "what growth does today's price assume?". It is not a price target. The five-year outlook is a view of value, not a share-price forecast.
+- **Every call is a reading of the evidence, never personal advice**, and the page says so.
+- **The back-test (`python -m research.backtest`)** runs the Buffett and Munger checks at every quarter 2018-2023 for the 50 companies
+  through the date gate and compares them with what happened over the next year. It is the evidence that the checks mean something
+  (or the honest report that they do not): see the results section. Lynch, Dalio and Jhunjhunwala are not back-tested, and the page says so.
+- **News comes from Firecrawl (`research/web.py`) and is words only.** Each summary line points at one article and may only use numbers that article contains; no financial figure ever comes from the web. It is fetched for today's report only (never for the past replay or back-test), cached for twelve hours (each search costs two credits), and the section is simply absent if Firecrawl is unavailable. Uses `FIRECRAWL_API_KEY` or the stored `firecrawl login`.
+- **Data is judged fresh by content**: the filing list is refetched daily and the facts whenever a newer 10-K or 10-Q exists. The page says which filing the figures come from and flags when the SEC feed itself is behind.
+
+Code: `research/` (`resolve`, `live`, `report`, `analysis`, `valuation`, `outlook`, `quick_check`, `dividends`, `text`, `web`, `narrative`,
+`market`, `chat`, `voice`, `service`, `backtest`), API `GET /api/research/search`, `/api/research/company/{cik}`, `.../chat`,
+`/api/research/evidence`, `/api/voice` and `/api/voice/status`; web `web/src/screens/Research.tsx`, the panel in
+`web/src/components/` (`InvestorStage`, `InvestorCards`, `DebateLog`, `AnalysisPopup`, `Avatar`, `firstPerson`, `Outlook`) and
+`web/src/scene/` (the 3D office: `ResearchScene`, `ThinkingCards`).
+Not covered yet: non-US listings, and banks and insurers only partly (several measures do not apply to them).
+
+The original replay (sections 1 to 15 below) is the evidence base for the learning loop and the Mubit story. Two places the pivot
+changes the original non-goals: the app now reads live filings (no longer "historical and cached" only), and it shows a valuation
+range with assumptions. It still gives no price target and no buy or sell instruction.
 
 ---
 
 ## 1. Concept
 
-Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t`, it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings actually reported. Wrong calls become **corrections**. **Mubit** turns corrections into per-agent model updates, so the next round is better.
+Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t`, it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings actually reported. Wrong calls become **corrections**. **Mubit** records every call; our loop turns each correction into a lesson the same analyst reads next time (Mubit has no correction API, see `agents/MUBIT.md`), and a frozen twin shows whether that helped.
 
 The demo's **Time Machine** replay runs 2018-2024 quarter by quarter. The audience watches accuracy climb, the COVID crash (2020) break the agents, then recovery as corrections accumulate.
 
@@ -44,9 +331,9 @@ This is a research-support and QA loop for analysts, not a replacement for an in
 | All code written during the event | No pasted legacy code. Open-source libraries only. |
 | Every LLM call routes through Mubit | One shared client, base URL set to Mubit, one adapter per agent. |
 | Judged on: Mubit use, usefulness, execution, live demo | The correction to model update step must be **visible on screen**. |
-| Code freeze Sun 25 Oct 10:00 | Backup demo video recorded before freeze. |
+| Submission deadline (confirmed by the organisers) | Backup demo video recorded early. |
 
-Mubit's exact update API is unknown to us. Do not guess endpoints. Ask at office hours and read the docs the team has. Until then, code against the `ModelUpdater` interface in section 10.
+*(Resolved: Mubit has no correction or update API. `agents/MUBIT.md` records what we checked. The loop is described in section 10.)*
 
 ---
 
@@ -81,11 +368,11 @@ Mubit's exact update API is unknown to us. Do not guess endpoints. Ask at office
 ```
 
 ### Stack
-Python 3.11, FastAPI, PostgreSQL, `edgartools`, `fredapi`, `pandas`, MCP Python SDK, Streamlit (default) or React for the dashboard, LLM calls via Mubit.
+Python 3.11, FastAPI, PostgreSQL, `edgartools`, `fredapi`, `pandas`, MCP Python SDK, React (`web/`) served by FastAPI (`api/`); Streamlit (`dashboard/`) was the first dashboard, LLM calls via Mubit.
 
 ---
 
-## 4. Data layer (`ingest/`, `store/`) : owner A
+## 4. Data layer (`ingest/` owner B, `store/` owner A)
 
 ### 4.1 Sources
 | Source | Used for |
@@ -98,6 +385,74 @@ Python 3.11, FastAPI, PostgreSQL, `edgartools`, `fredapi`, `pandas`, MCP Python 
 | Tiingo or Stooq | Prices, used only for context metrics, never as a prediction target |
 
 SEC rules: `User-Agent` header with a name and email, stay under ~10 requests/second, cache raw responses on disk before parsing.
+
+### 4.1b Data sources by need
+
+Access details change. Verify each at build time.
+
+**Core (MVP)**
+| Source | Gives us | Point-in-time field | Cost |
+|---|---|---|---|
+| SEC XBRL `companyfacts` / `frames` | Revenue, cash flow, margins, debt, dividends, R&D expense | `filed` on every fact | Free |
+| SEC `submissions` | Filing list, 8-K item codes (4.01 auditor change), SIC code | Filing date | Free |
+| SEC `company_tickers.json` | CIK and ticker map | None | Free |
+| SEC filing documents (`edgartools`) | 10-K and 10-Q text: risk factors, going concern, MD&A, R&D section | Filing date | Free |
+| EDGAR full-text search | Going-concern and risk phrases | Filing date | Free |
+| FRED + ALFRED | GDP, unemployment, yield curve, credit spreads | ALFRED vintage date | Free key |
+| Tiingo or Stooq | Prices, context only | Trading date | Free tier |
+
+**Latest affairs and events (cheap additions, stretch)**
+| Source | Gives us | Point-in-time field | Notes |
+|---|---|---|---|
+| 8-K Exhibit 99.1 | Earnings releases, guidance, deals | Filing date | Best option: dated, official, free |
+| FOMC / Federal Reserve statements | Rate decisions, macro tone for Scenarios | Publication date | Small and clean |
+| Wayback Machine snapshots | Historical company IR pages | Snapshot date | Proxy for "known then" |
+| Company IR pages (live) | Press releases | Publication date, often unreliable | Pages are removed or edited; use only if the date is trustworthy |
+| GDELT | News event index from 2015 | Article date | Noisy, names companies; skip unless time allows |
+
+**R&D sources**
+| Source | Gives us | Notes |
+|---|---|---|
+| XBRL `ResearchAndDevelopmentExpense` | R&D spend | Already in the core feed. Used by the Moat agent |
+| 10-K R&D section | Qualitative pipeline text | Comes with SEC filing documents |
+| USPTO patents (PatentsView / USPTO open data) | Patent grants per company | Assignee-to-company matching is messy; access has changed recently. Skip for MVP |
+| ClinicalTrials.gov, openFDA | Trials, approvals, recalls | Sector-specific (pharma, biotech). Skip for MVP |
+
+### 4.1c Data used by each agent and task
+
+| Agent / task | Inputs | Graded or resolved by |
+|---|---|---|
+| Fundamentals | XBRL: operating cash flow, capex, revenue, operating income, debt, invested capital | Next 10-Q or 10-K (XBRL) |
+| Risk | XBRL: interest expense, current assets and liabilities, cash, dividends. Submissions: auditor-change history. Full-text: going-concern hits | 8-K items, XBRL dividends, 10-K text |
+| Scenarios | XBRL: 5-year revenue history. ALFRED: GDP, unemployment, yield curve, credit spread | Actual revenue growth (XBRL) |
+| Valuation (stretch) | XBRL: growth, owner earnings. Prices for the reverse DCF (decision needed, see below) | Revenue growth over next year (XBRL) |
+| Moat (stretch) | XBRL: gross margin, R&D, SG&A | Next 4 filings (XBRL) |
+| Synthesizer | Stored calls and grades only | Composite of graded outcomes |
+| Universe selection | `company_tickers.json`; sector from SIC code in `submissions` or chosen manually | n/a |
+| Replay, dashboard, eval, screener, memos, calibration | Postgres only (`calls`, `grades`, `facts`, `events`) | n/a |
+
+**Open data decisions:** (1) Valuation needs a market value for the reverse DCF, but prices are defined as context only. Decide before building it. (2) `peer_compare` needs a sector source (SIC from `submissions`). (3) Plain FRED values are revised after release; use ALFRED vintages only.
+
+### 4.1d Firecrawl: where it helps
+
+Firecrawl turns web pages into markdown and can crawl or map sites. It earns its place on **non-SEC pages**. For SEC filings use `edgartools`, which is structured and carries filing dates.
+
+| Use | How | Fit |
+|---|---|---|
+| Build `principles/` | Scrape or parse public Berkshire shareholder letters, then write 5-10 rules per investor in our own words | Best fit. Development-time only, no leakage risk |
+| Read Mubit docs | Scrape the docs we have so nobody guesses endpoints | Good, development-time |
+| Press-release text | Crawl 8-K exhibits or IR pages into `events`, `filed_date` = publication date | Good for Risk. Keep only pages with a reliable date |
+| Historical IR pages | Scrape Wayback snapshots, use snapshot date as `filed_date` | Medium |
+| FOMC and macro statements | Crawl dated statements into `events` for Scenarios | Medium |
+| Numeric extraction | Firecrawl extract/agent pulling figures from releases | **Do not use.** An LLM-extracted number breaks rule 1. Numbers stay in XBRL |
+
+Constraints on every new source:
+1. **Point-in-time.** Every row needs a trustworthy `filed_date`. If a page's date is unreliable, do not ingest it.
+2. **Names leak.** News and press text contains company names, which defeats anonymization. Scrub names before text reaches a prompt, or use the source only for Python-side flags (for example "8-K item present").
+3. **No live calls in the demo.** Scrape at ingest time and cache raw responses to disk. The demo reads Postgres only.
+4. **Survivorship.** Scraped pages exist only if the company kept them, which biases Risk against failed companies. SEC filings do not have this problem.
+
+**Recommendation:** MVP uses SEC (XBRL, submissions, filings, full-text), FRED/ALFRED and Stooq. Add 8-K Exhibit 99.1 as the cheap news source. Use Firecrawl first for the principles files. Then FOMC statements and Wayback IR pages if time allows. Skip GDELT, patents, clinical trials and FDA.
 
 ### 4.2 Universe
 ~50 US companies, chosen for: filings continuous 2017-2025, mix of sectors, a few that visibly suffer in 2020 (airlines, retail) and a few that don't. Frozen in `ingest/universe.json` early (Hour 3). Each gets a stable alias `anon_001`...`anon_050`.
@@ -229,7 +584,7 @@ Do not change these without telling the other person. Agents must emit exactly t
 
 ---
 
-## 7. Agents (`agents/`, `principles/`) : owner B
+## 7. Agents (`agents/`, `principles/`) : owner A (synthesizer: owner B)
 
 All agents share one runner:
 1. Load `principles/<investor>.md`.
@@ -261,12 +616,14 @@ Bucket definitions for Scenarios are fixed and numeric, set once in `grader/conf
 ### 7.3 Synthesizer
 Takes the other agents' calls (not raw data), weighs them by each agent's trailing accuracy (from `grades`), and outputs the committee verdict with a calibrated confidence. MVP: weighted vote plus an LLM-written rationale. Stretch: **cross-examination round**, where agents challenge each other's evidence (max 1 round).
 
+**Built (B):** cross-examination in `agents/cross_exam.py` (`python -m agents.synthesizer --cross-exam`): confidence only, shift capped at 0.15, originals untouched. Tool use in `agents/runner.py` + `agents/tools.py`: off unless a toolbox is passed, at most 5 calls, instructions in the user message only, tool values citable as evidence. Valuation and Moat agents are in `agents/specs.py`; Moat reads `principles/buffett_moat.md` so the Fundamentals prompt (also Buffett) never changes. Their stub metrics are in `store/stubs/` and their metric names are the contract for `metrics/`.
+
 ### 7.4 Mubit adapter (one per agent)
 `agents/adapters/<agent>.py` wraps the single Mubit client with that agent's identity, so Mubit tracks each agent's model separately. Interface in section 10.
 
 ---
 
-## 8. Replay and grading (`grader/`) : owner A, orchestrator shared
+## 8. Replay and grading (`grader/`) : owner B
 
 ### 8.1 Replay orchestrator
 ```
@@ -287,6 +644,7 @@ Key points:
 
 ### 8.2 Reality grader
 - Pure Python, no LLM. Resolves each `question_id` using rules in `grader/rules.py` against filings with `filed_date` after `as_of`.
+- One exception: the Risk rule's going-concern check (`grader/risk.py`). Python finds passages with "going concern" / "substantial doubt"; Mubit's **Banyan Sapling** verifier judges them against a written policy (real doubt vs boilerplate). Sapling `supported` = yes, `violation` = no, `insufficient_information` / `inconsistent_context` = `unresolvable`; an `unsure` status uses the top label only when it holds a majority (>= 0.50, `grader/config.py`; retune on the training window). Verdicts are cached in `data/sapling_cache/`, so the demo replays them with no live calls. Auditor changes (8-K 4.01) stay pure Python; the dividend-cut check is still to add.
 - Produces `Grade` (6.2). Computes Brier score `(p - outcome)^2` for binary, multiclass Brier for buckets.
 - Logs `unresolvable` cases instead of guessing.
 
@@ -300,14 +658,26 @@ For every incorrect call, plus every correct call with confidence > 0.8 that was
 
 ---
 
-## 9. Held-out evaluation (`eval/`) : owner B
+## 9. Held-out evaluation (`eval/`) : owner A
 
 Prevents the demo from just showing overfitting.
 - **Split by time and by company.** Train window: 2018-2022. Held-out window: 2023-2024. Hold out ~10 companies across all years.
 - Mubit updates are learned **only** from train-window corrections.
 - Report accuracy and Brier on held-out for: (a) frozen agents, (b) learned agents, (c) baselines.
-- Held-out results are generated once, before freeze, and shown as a single slide/panel. No tuning against them.
+- Held-out results are generated once, before submission, and shown as a single slide/panel. No tuning against them.
 - Stretch: frontier-model comparison (same questions, a larger model with no learning), shown as a bar next to ours.
+
+**Results: the investor checks, back-tested (Sat 24 Oct).** `python -m research.backtest` runs the Buffett and Munger checks of the research report at every quarter from 2018Q1 to 2023Q4 for the 50 companies, through the date gate, and compares them with what happened over the next twelve months (1,184 company-quarters; no model, repeatable; summary in `research/evidence.json`, shown in the app).
+
+| Check | Passes most | Middle | Passes few | Rank correlation (all / one window per year / held-out companies) |
+|---|---|---|---|---|
+| Munger fit vs an auditor change or dividend cut within a year (share of cases) | 2.1% | 4.5% | 12.9% | -0.13 / -0.13 / -0.21 (held-out: 60 cases, 5 in the low group, not distinguishable from chance) |
+| Buffett fit vs free-cash-flow margin a year later (median) | 14.4% | 11.1% | 4.4% | +0.28 / +0.32 / +0.27 |
+| Buffett fit vs revenue growth over the next year (median) | 5.6% | 5.2% | 5.9% | -0.03 / +0.01 / -0.05 |
+
+Read honestly: Munger's failure checks point the right way but only modestly. An earlier run showed 3% against 45% and a correlation of -0.27; that was an artefact, because both the check and the outcome mistook the timing of dividend payments (a payment slipping over a quarter-end) for a cut. With a cut required to last two quarters on both sides it shrank to 2% against 13%. Buffett's quality checks predict that cash margins persist (partly because the check measures cash margin), and say nothing about sales growth. Quarterly windows overlap, so the p-values overstate certainty; the one-window-per-year column is the cleaner read. Not tested: Graham, Lynch, Dalio and Jhunjhunwala (they need historical prices we do not hold), and no check tests whether a share price rose.
+
+**Status (done).** `eval/` implements the split, the frozen twin, both baselines and the report. The final held-out report from the finished replay is `eval/reports/heldout_report.md` (summary and honest reading at the top of this file); it was produced offline from `demo_data/runs_final` with `python -m eval.run --from-replay demo_data/runs_final --tag final --agents fundamentals,scenarios`. `python -m eval.run` alone is an offline preview on stub metrics and is stamped NOT RESULTS.
 
 ---
 
@@ -325,15 +695,15 @@ class ModelUpdater:
     def status(self, ref: UpdateRef) -> UpdateStatus: ...
 ```
 
-- A `FakeModelUpdater` (appends lessons to the agent's principle file / few-shot memory) is the fallback so the demo works if Mubit's API is late or flaky. It must be labelled as fallback in the UI if used.
+- **As built:** `MubitUpdater` stores each lesson and links it to the Mubit request ID of the reflection call that wrote it; the lesson is added to the analyst's next prompt. `FakeModelUpdater` is the offline fallback used by tests and previews, and is labelled as fallback in the UI.
 - The dashboard shows, for a chosen correction: the original call, the actual outcome, the lesson, the Mubit update reference, and the agent's model version before and after, then the same company asked again in a later quarter.
-- **Open items for office hours:** exact update endpoint and payload, latency of updates, per-agent isolation, rate limits, how version IDs are exposed.
+- **Office-hours questions:** the answers we found are in `agents/MUBIT.md` (no correction API; per-task recording; training in the console). The ones we could not confirm are listed at the bottom of that file as unanswered.
 
 ---
 
-## 11. Dashboard (`dashboard/`) : owner A
+## 11. Dashboard (`dashboard/`) : owner B
 
-Streamlit by default (fast to build). Reads only from Postgres, never calls live APIs.
+*(Superseded: the shipped UI is the React app in `web/`; `dashboard/` is the Streamlit version and its data layer.)* Reads only from Postgres, never calls live APIs.
 
 | View | Content |
 |---|---|
@@ -345,6 +715,8 @@ Streamlit by default (fast to build). Reads only from Postgres, never calls live
 | Scoreboard (stretch) | "Legend scoreboard": which investor's rules are doing best now |
 
 A disclaimer footer is always visible: "Research tool, not financial advice."
+
+**Built:** `streamlit run dashboard/app.py`. Reads Postgres when `DATABASE_URL` is reachable, otherwise the JSONL tables in `data/runs` (`python -m eval.run --agents fundamentals,risk,scenarios,valuation,moat --curves --save data/runs`); force one with `DASHBOARD_SOURCE=postgres|<dir>`. All six views above are in, plus the corrections-per-quarter chart. Stub runs show a NOT RESULTS banner and the FakeModelUpdater is labelled as fallback. The synthesizer verdict reuses `agents/synthesizer.py` scoring, so no LLM is called. Data layer tests in `dashboard/tests/`.
 
 ---
 
@@ -367,7 +739,9 @@ Turns the call-grade-correct engine into something that fits an investment team'
 - Anonymized by default. Name/ticker mapping happens only at render time in the dashboard, and only for the demo's chosen company, never in the prompt.
 - Footer on every memo: "Research tool, not financial advice."
 
-### 11b.3 Calibration and track-record tracker (`grader/calibration.py`, owner A)
+**Built (B):** `memos/` (`python -m memos --company anon_001 --as-of 2019-06-30`). The drafter writes four prose sections using placeholders only; `check_prose` rejects any digit, unknown placeholder or buy/sell language, with one repair retry, then the memo renders without LLM prose.
+
+### 11b.3 Calibration and track-record tracker (`grader/calibration.py`, owner B)
 - Maintains a persistent track record per agent (and per principle ID used): accuracy, Brier, calibration curve, overconfidence gap (mean confidence minus accuracy), per-regime breakdown.
 - Computed only from `grades`, as-of aware: at replay date `t` it includes only grades resolved by `t`.
 - Feeds the synthesizer's weights (7.3) and a "stale principle" flag when a principle's rolling Brier degrades.
@@ -399,17 +773,18 @@ Integration checkpoints: Hour 10 (real metrics for one company flow into one age
 ## 13. Repo layout
 
 ```
-agents/       runner, adapters/, one module per agent, synthesizer          (B)
-principles/   buffett.md, graham.md, munger.md, dalio.md                    (B)
-eval/         held-out split, baselines, report generation                  (B)
-ingest/       SEC/FRED/price fetchers, universe.json, raw cache             (A)
+agents/       runner, adapters/, one module per agent (A). synthesizer.py,
+              correction_loop.py, cache.py, mubit_batch.py, offline.py     (B)
+principles/   buffett.md, graham.md, munger.md, dalio.md                    (A)
+eval/         held-out split, frozen twins, baselines, report generation    (A)
+ingest/       SEC/FRED/price fetchers, raw cache, parsers (B). universe.json (A)
 store/        schema.sql, queries.py (point-in-time gate), stubs/, tests/   (A)
 metrics/      one module per agent's metric set                             (A)
 tools/        MCP servers                                                   (A)
-grader/       rules.py, grade.py, corrections.py, replay.py, calibration.py (A)
+grader/       rules.py, grade.py, corrections.py, replay.py, calibration.py (B)
 screener/     watchlist flags and ranking (stretch)                         (A)
 memos/        memo assembly, placeholder renderer, number check (stretch)   (B)
-dashboard/    Streamlit app                                                 (A)
+dashboard/    Streamlit app                                                 (B)
 schemas/      shared Pydantic models                                        (shared)
 .env.example  keys listed, no values
 ```
@@ -438,7 +813,7 @@ Minimum tests (the project cannot demo without these):
 7. **COVID (30s):** crash drops accuracy, recovery follows.
 8. **Held-out (20s):** frozen vs learned vs baseline on unseen years.
 
-Backup: a recorded video of the full flow, made before freeze. If live fails, play it.
+Backup: a recorded video of the full flow, made early. If live fails, play it.
 
 ---
 
@@ -448,7 +823,7 @@ Backup: a recorded video of the full flow, made before freeze. If live fails, pl
 |---|---|
 | Look-ahead leakage | Single gate, leakage test, anonymization, masked dates |
 | LLM memorizes company outcomes | Anonymize, strip names/tickers, mask years, report held-out by company |
-| Mubit API late or unclear | `ModelUpdater` interface and `FakeModelUpdater` fallback, ask at office hours early |
+| Mubit has no correction API | Lessons go in the next prompt; frozen twin measures the effect; `FakeModelUpdater` for offline runs |
 | SEC rate limits / slow ingest | Start ingest by Hour 3, cache raw, ~50 companies only |
 | XBRL concept inconsistency across filers | Small fixed concept map with fallbacks; drop companies that don't map cleanly |
 | Replay too slow for live demo | Precompute everything, replay stored results, show one live loop |
@@ -476,15 +851,15 @@ Backup: a recorded video of the full flow, made before freeze. If live fails, pl
 | 10-20 | Metrics for MVP agents, grader rules, first grades | Risk + Scenarios, Synthesizer, reflection prompt, ModelUpdater |
 | 20-30 | Replay orchestrator, full ingest QA, dashboard v1 | Correction loop with real Mubit, held-out eval harness |
 | 30-34 | Dashboard polish, correction spotlight | Full replay run, baselines, held-out report |
-| 34-37 | Record backup video, freeze checks | Tune demo script, README results section |
+| 34-37 | Record backup video, final checks | Tune demo script, README results section |
 
 ---
 
 ## 19. Open questions
 
-1. Mubit update API shape and latency (office hours).
-2. Exact universe list (decide by Hour 3).
-3. Streamlit vs React (default Streamlit unless someone wants the polish).
+1. *(Resolved: Mubit has no correction API; see `agents/MUBIT.md`.)*
+2. *(Resolved: `ingest/universe.json`.)*
+3. *(Resolved: React in `web/`.)*
 4. How many corrections per agent per quarter before updates become noisy (start at 10, tune on train window).
 5. Whether to include Valuation in MVP if Fundamentals/Risk/Scenarios finish early.
 

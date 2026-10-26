@@ -1,0 +1,304 @@
+{
+  "generated_at": "2026-10-25T02:17:10+00:00",
+  "provenance": {
+    "real_results": true,
+    "offline_demo": false,
+    "metrics": "store",
+    "outcome_rule": "grader.rules",
+    "llm": "mubit",
+    "frontier_model": null,
+    "source": "grader.replay demo_data/runs_final tag final"
+  },
+  "disclaimer": "Research tool, not financial advice.",
+  "banner": null,
+  "split": {
+    "train_companies": [
+      "anon_001",
+      "anon_002",
+      "anon_004",
+      "anon_005",
+      "anon_006",
+      "anon_007",
+      "anon_008",
+      "anon_010",
+      "anon_011",
+      "anon_012",
+      "anon_013",
+      "anon_015",
+      "anon_016",
+      "anon_017",
+      "anon_018",
+      "anon_019",
+      "anon_021",
+      "anon_022",
+      "anon_023",
+      "anon_026",
+      "anon_028",
+      "anon_029",
+      "anon_031",
+      "anon_032",
+      "anon_033",
+      "anon_034",
+      "anon_035",
+      "anon_036",
+      "anon_037",
+      "anon_038",
+      "anon_040",
+      "anon_041",
+      "anon_043",
+      "anon_044",
+      "anon_045",
+      "anon_046",
+      "anon_047",
+      "anon_048",
+      "anon_049",
+      "anon_050"
+    ],
+    "held_out_companies": [
+      "anon_003",
+      "anon_009",
+      "anon_014",
+      "anon_020",
+      "anon_024",
+      "anon_025",
+      "anon_027",
+      "anon_030",
+      "anon_039",
+      "anon_042"
+    ],
+    "train_window": [
+      "2018-03-31",
+      "2022-12-31"
+    ],
+    "held_out_window": [
+      "2023-03-31",
+      "2024-12-31"
+    ],
+    "train_quarters": 20,
+    "held_out_quarters": 8
+  },
+  "agents": {
+    "fundamentals": {
+      "claim_type": "binary",
+      "frozen_version": "frozen:claude-haiku-5-5+fundamentals-v0",
+      "learned_version_start": "mubit:claude-haiku-5-5+fundamentals-lessons-v0",
+      "learned_version_end": "mubit:claude-haiku-5-5+fundamentals-lessons-v160",
+      "frontier_version": null,
+      "corrections_applied": 160,
+      "train_calls": 1000,
+      "train_dropped": 291,
+      "train_resolved_outcomes": 559,
+      "held_out_dropped": {
+        "learned": 105,
+        "frozen": 105,
+        "baseline": 105
+      },
+      "segments": {
+        "all_companies": {
+          "n": 295,
+          "frozen": {
+            "n": 295,
+            "accuracy": 0.6,
+            "brier": 0.24345694915254237
+          },
+          "learned": {
+            "n": 295,
+            "accuracy": 0.5796610169491525,
+            "brier": 0.24138508474576273
+          },
+          "baselines": {
+            "always_yes": {
+              "n": 295,
+              "accuracy": 0.4,
+              "brier": 0.6
+            },
+            "base_rate": {
+              "n": 295,
+              "accuracy": 0.6,
+              "brier": 0.2495402920497566,
+              "answer": "no",
+              "probability": 0.6976744186046512
+            }
+          },
+          "learned_minus_frozen": {
+            "accuracy": -0.02033898305084747,
+            "brier": -0.0020718644067796443
+          }
+        },
+        "seen_companies": {
+          "n": 234,
+          "frozen": {
+            "n": 234,
+            "accuracy": 0.5982905982905983,
+            "brier": 0.24371837606837607
+          },
+          "learned": {
+            "n": 234,
+            "accuracy": 0.5726495726495726,
+            "brier": 0.2417273504273504
+          },
+          "baselines": {
+            "always_yes": {
+              "n": 234,
+              "accuracy": 0.4017094017094017,
+              "brier": 0.5982905982905983
+            },
+            "base_rate": {
+              "n": 234,
+              "accuracy": 0.5982905982905983,
+              "brier": 0.2502161020278922,
+              "answer": "no",
+              "probability": 0.6976744186046512
+            }
+          },
+          "learned_minus_frozen": {
+            "accuracy": -0.02564102564102566,
+            "brier": -0.0019910256410256566
+          }
+        },
+        "unseen_companies": {
+          "n": 61,
+          "frozen": {
+            "n": 61,
+            "accuracy": 0.6065573770491803,
+            "brier": 0.24245409836065573
+          },
+          "learned": {
+            "n": 61,
+            "accuracy": 0.6065573770491803,
+            "brier": 0.240072131147541
+          },
+          "baselines": {
+            "always_yes": {
+              "n": 61,
+              "accuracy": 0.39344262295081966,
+              "brier": 0.6065573770491803
+            },
+            "base_rate": {
+              "n": 61,
+              "accuracy": 0.6065573770491803,
+              "brier": 0.24694784065822023,
+              "answer": "no",
+              "probability": 0.6976744186046512
+            }
+          },
+          "learned_minus_frozen": {
+            "accuracy": 0.0,
+            "brier": -0.002381967213114733
+          }
+        }
+      }
+    },
+    "scenarios": {
+      "claim_type": "bucket",
+      "frozen_version": "frozen:claude-haiku-5-5+scenarios-v0",
+      "learned_version_start": "mubit:claude-haiku-5-5+scenarios-lessons-v0",
+      "learned_version_end": "mubit:claude-haiku-5-5+scenarios-lessons-v162",
+      "frontier_version": null,
+      "corrections_applied": 162,
+      "train_calls": 1000,
+      "train_dropped": 41,
+      "train_resolved_outcomes": 759,
+      "held_out_dropped": {
+        "learned": 8,
+        "frozen": 8,
+        "baseline": 8
+      },
+      "segments": {
+        "all_companies": {
+          "n": 392,
+          "frozen": {
+            "n": 392,
+            "accuracy": 0.6377551020408163,
+            "brier": 0.552404974489796
+          },
+          "learned": {
+            "n": 392,
+            "accuracy": 0.5790816326530612,
+            "brier": 0.6055741071428572
+          },
+          "baselines": {
+            "always_base": {
+              "n": 392,
+              "accuracy": 0.5153061224489796,
+              "brier": 0.9693877551020408
+            },
+            "base_rate": {
+              "n": 392,
+              "accuracy": 0.25,
+              "brier": 0.6798731428392882,
+              "answer": "bull",
+              "probability": 0.37549407114624506
+            }
+          },
+          "learned_minus_frozen": {
+            "accuracy": -0.058673469387755084,
+            "brier": 0.053169132653061224
+          }
+        },
+        "seen_companies": {
+          "n": 312,
+          "frozen": {
+            "n": 312,
+            "accuracy": 0.6410256410256411,
+            "brier": 0.5471669871794872
+          },
+          "learned": {
+            "n": 312,
+            "accuracy": 0.5769230769230769,
+            "brier": 0.6029552884615385
+          },
+          "baselines": {
+            "always_base": {
+              "n": 312,
+              "accuracy": 0.5,
+              "brier": 1.0
+            },
+            "base_rate": {
+              "n": 312,
+              "accuracy": 0.25961538461538464,
+              "brier": 0.6786569677100696,
+              "answer": "bull",
+              "probability": 0.37549407114624506
+            }
+          },
+          "learned_minus_frozen": {
+            "accuracy": -0.06410256410256421,
+            "brier": 0.055788301282051256
+          }
+        },
+        "unseen_companies": {
+          "n": 80,
+          "frozen": {
+            "n": 80,
+            "accuracy": 0.625,
+            "brier": 0.572833125
+          },
+          "learned": {
+            "n": 80,
+            "accuracy": 0.5875,
+            "brier": 0.6157875
+          },
+          "baselines": {
+            "always_base": {
+              "n": 80,
+              "accuracy": 0.575,
+              "brier": 0.85
+            },
+            "base_rate": {
+              "n": 80,
+              "accuracy": 0.2125,
+              "brier": 0.6846162258432409,
+              "answer": "bull",
+              "probability": 0.37549407114624506
+            }
+          },
+          "learned_minus_frozen": {
+            "accuracy": -0.03749999999999998,
+            "brier": 0.04295437499999999
+          }
+        }
+      }
+    }
+  }
+}

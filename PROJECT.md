@@ -2,13 +2,17 @@
 
 Overview document: what it is, who it is for, and how it is built. Agent pattern and data flow: [ARCHITECTURE.md](ARCHITECTURE.md). Detailed contracts and schemas live in [README.md](README.md). Rules for Claude Code live in [CLAUDE.md](CLAUDE.md).
 
+> **Status (Sun 25 Oct):** the product has pivoted to a research report on any US-listed company, with an investor panel (Buffett,
+> Munger, Lynch, Dalio, Jhunjhunwala) and a debate. See [README.md](README.md) section 0 and [TASKS.md](TASKS.md) section 0f. The
+> replay and Mubit learning loop described below remain the evidence base.
+
 ---
 
 ## 1. What it is
 
 A team of AI analysts that grades itself against reality and improves every time it is wrong.
 
-Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t` it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings reported. Wrong calls become **corrections**, and **Mubit** turns corrections into per-agent model updates.
+Each agent follows one legendary investor's principles (Buffett, Graham, Munger, Dalio). At a past date `t` it sees only what was public on `t`, then makes a **checkable call** about a company's business outcomes. We grade the call against what later SEC filings reported. Wrong calls become **corrections**; each becomes a lesson that goes into that analyst's next prompt, every call is recorded by **Mubit**, and a frozen twin shows whether the lessons helped (Mubit has no correction API: see `agents/MUBIT.md`).
 
 It is a research-support and QA loop for analysts. It is not an autonomous fund, a trading system or a source of financial advice.
 
@@ -16,7 +20,7 @@ It is a research-support and QA loop for analysts. It is not an autonomous fund,
 1. **Falsifiable.** Every call has a question that filings can answer. No price predictions.
 2. **Point-in-time honest.** Data is filtered by `filed_date <= as_of` in one place, with a leakage test.
 3. **No LLM-generated numbers.** Python computes every metric. Agents only judge.
-4. **Self-correcting.** Graded misses become lessons, and lessons become model updates.
+4. **Self-correcting.** Graded misses become lessons the same analyst reads next time, tested against a frozen twin.
 5. **Traceable.** Every number links back to a filing accession.
 
 ---
@@ -27,7 +31,7 @@ It is a research-support and QA loop for analysts. It is not an autonomous fund,
 2. **Computes** metrics (FCF, margins, leverage, coverage, growth distributions) in Python, each traceable to filings.
 3. **Asks agents** to make fixed-format calls from the metrics and their investor's principles.
 4. **Synthesizes** the calls into a committee verdict with calibrated confidence.
-5. **Grades** each call against later filings (pure Python, no LLM).
+5. **Grades** each call against later filings (Python rules; the only model in the grader is Mubit's Sapling verifier, which classifies going-concern text for the Risk check; the rule still sets the verdict and every number).
 6. **Generates corrections** for wrong calls, with a lesson written by a reflection LLM call.
 7. **Updates** each agent through Mubit.
 8. **Replays** 2018 to 2024 quarter by quarter, showing accuracy climbing, the 2020 crash, and recovery.
@@ -145,7 +149,11 @@ Stretch modules plug into the same stores: `screener/` reads metrics and calls, 
 | EDGAR full-text search | Going-concern and risk text |
 | FRED + ALFRED | Macro series with vintages (what was known then) |
 | Tiingo or Stooq | Prices, context only, never a prediction target |
-| Firecrawl press releases (stretch) | Extra event source |
+| 8-K Exhibit 99.1 (stretch) | Dated earnings and deal press releases |
+| FOMC statements, Wayback IR snapshots (stretch) | Macro tone, historical company pages |
+| Firecrawl (stretch, plus dev-time use) | Crawl non-SEC pages into `events`; scrape investor letters and Mubit docs while building |
+
+R&D comes from XBRL `ResearchAndDevelopmentExpense` and the 10-K R&D section. Patents, clinical trials and FDA data are post-MVP. The full source list, per-agent data mapping and Firecrawl rules (no numeric extraction, scrub company names, trusted dates only) are in README sections 4.1b to 4.1d.
 
 Rules: SEC `User-Agent` with name and email, under about 10 requests per second, raw responses cached to disk before parsing. No live API calls in the demo.
 
@@ -157,15 +165,15 @@ Rules: SEC `User-Agent` with name and email, under about 10 requests per second,
 
 | Directory | Contents | Owner |
 |---|---|---|
-| `ingest/` | SEC, FRED, price fetchers, `universe.json`, raw cache | A |
+| `ingest/` | SEC, FRED, price fetchers, raw cache, parsers (`universe.json` is A's) | B |
 | `store/` | `schema.sql`, `queries.py` (point-in-time gate), stubs, tests | A |
 | `metrics/` | One module per agent's metric set | A |
 | `tools/` | MCP servers | A |
-| `grader/` | `rules.py`, `grade.py`, `corrections.py`, `replay.py`, `calibration.py` | A |
-| `dashboard/` | Streamlit app | A |
-| `agents/` | Runner, adapters, one module per agent, synthesizer | B |
-| `principles/` | `buffett.md`, `graham.md`, `munger.md`, `dalio.md` | B |
-| `eval/` | Held-out split, baselines, report generation | B |
+| `grader/` | `rules.py`, `grade.py`, `corrections.py`, `replay.py`, `calibration.py` | B |
+| `dashboard/` | Streamlit app | B |
+| `agents/` | Runner, adapters, one module per agent (A). `synthesizer.py`, `correction_loop.py`, `cache.py`, `mubit_batch.py`, `offline.py` (B) | A and B |
+| `principles/` | `buffett.md`, `graham.md`, `munger.md`, `dalio.md` | A |
+| `eval/` | Held-out split, frozen twins, baselines, report generation | A |
 | `memos/` (stretch) | Memo assembly, placeholder renderer, number check | B |
 | `screener/` (stretch) | Watchlist flags and ranking | A |
 | `schemas/` | Shared Pydantic models | Shared |
@@ -205,7 +213,7 @@ Python computes all numbers. Each metric returns `{name, value, unit, as_of, inp
 | Moat | Gross margin level and std-dev, R&D and SG&A intensity |
 
 ### 6.4 Reality grader
-Pure Python, no LLM. Resolves each `question_id` using rules in `grader/rules.py` against filings with `filed_date` after `as_of`. Computes Brier score (binary and multiclass). Logs `unresolvable` cases and excludes them from accuracy.
+Python rules, with one exception: the Risk going-concern check sends keyword passages to Mubit's Sapling verifier (cached in `data/sapling_cache/`, replayed offline). Sapling only classifies the text; the rule maps its label to yes, no or `unresolvable`, so no grade or number comes from a model. Auditor change (8-K 4.01), dividend cut (>=25% fall in TTM dividends) and every other question are pure Python. Resolves each `question_id` using rules in `grader/rules.py` against filings with `filed_date` after `as_of`. Computes Brier score (binary and multiclass). Logs `unresolvable` cases (filing not yet visible, missing concept) and excludes them from accuracy. Restated facts are graded on the value known on the resolution date. Every grade carries a `resolution_date`.
 
 ### 6.5 Correction loop
 For each wrong call, emit a `Correction` with error type (`overconfident`, `missed_regime`, `wrong_signal`, `ignored_metric`) and a lesson from a reflection LLM call through Mubit. Cap at N corrections per agent per quarter (default 10), prioritised by confidence of the wrong call. `ModelUpdater.submit_corrections` sends them to Mubit, and the new model version is stamped into later calls.
@@ -271,7 +279,7 @@ Mubit's real update API is not yet known. Code against these interfaces, ask at 
 - Correction to Mubit update is visible on screen in the demo.
 - Learned agents beat their frozen twins on held-out data, or the result is reported honestly with calibration gains.
 - No leakage test failures.
-- Backup demo video recorded before code freeze (Sun 25 Oct 10:00).
+- Backup demo video recorded early, before the submission deadline.
 
 ### 7.6 Scope
 
