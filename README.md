@@ -1,5 +1,10 @@
 # Compounding Minds
 
+
+<img width="1695" height="1009" alt="Screenshot 2026-10-29 211316" src="https://github.com/user-attachments/assets/b5d8f3c2-cb10-4715-a10e-ecfc5102908f" />
+
+
+
 **Type any US-listed company and get a research report built from its SEC filings, read through the habits of mind of five
 legendary investors, from analysts that are graded against what the filings later said.**
 
